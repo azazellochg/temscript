@@ -423,10 +423,10 @@ class Acquisition(IUnknown):
 class TemperatureControl(IUnknown):
     IID = UUID("590ed766-adff-11ec-80f7-076f197827e0")
 
-    TemperatureControlAvailable = VariantBoolProperty(get_index=8, put_index=9)
-    RefrigerantLevel = EnumProperty(RefrigerantLevel, get_index=10, put_index=11)
-    DewarsRemainingTime = LongProperty(get_index=12, put_index=13)
-    DewarsAreBusyFilling = VariantBoolProperty(get_index=14, put_index=15)
+    TemperatureControlAvailable = VariantBoolProperty(get_index=8)
+    RefrigerantLevel = EnumProperty(RefrigerantLevel, get_index=9)
+    DewarsRemainingTime = LongProperty(get_index=10)
+    DewarsAreBusyFilling = VariantBoolProperty(get_index=11)
 
     FORCE_REFILL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "ForceRefill")
 
@@ -437,9 +437,9 @@ class TemperatureControl(IUnknown):
 class AutoLoader(IUnknown):
     IID = UUID("5df7ead0-ae16-11ec-b8bc-c8ff28780717")
 
-    AutoLoaderAvailable = VariantBoolProperty(get_index=10, put_index=11)
-    NumberOfCassetteSlots = LongProperty(get_index=12, put_index=13)
-    SlotStatus = EnumProperty(CassetteSlotStatus, get_index=14, put_index=15)
+    AutoLoaderAvailable = VariantBoolProperty(get_index=10)
+    NumberOfCassetteSlots = LongProperty(get_index=11)
+    SlotStatus = EnumProperty(CassetteSlotStatus, get_index=12)
 
     LOAD_CARTRIDGE = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(7, "LoadCartridge")
     UNLOAD_CARTRIDGE = ctypes.WINFUNCTYPE(ctypes.HRESULT)(8, "UnloadCartridge")

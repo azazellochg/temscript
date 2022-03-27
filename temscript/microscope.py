@@ -445,10 +445,16 @@ class Microscope(BaseMicroscope):
         }
 
     def load_cartridge(self, slot):
-        self._tem_autoloader.LoadCartridge(slot)
+        self._tem_autoloader.LoadCartridge(int(slot))
 
     def unload_cartridge(self):
         self._tem_autoloader.UnloadCartridge()
 
     def perform_cassette_inventory(self):
         self._tem_autoloader.PerformCassetteInventory()
+
+    def get_user_buttons(self):
+        buttons = {}
+        for b in self._tem_instrument.UserButtons:
+            buttons[b.Name] = b.Label
+        return buttons
