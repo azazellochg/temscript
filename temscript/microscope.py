@@ -28,6 +28,7 @@ class Microscope(BaseMicroscope):
         self._tem_stage = tem.Stage
         self._tem_acquisition = tem.Acquisition
         self._tem_temperature_control = tem.TemperatureControl
+        self._tem_autoloader = tem.AutoLoader
         self._tem_vacuum = tem.Vacuum
         self._tem_camera = tem.Camera
         self._tem_control = tem.InstrumentModeControl
@@ -430,5 +431,12 @@ class Microscope(BaseMicroscope):
             "available": self._tem_temperature_control.TemperatureControlAvailable,
             "refrigerant_level": self._tem_temperature_control.RefrigerantLevel,
             "dewars_remaining_time": self._tem_temperature_control.DewarsRemainingTime,
-            "dewars_are_busy_filling": self._tem_temperature_control.DewarsAreBusyFilling,
+            "dewars_are_busy_filling": self._tem_temperature_control.DewarsAreBusyFilling
+        }
+
+    def get_autoloader(self):
+        return {
+            "available": self._tem_autoloader.AutoLoaderAvailable,
+            "number_of_cassette_slots": self._tem_autoloader.NumberOfCassetteSlots,
+            "slot_status": self._tem_autoloader.SlotStatus
         }

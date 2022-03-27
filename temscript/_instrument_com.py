@@ -5,7 +5,7 @@ from ._com import *
 
 __all__ = ('GetInstrument', 'Projection', 'CCDCameraInfo', 'CCDAcqParams', 'CCDCamera',
            'STEMDetectorInfo', 'STEMAcqParams', 'STEMDetector', 'AcqImage', 'Acquisition',
-           'TemperatureControl',
+           'TemperatureControl', 'AutoLoader', 'UserButton',
            'Gauge', 'Vacuum', 'Stage', 'Camera', 'Illumination', 'Gun', 'BlankerShutter',
            'InstrumentModeControl', 'Configuration', 'Instrument')
 
@@ -434,6 +434,27 @@ class TemperatureControl(IUnknown):
         TemperatureControl.FORCE_REFILL_METHOD(self.get())
 
 
+class AutoLoader(IUnknown):
+    IID = UUID("5df7ead0-ae16-11ec-b8bc-c8ff28780717")
+
+    AutoLoaderAvailable = VariantBoolProperty(get_index=10, put_index=11)
+    NumberOfCassetteSlots = LongProperty(get_index=12, put_index=13)
+    SlotStatus = EnumProperty(CassetteSlotStatus, get_index=14, put_index=15)
+
+    LOAD_CARTRIDGE = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(7, "LoadCartridge")
+    UNLOAD_CARTRIDGE = ctypes.WINFUNCTYPE(ctypes.HRESULT)(8, "UnloadCartridge")
+    PERFORM_CASSETTE_INVENTORY = ctypes.WINFUNCTYPE(ctypes.HRESULT)(9, "PerformCassetteInventory")
+
+    def LoadCartridge(self, slot):
+        AutoLoader.LOAD_CARTRIDGE(self.get(), slot)
+
+    def UnloadCartridge(self):
+        AutoLoader.UNLOAD_CARTRIDGE(self.get())
+
+    def PerformCassetteInventory(self):
+        AutoLoader.PERFORM_CASSETTE_INVENTORY(self.get())
+
+
 class Gauge(IUnknown):
     IID = UUID("52020820-18bf-11d3-86e1-00c04fc126dd")
 
@@ -618,6 +639,14 @@ class BlankerShutter(IUnknown):
     ShutterOverrideOn = VariantBoolProperty(get_index=7, put_index=8)
 
 
+class UserButton(IUnknown):
+    IID = UUID("de1d8198-ae16-11ec-82c2-c8ff28780717")
+
+    Name = StringProperty(get_index=7)
+    Label = StringProperty(get_index=8)
+    Assignment = StringProperty(get_index=9, put_index=10)
+
+
 class InstrumentModeControl(IUnknown):
     IID = UUID("8dc0fc71-ff15-40d8-8174-092218d8b76b")
 
@@ -645,7 +674,9 @@ class Instrument(IUnknown):
     InstrumentModeControl = ObjectProperty(InstrumentModeControl, get_index=23)
     Acquisition = ObjectProperty(Acquisition, get_index=24)
     Configuration = ObjectProperty(Configuration, get_index=25)
-    TemperatureControl = ObjectProperty(TemperatureControl, get_index=26)  # get_index????
+    TemperatureControl = ObjectProperty(TemperatureControl, get_index=26)
+    AutoLoader = ObjectProperty(AutoLoader, get_index=27)
+    UserButtons = CollectionProperty(get_index=28, interface=UserButton)
 
     NORMALIZE_ALL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "NormalizeAll")
 

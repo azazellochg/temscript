@@ -200,3 +200,10 @@ class RefrigerantLevel(IntEnum):
     AUTOLOADER_DEWAR = 0
     COLUMN_DEWAR = 1
     HELIUM_DEWAR = 2
+
+
+class CassetteSlotStatus(IntEnum):
+    UNKNOWN = 0
+    OCCUPIED = 1
+    EMPTY = 2
+    ERROR = 3
