@@ -426,7 +426,7 @@ class Microscope(BaseMicroscope):
         mode = parse_enum(InstrumentMode, mode)
         self._tem_control.InstrumentMode = mode
 
-    def get_temperatures(self):
+    def get_dewars(self):
         return {
             "available": self._tem_temperature_control.TemperatureControlAvailable,
             "refrigerant_level": self._tem_temperature_control.RefrigerantLevel,
@@ -434,9 +434,21 @@ class Microscope(BaseMicroscope):
             "dewars_are_busy_filling": self._tem_temperature_control.DewarsAreBusyFilling
         }
 
+    def force_refill(self):
+        self._tem_temperature_control.ForceRefill()
+
     def get_autoloader(self):
         return {
             "available": self._tem_autoloader.AutoLoaderAvailable,
             "number_of_cassette_slots": self._tem_autoloader.NumberOfCassetteSlots,
             "slot_status": self._tem_autoloader.SlotStatus
         }
+
+    def load_cartridge(self, slot):
+        self._tem_autoloader.LoadCartridge(slot)
+
+    def unload_cartridge(self):
+        self._tem_autoloader.UnloadCartridge()
+
+    def perform_cassette_inventory(self):
+        self._tem_autoloader.PerformCassetteInventory()
