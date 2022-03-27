@@ -194,3 +194,9 @@ class PlateLabelDateFormat(IntEnum):
     DDMMYY = 1
     MMDDYY = 2
     YYMMDD = 3
+
+
+class RefrigerantLevel(IntEnum):
+    AUTOLOADER_DEWAR = 0
+    COLUMN_DEWAR = 1
+    HELIUM_DEWAR = 2

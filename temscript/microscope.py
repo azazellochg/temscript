@@ -27,6 +27,7 @@ class Microscope(BaseMicroscope):
         self._tem_projection = tem.Projection
         self._tem_stage = tem.Stage
         self._tem_acquisition = tem.Acquisition
+        self._tem_temperature_control = tem.TemperatureControl
         self._tem_vacuum = tem.Vacuum
         self._tem_camera = tem.Camera
         self._tem_control = tem.InstrumentModeControl
@@ -423,3 +424,11 @@ class Microscope(BaseMicroscope):
     def set_instrument_mode(self, mode):
         mode = parse_enum(InstrumentMode, mode)
         self._tem_control.InstrumentMode = mode
+
+    def get_temperatures(self):
+        return {
+            "available": self._tem_temperature_control.TemperatureControlAvailable,
+            "refrigerant_level": self._tem_temperature_control.RefrigerantLevel,
+            "dewars_remaining_time": self._tem_temperature_control.DewarsRemainingTime,
+            "dewars_are_busy_filling": self._tem_temperature_control.DewarsAreBusyFilling,
+        }

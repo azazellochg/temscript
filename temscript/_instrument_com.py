@@ -5,6 +5,7 @@ from ._com import *
 
 __all__ = ('GetInstrument', 'Projection', 'CCDCameraInfo', 'CCDAcqParams', 'CCDCamera',
            'STEMDetectorInfo', 'STEMAcqParams', 'STEMDetector', 'AcqImage', 'Acquisition',
+           'TemperatureControl',
            'Gauge', 'Vacuum', 'Stage', 'Camera', 'Illumination', 'Gun', 'BlankerShutter',
            'InstrumentModeControl', 'Configuration', 'Instrument')
 
@@ -419,6 +420,20 @@ class Acquisition(IUnknown):
         Acquisition.PUT_ACQ_PARAMS_METHOD(collection.get(), value.get())
 
 
+class TemperatureControl(IUnknown):
+    IID = UUID("590ed766-adff-11ec-80f7-076f197827e0")
+
+    TemperatureControlAvailable = VariantBoolProperty(get_index=8, put_index=9)
+    RefrigerantLevel = EnumProperty(RefrigerantLevel, get_index=10, put_index=11)
+    DewarsRemainingTime = LongProperty(get_index=12, put_index=13)
+    DewarsAreBusyFilling = VariantBoolProperty(get_index=14, put_index=15)
+
+    FORCE_REFILL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "ForceRefill")
+
+    def ForceRefill(self):
+        TemperatureControl.FORCE_REFILL_METHOD(self.get())
+
+
 class Gauge(IUnknown):
     IID = UUID("52020820-18bf-11d3-86e1-00c04fc126dd")
 
@@ -564,7 +579,6 @@ class Illumination(IUnknown):
 
     Mode = EnumProperty(IlluminationMode, get_index=8, put_index=9)
     SpotsizeIndex = LongProperty(get_index=10, put_index=11)
-    SpotSizeIndex = LongProperty(get_index=10, put_index=11)
     Intensity = DoubleProperty(get_index=12, put_index=13)
     IntensityZoomEnabled = VariantBoolProperty(get_index=14, put_index=15)
     IntensityLimitEnabled = VariantBoolProperty(get_index=16, put_index=17)
@@ -631,6 +645,7 @@ class Instrument(IUnknown):
     InstrumentModeControl = ObjectProperty(InstrumentModeControl, get_index=23)
     Acquisition = ObjectProperty(Acquisition, get_index=24)
     Configuration = ObjectProperty(Configuration, get_index=25)
+    TemperatureControl = ObjectProperty(TemperatureControl, get_index=26)  # get_index????
 
     NORMALIZE_ALL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "NormalizeAll")
 
