@@ -5,7 +5,7 @@ from ._com import *
 
 __all__ = ('GetInstrument', 'Projection', 'CCDCameraInfo', 'CCDAcqParams', 'CCDCamera',
            'STEMDetectorInfo', 'STEMAcqParams', 'STEMDetector', 'AcqImage', 'Acquisition',
-           'TemperatureControl', 'AutoLoader', 'UserButton',
+           'TemperatureControl', 'AutoLoader', 'UserButtons',
            'Gauge', 'Vacuum', 'Stage', 'Camera', 'Illumination', 'Gun', 'BlankerShutter',
            'InstrumentModeControl', 'Configuration', 'Instrument')
 
@@ -350,6 +350,7 @@ class AcqImage(IUnknown):
     Height = LongProperty(get_index=9)
     Depth = LongProperty(get_index=10)
     _AsSafeArray = SafeArrayProperty(get_index=11)
+    #AsFile = [StringProperty(get_index=12), EnumProperty(AcqImageFileFormat, get_index=13), VariantBoolProperty(get_index=14)]
 
     @property
     def Array(self):
@@ -421,7 +422,7 @@ class Acquisition(IUnknown):
 
 
 class TemperatureControl(IUnknown):
-    IID = UUID("590ed766-adff-11ec-80f7-076f197827e0")
+    IID = UUID("71b6e709-b21f-435f-9529-1aee55cfa029")
 
     TemperatureControlAvailable = VariantBoolProperty(get_index=8)
     RefrigerantLevel = EnumProperty(RefrigerantLevel, get_index=9)
@@ -435,24 +436,28 @@ class TemperatureControl(IUnknown):
 
 
 class AutoLoader(IUnknown):
-    IID = UUID("5df7ead0-ae16-11ec-b8bc-c8ff28780717")
+    IID = UUID("28df27ea-2058-41d0-abbd-167fb3bfcd8f")
 
-    AutoLoaderAvailable = VariantBoolProperty(get_index=10)
-    NumberOfCassetteSlots = LongProperty(get_index=11)
-    SlotStatus = EnumProperty(CassetteSlotStatus, get_index=12)
+    AutoLoaderAvailable = VariantBoolProperty(get_index=11)
+    NumberOfCassetteSlots = LongProperty(get_index=12)
+    SlotStatus = EnumProperty(CassetteSlotStatus, get_index=13)
 
-    LOAD_CARTRIDGE = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(7, "LoadCartridge")
-    UNLOAD_CARTRIDGE = ctypes.WINFUNCTYPE(ctypes.HRESULT)(8, "UnloadCartridge")
-    PERFORM_CASSETTE_INVENTORY = ctypes.WINFUNCTYPE(ctypes.HRESULT)(9, "PerformCassetteInventory")
+    LOAD_CARTRIDGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(7, "LoadCartridge")
+    UNLOAD_CARTRIDGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(8, "UnloadCartridge")
+    PERFORM_CASSETTE_INVENTORY_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(9, "PerformCassetteInventory")
+    #BUFFER_CYCLE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(10, "BufferCycle")
 
     def LoadCartridge(self, slot):
-        AutoLoader.LOAD_CARTRIDGE(self.get(), slot)
+        AutoLoader.LOAD_CARTRIDGE_METHOD(self.get(), slot)
 
     def UnloadCartridge(self):
-        AutoLoader.UNLOAD_CARTRIDGE(self.get())
+        AutoLoader.UNLOAD_CARTRIDGE_METHOD(self.get())
 
     def PerformCassetteInventory(self):
-        AutoLoader.PERFORM_CASSETTE_INVENTORY(self.get())
+        AutoLoader.PERFORM_CASSETTE_INVENTORY_METHOD(self.get())
+
+    #def BufferCycle(self):
+    #    AutoLoader.BUFFER_CYCLE_METHOD(self.get())
 
 
 class Gauge(IUnknown):
@@ -616,6 +621,7 @@ class Illumination(IUnknown):
     ConvergenceAngle = DoubleProperty(get_index=35)
     StemMagnification = DoubleProperty(get_index=36, put_index=37)
     StemRotation = DoubleProperty(get_index=38, put_index=39)
+    C3ImageDistanceParallelOffset = DoubleProperty(get_index=40, put_index=41)
 
     NORMALIZE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)
 
@@ -640,7 +646,7 @@ class BlankerShutter(IUnknown):
 
 
 class UserButton(IUnknown):
-    IID = UUID("de1d8198-ae16-11ec-82c2-c8ff28780717")
+    IID = UUID("?")
 
     Name = StringProperty(get_index=7)
     Label = StringProperty(get_index=8)
@@ -658,6 +664,7 @@ class Configuration(IUnknown):
     IID = UUID("39cacdaf-f47c-4bbf-9ffa-a7a737664ced")
 
     ProductFamily = EnumProperty(ProductFamily, get_index=7)
+    CondenserLensSystem = EnumProperty(CondenserLensSystem, get_index=8)
 
 
 class Instrument(IUnknown):

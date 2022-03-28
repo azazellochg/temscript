@@ -34,8 +34,8 @@ class GaugeStatus(IntEnum):
     UNDEFINED = 0
     UNDERFLOW = 1
     OVERFLOW = 2
-    INVALID = 3
-    VALID = 4
+    VALID = 3
+    INVALID = 4
 
 
 class GaugePressureLevel(IntEnum):
@@ -63,10 +63,10 @@ class MeasurementUnitType(IntEnum):
 
 
 class StageHolderType(IntEnum):
-    NONE = 0
+    INVALID = 0
     SINGLE_TILT = 1
     DOUBLE_TILT = 2
-    INVALID = 4
+    NONE = 4
     POLARA = 5
     DUAL_AXIS = 6
 
@@ -178,9 +178,24 @@ class AcqExposureMode(IntEnum):
     PRE_EXPOSURE_PAUSE = 3
 
 
+class AcqImageFileFormat(IntEnum):
+    TIFF = 0
+    JPG = 1
+    PNG = 2
+    RAW = 3
+    SER = 4
+    MRC = 5
+
+
 class ProductFamily(IntEnum):
     TECNAI = 0
     TITAN = 1
+    TALOS = 2
+
+
+class CondenserLensSystem(IntEnum):
+    TWO_CONDENSER_LENSES = 0
+    THREE_CONDENSER_LENSES = 1
 
 
 class ScreenPosition(IntEnum):
