@@ -94,8 +94,8 @@ Relative to Titan V1.1 scripting adapter:
 * Gauge: complete
 * Vacuum: complete
 * UserButton: missing
-* AutoLoader: complete
-* TemperatureControl: complete
+* AutoLoader: complete (but untested)
+* TemperatureControl: complete (but untested)
 * Illumination: complete
 
 # Copyright & Disclaimer

@@ -5,7 +5,7 @@ from ._com import *
 
 __all__ = ('GetInstrument', 'Projection', 'CCDCameraInfo', 'CCDAcqParams', 'CCDCamera',
            'STEMDetectorInfo', 'STEMAcqParams', 'STEMDetector', 'AcqImage', 'Acquisition',
-           'TemperatureControl', 'AutoLoader', 'UserButtons',
+           'TemperatureControl', 'AutoLoader', 'UserButton',
            'Gauge', 'Vacuum', 'Stage', 'Camera', 'Illumination', 'Gun', 'BlankerShutter',
            'InstrumentModeControl', 'Configuration', 'Instrument')
 
@@ -691,7 +691,47 @@ class Instrument(IUnknown):
         Instrument.NORMALIZE_ALL_METHOD(self.get())
 
 
-CLSID_INSTRUMENT = UUID('02CDC9A1-1F1D-11D3-AE11-00A024CBA50C')
+class Acquisitions(IUnknown):
+    IID = UUID("27f7ddc7-bad9-4e2e-b9b6-e7644eb152ec")
+
+    Cameras = ObjectProperty(CameraList, get_index=7)
+    CameraSingleAcquisition = ObjectProperty(CameraSingleAcquisition, get_index=8)
+
+
+class Phaseplate(IUnknown):
+    IID = UUID("2605f3d9-9365-42fb-8b09-78f8d6b114d4")
+
+    GetCurrentPresetPosition = LongProperty(get_index=8)
+
+    SELECT_NEXT_PRESET_POSITION_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "SelectNextPresetPosition")
+
+    def NormalizeAll(self):
+        Phaseplate.SELECT_NEXT_PRESET_POSITION_METHOD(self.get())
+
+
+class AdvancedInstrument(IUnknown):
+    IID = UUID("c7452318-374a-4161-9b68-90ca3c3f5bea")
+
+    Acquisitions = ObjectProperty(Acquisitions, get_index=7)
+    Phaseplate = ObjectProperty(Phaseplate, get_index=8)
+
+
+'''
+TEM Scripting:
+    Tecnai.Instrument -> {02CDC9A1-1F1D-11D3-AE11-00A024CBA50C}
+    TEMScripting.Instrument.1 -> {02CDC9A1-1F1D-11D3-AE11-00A024CBA50C}
+TOM Moniker:
+    TEM.Instrument.1 -> {7D82B1B8-3A42-495A-B1D9-2BE40FA497FA}
+TEM Advanced Scripting:
+    TEMAdvancedScripting.AdvancedInstrument.2 -> {B89721DF-F6F8-4567-9293-D2228012985D}
+Tecnai Low Dose Kit:
+    LDServer.LdSrv -> {9BEC9756-A820-11D3-972E-81B6519D0DF8}
+TIA:
+    ESVision.Application -> {D20B86BB-1214-11D2-AD14-00A0241857FD}
+'''
+
+CLSID_INSTRUMENT = UUID("02CDC9A1-1F1D-11D3-AE11-00A024CBA50C")
+CLSID_ADV_INSTRUMENT = UUID("B89721DF-F6F8-4567-9293-D2228012985D")
 
 
 def GetInstrument():
@@ -700,3 +740,7 @@ def GetInstrument():
     return instrument
 
 
+def GetAdvancedInstrument():
+    """Returns Advanced Instrument instance."""
+    instrument = co_create_instance(CLSID_ADV_INSTRUMENT, CLSCTX_ALL, AdvancedInstrument)
+    return instrument
