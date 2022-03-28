@@ -3,7 +3,7 @@ from enum import IntEnum
 
 # Not defined by FEI, but used in server/client
 class DetectorType(IntEnum):
-    CAMERA = 1,
+    CAMERA = 1
     STEM_DETECTOR = 2
 
 

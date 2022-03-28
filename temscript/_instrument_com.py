@@ -705,7 +705,7 @@ class Phaseplate(IUnknown):
 
     SELECT_NEXT_PRESET_POSITION_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "SelectNextPresetPosition")
 
-    def NormalizeAll(self):
+    def SelectNextPresetPositionl(self):
         Phaseplate.SELECT_NEXT_PRESET_POSITION_METHOD(self.get())
 
 
