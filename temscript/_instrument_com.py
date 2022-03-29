@@ -358,6 +358,7 @@ class AcqImage(IUnknown):
 
     def AsFile(self, name, format, normalize=False):
         name_bstr = BStr(name)
+        format = AcqImageFileFormat[str(format).upper()]
         bool_value = 0xffff if normalize else 0x0000
         AcqImage.AS_FILE_METHOD(self.get(), name_bstr.get(), format, bool_value)
 
@@ -824,8 +825,7 @@ class AcquiredImage(IUnknown):
     @property
     def Metadata(self):
         collection = self._Metadata
-        items = [KeyValuePair(item) for item in collection]
-        return {item.Key: item.ValueAsString for item in items}
+        return [KeyValuePair(item) for item in collection]
 
     '''
         DetectorName --> BM-Falcon

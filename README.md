@@ -93,10 +93,14 @@ Relative to Titan V1.1 scripting adapter:
 * Camera: complete
 * Gauge: complete
 * Vacuum: complete
-* UserButton: missing
+* UserButton: incomplete (untested), no events handling
 * AutoLoader: complete (but untested)
 * TemperatureControl: complete (but untested)
 * Illumination: complete
+
+Relative to Titan V2 advanced scripting adapter:
+* Acquisitions: complete (but untested)
+* Phaseplate: complete (but untested)
 
 # Copyright & Disclaimer
 
