@@ -696,44 +696,95 @@ class Instrument(IUnknown):
 
 # ------- Advanced scripting classes -------
 
-class CameraAcquisitionCapabilities(IUnknown):
-    IID = UUID("?")
+class Binning(IUnknown):
+    IID = UUID("3e34a756-bd44-405f-85a8-83496341476c")
 
-    _SupportedBinnings = SafeArrayProperty(get_index=7)
-    ExposureTimeRange = SafeArrayProperty(get_index=8)  # check output type
+    Width = LongProperty(get_index=7, put_index=8)
+    Height = LongProperty(get_index=9, put_index=10)
+
+
+class BinningList(IUnknown):
+    IID = UUID("6d856ea4-1077-48f8-bf5b-8636035a11ef")
+
+    ADD_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(7, "Add")
+
+    def Add(self, value):
+        bin = Binning()
+        bin.Width, bin.Height = value[0], value[1]
+        BinningList.ADD_METHOD(self.get(), bin.get())
+
+
+class TimeRange(IUnknown):
+    IID = UUID("07347e4b-ddb5-4971-a1e4-999bee10de08")
+
+    Begin = DoubleProperty(get_index=7)
+    End = DoubleProperty(get_index=8)
+
+
+class FrameRange(IUnknown):
+    IID = UUID("85312757-930d-4aa7-8f5c-627f4c65c3bf")
+
+    Begin = LongProperty(get_index=7, put_index=8)
+    End = LongProperty(get_index=9, put_index=10)
+
+
+class FrameRangeList(IUnknown):
+    IID = UUID("91aa6644-a9c7-4905-812b-6008b79fe966")
+
+    ADD_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(7, "Add")
+    ADD_RANGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long, ctypes.c_long)(8, "AddRange")
+    CLEAR_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(9, "Clear")
+
+    def Add(self, value):
+        range = FrameRange()
+        range.Begin, range.End = value[0], value[1]
+        FrameRangeList.ADD_METHOD(self.get(), range.get())
+
+    def AddRange(self, begin, end):
+        FrameRangeList.ADD_RANGE_METHOD(self.get(), int(begin), int(end))
+
+    def Clear(self):
+        FrameRangeList.CLEAR_METHOD(self.get())
+
+
+class KeyValuePair(IUnknown):
+    IID = UUID("565dfad5-a223-44c1-bc09-22c450b21d24")
+
+    Key = StringProperty(get_index=7, put_index=8)
+    ValueAsString = StringProperty(get_index=9, put_index=10)
+
+
+class KeyValuePairList(IUnknown):
+    IID = UUID("41bf4afe-e6c6-4f62-9a72-5418e3000184")
+
+    ADD_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(7, "Add")
+
+    def Add(self, value):
+        pair = KeyValuePair()
+        pair.Key, pair.ValueAsString = value[0], value[1]
+        KeyValuePairList.ADD_METHOD(self.get(), pair.get())
+
+
+class CameraAcquisitionCapabilities(IUnknown):
+    IID = UUID("c4c83905-0d53-47f3-8ae4-91f1248aa0f9")
+
+    SupportedBinnings = ObjectProperty(BinningList, get_index=7)
+    ExposureTimeRange = ObjectProperty(TimeRange, get_index=8)
     SupportsDoseFractions = VariantBoolProperty(get_index=9)
     MaximumNumberOfDoseFractions = LongProperty(get_index=10)
     SupportsDriftCorrection = VariantBoolProperty(get_index=11)
     SupportsElectronCounting = VariantBoolProperty(get_index=12)
     SupportsEER = VariantBoolProperty(get_index=13)
 
-    @property
-    def SupportedBinnings(self):
-        return self._SupportedBinnings.as_list(int)
-
-
-class FrameRangeList(IUnknown):
-    IID = UUID("?")
-
-    CLEAR_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "Clear")
-    ADD_RANGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(8, "AddRange")
-
-    def Clear(self):
-        FrameRangeList.CLEAR_METHOD(self.get())
-
-    def AddRange(self, range):  #FIXME
-        FrameRangeList.ADD_RANGE_METHOD(self.get(), range)
-
 
 class CameraSettings(IUnknown):
-    IID = UUID("?")
+    IID = UUID("f4e2613d-2e3a-4be4-b9e1-4bb1831d3eb1")
 
     Capabilities = ObjectProperty(CameraAcquisitionCapabilities, get_index=8)
     PathToImageStorage = StringProperty(get_index=9)
     SubPathPattern = StringProperty(get_index=10, put_index=11)
     ExposureTime = DoubleProperty(get_index=12, put_index=13)
     ReadoutArea = EnumProperty(AcqImageSize, get_index=14, put_index=15)
-    Binning = VectorProperty(get_index=16, put_index=17)
     DoseFractionsDefinition = ObjectProperty(FrameRangeList, get_index=18)
     AlignImage = VariantBoolProperty(get_index=19, put_index=20)
     ElectronCounting = VariantBoolProperty(get_index=21, put_index=22)
@@ -746,7 +797,7 @@ class CameraSettings(IUnknown):
 
 
 class CameraAdvanced(IUnknown):
-    IID = UUID("?")
+    IID = UUID("ba60831e-7a06-4f1d-abe9-80d26227fcb9")
 
     Name = StringProperty(get_index=9)
     Width = LongProperty(get_index=10)
@@ -765,13 +816,13 @@ class CameraAdvanced(IUnknown):
 
 
 class AcquiredImage(IUnknown):
-    IID = UUID("?")
+    IID = UUID("88febcf4-397b-4723-aeba-3cacc4ef6840")
 
     Width = LongProperty(get_index=8)
     Height = LongProperty(get_index=9)
     PixelType = EnumProperty(ImagePixelType, get_index=10)
     BitDepth = LongProperty(get_index=11)
-    Metadata = SafeArrayProperty(get_index=12)
+    Metadata = ObjectProperty(KeyValuePairList, get_index=12)
     _AsSafeArray = SafeArrayProperty(get_index=13)
 
     SAVE_TO_FILE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_wchar_p, ctypes.c_short)(7, "SaveToFile")
@@ -787,7 +838,7 @@ class AcquiredImage(IUnknown):
 
 
 class CameraSingleAcquisition(IUnknown):
-    IID = UUID("?")
+    IID = UUID("a927ea10-74b0-45a9-8368-fcdd52498053")
 
     _SupportedCameras = CollectionProperty(get_index=9)
     Camera = ObjectProperty(CameraAdvanced, get_index=10, put_index=11)
