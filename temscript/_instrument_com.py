@@ -359,7 +359,7 @@ class AcqImage(IUnknown):
     def AsFile(self, name, format, normalize=False):
         name_bstr = BStr(name)
         bool_value = 0xffff if normalize else 0x0000
-        AcqImage.AS_FILE_METHOD(self.get(), name_bstr.get(), AcqImageFileFormat[format], bool_value)
+        AcqImage.AS_FILE_METHOD(self.get(), name_bstr.get(), format, bool_value)
 
     @property
     def Array(self):
