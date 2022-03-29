@@ -222,3 +222,9 @@ class CassetteSlotStatus(IntEnum):
     OCCUPIED = 1
     EMPTY = 2
     ERROR = 3
+
+
+class ImagePixelType(IntEnum):
+    UNSIGNED_INT = 0
+    SIGNED_INT = 1
+    FLOAT = 2
