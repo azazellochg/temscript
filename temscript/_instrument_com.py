@@ -348,12 +348,18 @@ class STEMDetector(IUnknown):
 class AcqImage(IUnknown):
     IID = UUID("e15f4810-43c6-489a-9e8a-588b0949e153")
 
-    Name = StringProperty(get_index=7)
-    Width = LongProperty(get_index=8)
-    Height = LongProperty(get_index=9)
-    Depth = LongProperty(get_index=10)
-    _AsSafeArray = SafeArrayProperty(get_index=11)
-    #AsFile = [StringProperty(get_index=12), EnumProperty(AcqImageFileFormat, get_index=13), VariantBoolProperty(get_index=14)]
+    Name = StringProperty(get_index=8)
+    Width = LongProperty(get_index=9)
+    Height = LongProperty(get_index=10)
+    Depth = LongProperty(get_index=11)
+    _AsSafeArray = SafeArrayProperty(get_index=12)
+
+    AS_FILE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_wchar_p, ctypes.c_int, ctypes.c_short)(7, "AsFile")
+
+    def AsFile(self, name, format, normalize=False):
+        name_bstr = BStr(name)
+        bool_value = 0xffff if normalize else 0x0000
+        AcqImage.AS_FILE_METHOD(self.get(), name_bstr.get(), AcqImageFileFormat[format], bool_value)
 
     @property
     def Array(self):
@@ -649,7 +655,7 @@ class BlankerShutter(IUnknown):
 
 
 class UserButton(IUnknown):
-    IID = UUID("?")
+    IID = UUID("e6f00871-3164-11d3-b4c8-00a024cb9221")
 
     Name = StringProperty(get_index=7)
     Label = StringProperty(get_index=8)
@@ -703,17 +709,6 @@ class Binning(IUnknown):
     Height = LongProperty(get_index=9, put_index=10)
 
 
-class BinningList(IUnknown):
-    IID = UUID("6d856ea4-1077-48f8-bf5b-8636035a11ef")
-
-    ADD_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(7, "Add")
-
-    def Add(self, value):
-        bin = Binning()
-        bin.Width, bin.Height = value[0], value[1]
-        BinningList.ADD_METHOD(self.get(), bin.get())
-
-
 class TimeRange(IUnknown):
     IID = UUID("07347e4b-ddb5-4971-a1e4-999bee10de08")
 
@@ -750,31 +745,25 @@ class FrameRangeList(IUnknown):
 class KeyValuePair(IUnknown):
     IID = UUID("565dfad5-a223-44c1-bc09-22c450b21d24")
 
-    Key = StringProperty(get_index=7, put_index=8)
-    ValueAsString = StringProperty(get_index=9, put_index=10)
-
-
-class KeyValuePairList(IUnknown):
-    IID = UUID("41bf4afe-e6c6-4f62-9a72-5418e3000184")
-
-    ADD_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(7, "Add")
-
-    def Add(self, value):
-        pair = KeyValuePair()
-        pair.Key, pair.ValueAsString = value[0], value[1]
-        KeyValuePairList.ADD_METHOD(self.get(), pair.get())
+    Key = StringProperty(get_index=7)
+    ValueAsString = StringProperty(get_index=8)
 
 
 class CameraAcquisitionCapabilities(IUnknown):
     IID = UUID("c4c83905-0d53-47f3-8ae4-91f1248aa0f9")
 
-    SupportedBinnings = ObjectProperty(BinningList, get_index=7)
+    _SupportedBinnings = CollectionProperty(get_index=7)
     ExposureTimeRange = ObjectProperty(TimeRange, get_index=8)
     SupportsDoseFractions = VariantBoolProperty(get_index=9)
     MaximumNumberOfDoseFractions = LongProperty(get_index=10)
     SupportsDriftCorrection = VariantBoolProperty(get_index=11)
     SupportsElectronCounting = VariantBoolProperty(get_index=12)
     SupportsEER = VariantBoolProperty(get_index=13)
+
+    @property
+    def SupportedBinnings(self):
+        collection = self._SupportedBinnings
+        return [Binning(item) for item in collection]
 
 
 class CameraSettings(IUnknown):
@@ -822,7 +811,7 @@ class AcquiredImage(IUnknown):
     Height = LongProperty(get_index=9)
     PixelType = EnumProperty(ImagePixelType, get_index=10)
     BitDepth = LongProperty(get_index=11)
-    Metadata = ObjectProperty(KeyValuePairList, get_index=12)
+    _Metadata = CollectionProperty(get_index=12)
     _AsSafeArray = SafeArrayProperty(get_index=13)
 
     SAVE_TO_FILE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_wchar_p, ctypes.c_short)(7, "SaveToFile")
@@ -831,6 +820,44 @@ class AcquiredImage(IUnknown):
         name_bstr = BStr(filePath)
         bool_value = 0xffff if normalize else 0x0000
         AcquiredImage.SAVE_TO_FILE_METHOD(self.get(), name_bstr.get(), bool_value)
+
+    @property
+    def Metadata(self):
+        collection = self._Metadata
+        items = [KeyValuePair(item) for item in collection]
+        return {item.Key: item.ValueAsString for item in items}
+
+    '''
+        DetectorName --> BM-Falcon
+        Binning.Width --> 1
+        Binning.Height --> 1
+        ReadoutArea.Left --> 0
+        ReadoutArea.Top --> 0
+        ReadoutArea.Right --> 4096
+        ReadoutArea.Bottom --> 4096
+        ExposureMode --> None
+        ExposureTime --> 0.99692
+        DarkGainCorrectionType --> DarkGain
+        Shutters[0].Type --> Electrostatic
+        Shutters[0].Position --> PreSpecimen
+        AcquisitionUnit --> CameraImage
+        BitsPerPixel --> 32
+        Encoding --> Signed
+        ImageSize.Width --> 4096
+        ImageSize.Height --> 4096
+        Offset.X --> -4.6106e-07
+        Offset.Y --> -4.6106e-07
+        PixelSize.Width --> 2.25127e-10
+        PixelSize.Height --> 2.25127e-10
+        PixelUnitX --> m
+        PixelUnitY --> m
+        TimeStamp --> 1648565310713477
+        PixelValueToCameraCounts --> 39
+        ExposureTime --> 0.971997
+        CountsToElectrons --> 0.00147737
+        ElectronCounted --> FALSE
+        AlignIntegratedImage --> FALSE
+    '''
 
     @property
     def Array(self):
