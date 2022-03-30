@@ -79,28 +79,40 @@ administrator privileges):
 # Supported functions of the COM interface
 
 Relative to Titan V1.1 scripting adapter:
-* Projection: complete
-* Stage: complete
-* Configuration: complete
-* Acquisition: complete
 * AcqImage: complete
+* Acquisition: complete
+* AutoLoader: complete (but untested)
+* BlankerShutter: complete
+* Camera: complete
+* CCDAcqParams: complete
 * CCDCamera: complete
 * CCDCameraInfo: complete
-* CCDAcqParams: complete
-* STEMDetector: complete (but untested)
-* STEMAcqParams: complete (but untested)
-* STEMDetectorInfo: complete (but untested)
-* Camera: complete
+* Configuration: complete
 * Gauge: complete
-* Vacuum: complete
-* UserButton: complete (but untested), no events handling
-* AutoLoader: complete (but untested)
-* TemperatureControl: complete (but untested)
+* Gun: complete
 * Illumination: complete
+* InstrumentModeControl: complete
+* Projection: complete
+* Stage: complete
+* StagePosition: complete
+* STEMAcqParams: complete (but untested)
+* STEMDetector: complete (but untested)
+* STEMDetectorInfo: complete (but untested)
+* TemperatureControl: complete (but untested)
+* UserButton(s): complete (but untested), no events handling
+* Vacuum: complete
 
 Relative to Titan V2 advanced scripting adapter:
+* AcquiredImage: complete (but untested)
 * Acquisitions: complete (but untested)
+* CameraAcquisitionCapabilities: complete (but untested)
+* Camera (called AdvancedCamera here): complete (but untested)
+* CameraSettings: complete (but untested)
+* CameraSingleAcquisition: complete (but untested)
 * Phaseplate: complete (but untested)
+* PiezoStage: missing
+* Source: missing
+* UserDoorHatch: missing
 
 # Copyright & Disclaimer
 

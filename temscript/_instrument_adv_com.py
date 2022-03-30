@@ -200,6 +200,9 @@ class AdvancedInstrument(IUnknown):
 
     Acquisitions = ObjectProperty(Acquisitions, get_index=7)
     Phaseplate = ObjectProperty(Phaseplate, get_index=8)
+    PiezoStage = None
+    UserDoorHatch = None
+    Source = None
 
 
 # TEMAdvancedScripting.AdvancedInstrument.2
