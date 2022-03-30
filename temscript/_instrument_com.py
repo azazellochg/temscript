@@ -1,219 +1,12 @@
-import ctypes
 from .enums import *
-from ._com import *
+from ._properties import *
 
 
 __all__ = ('GetInstrument', 'Projection', 'CCDCameraInfo', 'CCDAcqParams', 'CCDCamera',
            'STEMDetectorInfo', 'STEMAcqParams', 'STEMDetector', 'AcqImage', 'Acquisition',
-           'TemperatureControl', 'AutoLoader', 'UserButton',
-           'Gauge', 'Vacuum', 'Stage', 'Camera', 'Illumination', 'Gun', 'BlankerShutter',
-           'InstrumentModeControl', 'Configuration', 'Instrument',
-           'CameraAcquisitionCapabilities', 'CameraSettings', 'CameraAdvanced', 'AcquiredImage',
-           'CameraSingleAcquisition', 'Acquisitions', 'Phaseplate', 'AdvancedInstrument'
-           )
-
-
-class BaseProperty:
-    __slots__ = '_get_index', '_put_index', '_name'
-
-    def __init__(self, get_index=None, put_index=None):
-        self._get_index = get_index
-        self._put_index = put_index
-        self._name = ''
-
-    def __set_name__(self, owner, name):
-        self._name = " '%s'" % name
-
-
-class LongProperty(BaseProperty):
-    __slots__ = '_get_index', '_put_index', '_name'
-
-    def __get__(self, obj, objtype=None):
-        if self._get_index is None:
-            raise AttributeError("Attribute %sis not readable" % self._name)
-        result = ctypes.c_long(-1)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), ctypes.byref(result))
-        return result.value
-
-    def __set__(self, obj, value):
-        if self._put_index is None:
-            raise AttributeError("Attribute %sis not writable" % self._name)
-        value = int(value)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long)(self._put_index, "put_property")
-        prototype(obj.get(), value)
-
-
-class VariantBoolProperty(BaseProperty):
-    def __get__(self, obj, objtype=None):
-        if self._get_index is None:
-            raise AttributeError("Attribute %sis not readable" % self._name)
-        result = ctypes.c_short(-1)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), ctypes.byref(result))
-        return bool(result.value)
-
-    def __set__(self, obj, value):
-        if self._put_index is None:
-            raise AttributeError("Attribute %sis not writable" % self._name)
-        bool_value = 0xffff if value else 0x0000
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_short)(self._put_index, "put_property")
-        prototype(obj.get(), bool_value)
-
-
-class DoubleProperty(BaseProperty):
-    def __get__(self, obj, objtype=None):
-        if self._get_index is None:
-            raise AttributeError("Attribute %sis not readable" % self._name)
-        result = ctypes.c_double(-1)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), ctypes.byref(result))
-        return result.value
-
-    def __set__(self, obj, value):
-        if self._put_index is None:
-            raise AttributeError("Attribute %sis not writable" % self._name)
-        value = float(value)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_double)(self._put_index, "put_property")
-        prototype(obj.get(), value)
-
-
-class StringProperty(BaseProperty):
-    def __get__(self, obj, objtype=None):
-        if self._get_index is None:
-            raise AttributeError("Attribute %sis not readable" % self._name)
-        result = BStr()
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), result.byref())
-        return result.value
-
-    def __set__(self, obj, value):
-        if self._put_index is None:
-            raise AttributeError("Attribute %sis not writable" % self._name)
-        value = BStr(str(value))
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._put_index, "put_property")
-        prototype(obj.get(), BStr(value).get())
-
-
-class EnumProperty(BaseProperty):
-    __slots__ = '_enum_type'
-
-    def __init__(self, enum_type, get_index=None, put_index=None):
-        super(EnumProperty, self).__init__(get_index=get_index, put_index=put_index)
-        self._enum_type = enum_type
-
-    def __get__(self, obj, objtype=None):
-        if self._get_index is None:
-            raise AttributeError("Attribute %sis not readable" % self._name)
-        result = ctypes.c_int(-1)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), ctypes.byref(result))
-        return self._enum_type(result.value)
-
-    def __set__(self, obj, value):
-        if self._put_index is None:
-            raise AttributeError("Attribute %sis not writable" % self._name)
-        value = int(value)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long)(self._put_index, "put_property")
-        prototype(obj.get(), value)
-
-    def __set_name__(self, owner, name):
-        self._name = " '%s'" % name
-
-
-class Vector(IUnknown):
-    IID = UUID("9851bc47-1b8c-11d3-ae0a-00a024cba50c")
-
-    X = DoubleProperty(get_index=7, put_index=8)
-    Y = DoubleProperty(get_index=9, put_index=10)
-
-
-class VectorProperty(BaseProperty):
-    __slots__ = '_get_prototype'
-
-    def __init__(self, get_index, put_index=None):
-        super(VectorProperty, self).__init__(get_index=get_index, put_index=put_index)
-        self._get_prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(get_index, "get_property")
-
-    def __get__(self, obj, objtype=None):
-        result = Vector()
-        self._get_prototype(obj.get(), result.byref())
-        return result.X, result.Y
-
-    def __set__(self, obj, value):
-        if self._put_index is None:
-            raise AttributeError("Attribute%s is not writable" % self._name)
-
-        value = [float(c) for c in value]
-        if len(value) != 2:
-            raise ValueError("Expected two items for attribute%s." % self._name)
-
-        result = Vector()
-        self._get_prototype(obj.get(), result.byref())
-        result.X = value[0]
-        result.Y = value[1]
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._put_index, "put_property")
-        prototype(obj.get(), result.get())
-
-
-class ObjectProperty(BaseProperty):
-    __slots__ = '_interface'
-
-    def __init__(self, interface, get_index, put_index=None):
-        super(ObjectProperty, self).__init__(get_index=get_index, put_index=put_index)
-        self._interface = interface
-
-    def __get__(self, obj, objtype=None):
-        result = self._interface()
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), result.byref())
-        return result
-
-    def __set__(self, obj, value):
-        if self._put_index is None:
-            raise AttributeError("Attribute%s is not writable" % self._name)
-        if not isinstance(value, self._interface):
-            raise TypeError("Expected attribute%s to be set to an instance of type %s" % (self._name, self._interface.__name__))
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._put_index, "put_property")
-        prototype(obj.get(), value.get())
-
-
-class CollectionProperty(BaseProperty):
-    __slots__ = '_interface'
-
-    GET_COUNT_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(7, "get_Count")
-    GET_ITEM_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, VARIANT, ctypes.c_void_p)(8, "get_Item")
-
-    def __init__(self, get_index, interface=None):
-        super(CollectionProperty, self).__init__(get_index=get_index)
-        if interface is None:
-            interface = IUnknown
-        self._interface = interface
-
-    def __get__(self, obj, objtype=None):
-        collection = IUnknown()
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), collection.byref())
-
-        count = ctypes.c_long(-1)
-        CollectionProperty.GET_COUNT_METHOD(collection.get(), ctypes.byref(count))
-        result = []
-
-        for n in range(count.value):
-            index = Variant(n, vartype=VariantType.I4)
-            item = self._interface()
-            CollectionProperty.GET_ITEM_METHOD(collection.get(), index.get(), item.byref())
-            result.append(item)
-
-        return result
-
-
-class SafeArrayProperty(BaseProperty):
-    def __get__(self, obj, objtype=None):
-        result = SafeArray()
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), result.byref())
-        return result
+           'TemperatureControl', 'AutoLoader', 'UserButton', 'Gauge', 'Vacuum',
+           'Stage', 'Camera', 'Illumination', 'Gun', 'BlankerShutter',
+           'InstrumentModeControl', 'Configuration', 'Instrument')
 
 
 class Projection(IUnknown):
@@ -455,7 +248,7 @@ class AutoLoader(IUnknown):
     LOAD_CARTRIDGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(7, "LoadCartridge")
     UNLOAD_CARTRIDGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(8, "UnloadCartridge")
     PERFORM_CASSETTE_INVENTORY_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(9, "PerformCassetteInventory")
-    #BUFFER_CYCLE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(10, "BufferCycle")
+    BUFFER_CYCLE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(10, "BufferCycle")
 
     def LoadCartridge(self, slot):
         AutoLoader.LOAD_CARTRIDGE_METHOD(self.get(), slot)
@@ -466,8 +259,8 @@ class AutoLoader(IUnknown):
     def PerformCassetteInventory(self):
         AutoLoader.PERFORM_CASSETTE_INVENTORY_METHOD(self.get())
 
-    #def BufferCycle(self):
-    #    AutoLoader.BUFFER_CYCLE_METHOD(self.get())
+    def BufferCycle(self):
+        AutoLoader.BUFFER_CYCLE_METHOD(self.get())
 
 
 class Gauge(IUnknown):
@@ -550,7 +343,7 @@ class Stage(IUnknown):
     _Position = ObjectProperty(get_index=10, interface=StagePosition)
     Holder = EnumProperty(StageHolderType, get_index=11)
 
-    GOTO_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_int)(7, 'GoToWithSpeed')
+    GOTO_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_int)(7, 'GoTo')
     MOVETO_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_int)(8, 'MoveTo')
     GET_AXIS_DATA_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int, ctypes.c_void_p)(12, 'get_AxisData')
     GOTO_WITH_SPEED_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_int, ctypes.c_double)(13, 'GoToWithSpeed')
@@ -604,7 +397,7 @@ class Camera(IUnknown):
     ScreenDimText = StringProperty(get_index=29, put_index=30)
     ScreenCurrent = DoubleProperty(get_index=31)
 
-    TAKE_EXPOSURE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)
+    TAKE_EXPOSURE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "TakeExposure")
 
     def TakeExposure(self):
         Camera.TAKE_EXPOSURE_METHOD(self.get())
@@ -624,16 +417,17 @@ class Illumination(IUnknown):
     RotationCenter = VectorProperty(get_index=24, put_index=25)
     CondenserStigmator = VectorProperty(get_index=26, put_index=27)
     DFMode = EnumProperty(DarkFieldMode, get_index=28, put_index=29)
-    DarkFieldMode = EnumProperty(DarkFieldMode, get_index=28, put_index=29)
+    #DarkFieldMode = EnumProperty(DarkFieldMode, get_index=28, put_index=29)
     CondenserMode = EnumProperty(CondenserMode, get_index=30, put_index=31)
     IlluminatedArea = DoubleProperty(get_index=32, put_index=33)
     ProbeDefocus = DoubleProperty(get_index=34)
     ConvergenceAngle = DoubleProperty(get_index=35)
     StemMagnification = DoubleProperty(get_index=36, put_index=37)
     StemRotation = DoubleProperty(get_index=38, put_index=39)
-    C3ImageDistanceParallelOffset = DoubleProperty(get_index=40, put_index=41)
+    StemFullScanFieldOfView = VectorProperty(get_index=40, put_index=41)
+    C3ImageDistanceParallelOffset = DoubleProperty(get_index=42, put_index=43)
 
-    NORMALIZE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)
+    NORMALIZE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(7, "Normalize")
 
     def Normalize(self, norm):
         Illumination.NORMALIZE_METHOD(self.get(), norm)
@@ -687,13 +481,14 @@ class Instrument(IUnknown):
     Illumination = ObjectProperty(Illumination, get_index=16)
     Projection = ObjectProperty(Projection, get_index=17)
     Gun = ObjectProperty(Gun, get_index=18)
+    UserButtons = CollectionProperty(get_index=19, interface=UserButton)
+    AutoLoader = ObjectProperty(AutoLoader, get_index=20)
+    TemperatureControl = ObjectProperty(TemperatureControl, get_index=21)
     BlankerShutter = ObjectProperty(BlankerShutter, get_index=22)
     InstrumentModeControl = ObjectProperty(InstrumentModeControl, get_index=23)
     Acquisition = ObjectProperty(Acquisition, get_index=24)
     Configuration = ObjectProperty(Configuration, get_index=25)
-    TemperatureControl = ObjectProperty(TemperatureControl, get_index=26)
-    AutoLoader = ObjectProperty(AutoLoader, get_index=27)
-    UserButtons = CollectionProperty(get_index=28, interface=UserButton)
+    #ApertureMechanismCollection = ObjectProperty(ApertureMechanismCollection, get_index=26)
 
     NORMALIZE_ALL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "NormalizeAll")
 
@@ -701,250 +496,11 @@ class Instrument(IUnknown):
         Instrument.NORMALIZE_ALL_METHOD(self.get())
 
 
-# ------- Advanced scripting classes -------
-
-class Binning(IUnknown):
-    IID = UUID("3e34a756-bd44-405f-85a8-83496341476c")
-
-    Width = LongProperty(get_index=7, put_index=8)
-    Height = LongProperty(get_index=9, put_index=10)
-
-
-class TimeRange(IUnknown):
-    IID = UUID("07347e4b-ddb5-4971-a1e4-999bee10de08")
-
-    Begin = DoubleProperty(get_index=7)
-    End = DoubleProperty(get_index=8)
-
-
-class FrameRange(IUnknown):
-    IID = UUID("85312757-930d-4aa7-8f5c-627f4c65c3bf")
-
-    Begin = LongProperty(get_index=7, put_index=8)
-    End = LongProperty(get_index=9, put_index=10)
-
-
-class FrameRangeList(IUnknown):
-    IID = UUID("91aa6644-a9c7-4905-812b-6008b79fe966")
-
-    ADD_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(7, "Add")
-    ADD_RANGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long, ctypes.c_long)(8, "AddRange")
-    CLEAR_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(9, "Clear")
-
-    def Add(self, value):
-        range = FrameRange()
-        range.Begin, range.End = value[0], value[1]
-        FrameRangeList.ADD_METHOD(self.get(), range.get())
-
-    def AddRange(self, begin, end):
-        FrameRangeList.ADD_RANGE_METHOD(self.get(), int(begin), int(end))
-
-    def Clear(self):
-        FrameRangeList.CLEAR_METHOD(self.get())
-
-
-class KeyValuePair(IUnknown):
-    IID = UUID("565dfad5-a223-44c1-bc09-22c450b21d24")
-
-    Key = StringProperty(get_index=7)
-    ValueAsString = StringProperty(get_index=8)
-
-
-class CameraAcquisitionCapabilities(IUnknown):
-    IID = UUID("c4c83905-0d53-47f3-8ae4-91f1248aa0f9")
-
-    _SupportedBinnings = CollectionProperty(get_index=7)
-    ExposureTimeRange = ObjectProperty(TimeRange, get_index=8)
-    SupportsDoseFractions = VariantBoolProperty(get_index=9)
-    MaximumNumberOfDoseFractions = LongProperty(get_index=10)
-    SupportsDriftCorrection = VariantBoolProperty(get_index=11)
-    SupportsElectronCounting = VariantBoolProperty(get_index=12)
-    SupportsEER = VariantBoolProperty(get_index=13)
-
-    @property
-    def SupportedBinnings(self):
-        collection = self._SupportedBinnings
-        return [Binning(item) for item in collection]
-
-
-class CameraSettings(IUnknown):
-    IID = UUID("f4e2613d-2e3a-4be4-b9e1-4bb1831d3eb1")
-
-    Capabilities = ObjectProperty(CameraAcquisitionCapabilities, get_index=8)
-    PathToImageStorage = StringProperty(get_index=9)
-    SubPathPattern = StringProperty(get_index=10, put_index=11)
-    ExposureTime = DoubleProperty(get_index=12, put_index=13)
-    ReadoutArea = EnumProperty(AcqImageSize, get_index=14, put_index=15)
-    DoseFractionsDefinition = ObjectProperty(FrameRangeList, get_index=18)
-    AlignImage = VariantBoolProperty(get_index=19, put_index=20)
-    ElectronCounting = VariantBoolProperty(get_index=21, put_index=22)
-    EER = VariantBoolProperty(get_index=23, put_index=24)
-
-    CALCULATE_NUMBER_OF_FRAMES_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "CalculateNumberOfFrames")
-
-    def CalculateNumberOfFrames(self):
-        CameraSettings.CALCULATE_NUMBER_OF_FRAMES_METHOD(self.get())
-
-
-class CameraAdvanced(IUnknown):
-    IID = UUID("ba60831e-7a06-4f1d-abe9-80d26227fcb9")
-
-    Name = StringProperty(get_index=9)
-    Width = LongProperty(get_index=10)
-    Height = LongProperty(get_index=11)
-    PixelSize = VectorProperty(get_index=12)
-    IsInserted = VariantBoolProperty(get_index=13)
-
-    INSERT_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "Insert")
-    RETRACT_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(8, "Retract")
-
-    def Insert(self):
-        CameraAdvanced.INSERT_METHOD(self.get())
-
-    def Retract(self):
-        CameraAdvanced.RETRACT_METHOD(self.get())
-
-
-class AcquiredImage(IUnknown):
-    IID = UUID("88febcf4-397b-4723-aeba-3cacc4ef6840")
-
-    Width = LongProperty(get_index=8)
-    Height = LongProperty(get_index=9)
-    PixelType = EnumProperty(ImagePixelType, get_index=10)
-    BitDepth = LongProperty(get_index=11)
-    _Metadata = CollectionProperty(get_index=12)
-    _AsSafeArray = SafeArrayProperty(get_index=13)
-
-    SAVE_TO_FILE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_wchar_p, ctypes.c_short)(7, "SaveToFile")
-
-    def SaveToFile(self, filePath, normalize=False):
-        name_bstr = BStr(filePath)
-        bool_value = 0xffff if normalize else 0x0000
-        AcquiredImage.SAVE_TO_FILE_METHOD(self.get(), name_bstr.get(), bool_value)
-
-    @property
-    def Metadata(self):
-        collection = self._Metadata
-        return [KeyValuePair(item) for item in collection]
-
-    '''
-        DetectorName --> BM-Falcon
-        Binning.Width --> 1
-        Binning.Height --> 1
-        ReadoutArea.Left --> 0
-        ReadoutArea.Top --> 0
-        ReadoutArea.Right --> 4096
-        ReadoutArea.Bottom --> 4096
-        ExposureMode --> None
-        ExposureTime --> 0.99692
-        DarkGainCorrectionType --> DarkGain
-        Shutters[0].Type --> Electrostatic
-        Shutters[0].Position --> PreSpecimen
-        AcquisitionUnit --> CameraImage
-        BitsPerPixel --> 32
-        Encoding --> Signed
-        ImageSize.Width --> 4096
-        ImageSize.Height --> 4096
-        Offset.X --> -4.6106e-07
-        Offset.Y --> -4.6106e-07
-        PixelSize.Width --> 2.25127e-10
-        PixelSize.Height --> 2.25127e-10
-        PixelUnitX --> m
-        PixelUnitY --> m
-        TimeStamp --> 1648565310713477
-        PixelValueToCameraCounts --> 39
-        ExposureTime --> 0.971997
-        CountsToElectrons --> 0.00147737
-        ElectronCounted --> FALSE
-        AlignIntegratedImage --> FALSE
-    '''
-
-    @property
-    def Array(self):
-        return self._AsSafeArray.as_array()
-
-
-class CameraSingleAcquisition(IUnknown):
-    IID = UUID("a927ea10-74b0-45a9-8368-fcdd52498053")
-
-    _SupportedCameras = CollectionProperty(get_index=9)
-    Camera = ObjectProperty(CameraAdvanced, get_index=10, put_index=11)
-    CameraSettings = ObjectProperty(CameraSettings, get_index=12)
-    IsActive = VariantBoolProperty(get_index=13)
-
-    ACQUIRE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "Acquire")
-    WAIT_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(8, "Wait")
-
-    @property
-    def SupportedCameras(self):
-        collection = self._SupportedCameras
-        return [CameraAdvanced(item) for item in collection]
-
-    @property
-    def Acquire(self):
-        image = AcquiredImage()
-        CameraSingleAcquisition.ACQUIRE_METHOD(self.get(), image.byref())
-        return image
-
-    def Wait(self):
-        CameraSingleAcquisition.WAIT_METHOD(self.get())
-
-
-class Acquisitions(IUnknown):
-    IID = UUID("27f7ddc7-bad9-4e2e-b9b6-e7644eb152ec")
-
-    _Cameras = CollectionProperty(get_index=7)
-    CameraSingleAcquisition = ObjectProperty(CameraSingleAcquisition, get_index=8)
-
-    @property
-    def Cameras(self):
-        collection = self._Cameras
-        return [CameraAdvanced(item) for item in collection]
-
-
-class Phaseplate(IUnknown):
-    IID = UUID("2605f3d9-9365-42fb-8b09-78f8d6b114d4")
-
-    GetCurrentPresetPosition = LongProperty(get_index=8)
-
-    SELECT_NEXT_PRESET_POSITION_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "SelectNextPresetPosition")
-
-    def SelectNextPresetPosition(self):
-        Phaseplate.SELECT_NEXT_PRESET_POSITION_METHOD(self.get())
-
-
-class AdvancedInstrument(IUnknown):
-    IID = UUID("c7452318-374a-4161-9b68-90ca3c3f5bea")
-
-    Acquisitions = ObjectProperty(Acquisitions, get_index=7)
-    Phaseplate = ObjectProperty(Phaseplate, get_index=8)
-
-
-'''
-TEM Scripting:
-    Tecnai.Instrument -> {02CDC9A1-1F1D-11D3-AE11-00A024CBA50C}
-    TEMScripting.Instrument.1 -> {02CDC9A1-1F1D-11D3-AE11-00A024CBA50C}
-TOM Moniker:
-    TEM.Instrument.1 -> {7D82B1B8-3A42-495A-B1D9-2BE40FA497FA}
-TEM Advanced Scripting:
-    TEMAdvancedScripting.AdvancedInstrument.2 -> {B89721DF-F6F8-4567-9293-D2228012985D}
-Tecnai Low Dose Kit:
-    LDServer.LdSrv -> {9BEC9756-A820-11D3-972E-81B6519D0DF8}
-TIA:
-    ESVision.Application -> {D20B86BB-1214-11D2-AD14-00A0241857FD}
-'''
-
+# TEMScripting.Instrument.1
 CLSID_INSTRUMENT = UUID("02CDC9A1-1F1D-11D3-AE11-00A024CBA50C")
-CLSID_ADV_INSTRUMENT = UUID("B89721DF-F6F8-4567-9293-D2228012985D")
 
 
 def GetInstrument():
     """Returns Instrument instance."""
     instrument = co_create_instance(CLSID_INSTRUMENT, CLSCTX_ALL, Instrument)
-    return instrument
-
-
-def GetAdvancedInstrument():
-    """Returns Advanced Instrument instance."""
-    instrument = co_create_instance(CLSID_ADV_INSTRUMENT, CLSCTX_ALL, AdvancedInstrument)
     return instrument
