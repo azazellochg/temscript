@@ -1,8 +1,8 @@
 # About
 
-The ``temscript`` package provides a Python wrapper for the scripting
-interface of Thermo Fisher Scientific and FEI microscopes. The functionality is
-limited to the functionality of the original scripting interface. For detailed information
+The ``temscript`` package provides a Python wrapper for the both standard and advanced scripting
+interfaces of Thermo Fisher Scientific and FEI microscopes. The functionality is
+limited to the functionality of the original scripting interfaces. For detailed information
 about TEM scripting see the documentation accompanying your microscope.
 
 The ``temscript`` package provides two interfaces to the microsope. The first one
@@ -78,9 +78,10 @@ administrator privileges):
 
 # Supported functions of the COM interface
 
-Relative to Titan V1.1 scripting adapter:
+Relative to Titan V1.1 standard scripting adapter:
 * AcqImage: complete
 * Acquisition: complete
+* ApertureMechanismCollection: missing
 * AutoLoader: complete (but untested)
 * BlankerShutter: complete
 * Camera: complete
@@ -90,6 +91,7 @@ Relative to Titan V1.1 scripting adapter:
 * Configuration: complete
 * Gauge: complete
 * Gun: complete
+* Gun1: missing (requires TEM Server 7.10)
 * Illumination: complete
 * InstrumentModeControl: complete
 * Projection: complete

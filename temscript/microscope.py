@@ -3,7 +3,8 @@ import math
 from temscript.base_microscope import set_enum_attr_from_dict, set_attr_from_dict
 
 from .base_microscope import BaseMicroscope, parse_enum, STAGE_AXES
-from .instrument import CCDCamera, GetInstrument, GetAdvancedInstrument, STEMDetector
+from .instrument import (CCDCamera, GetInstrument, GetAdvancedInstrument,
+                         STEMDetector, AdvancedCamera)
 from .enums import *
 
 
@@ -24,6 +25,7 @@ class Microscope(BaseMicroscope):
         adv_tem = GetAdvancedInstrument()
         self._tem_instrument = tem
         self._tem_gun = tem.Gun
+        self._tem_gun1 = None
         self._tem_illumination = tem.Illumination
         self._tem_projection = tem.Projection
         self._tem_stage = tem.Stage
@@ -36,6 +38,7 @@ class Microscope(BaseMicroscope):
         self._tem_control = tem.InstrumentModeControl
         self._tem_vpp = adv_tem.Phaseplate
         self._family = tem.Configuration.ProductFamily
+        self.cameras = dict()
 
     def get_family(self):
         return ProductFamily(self._family).name
@@ -99,12 +102,11 @@ class Microscope(BaseMicroscope):
             raise ValueError("Unknown movement method.")
 
     def get_cameras(self):
-        cameras = {}
         for cam in self._tem_acquisition.Cameras:
             info = cam.Info
             param = cam.AcqParams
             name = info.Name
-            cameras[name] = {
+            self.cameras[name] = {
                 "type": "CAMERA",
                 "height": info.Height,
                 "width": info.Width,
@@ -114,15 +116,11 @@ class Microscope(BaseMicroscope):
                 "pre_exposure_limits(s)": (param.MinPreExposureTime, param.MaxPreExposureTime),
                 "pre_exposure_pause_limits(s)": (param.MinPreExposurePauseTime, param.MaxPreExposurePauseTime)
             }
-        return cameras
-
-    def get_cameras_advanced(self):
-        cameras = {}
         csa = self._tem_acquisitions.CameraSingleAcquisition
         for cam in csa.SupportedCameras:
             csa.Camera = cam
             params = csa.CameraSettings.Capabilities
-            cameras[cam.Name] = {
+            self.cameras[cam.Name] = {
                 "type": "CAMERA_ADVANCED",
                 "height": cam.Height,
                 "width": cam.Width,
@@ -134,7 +132,8 @@ class Microscope(BaseMicroscope):
                 "supports_electron_counting": params.SupportsElectronCounting,
                 "supports_eer": params.SupportsEER
             }
-        return cameras
+
+        return self.cameras
 
     def get_stem_detectors(self):
         detectors = {}
@@ -149,10 +148,14 @@ class Microscope(BaseMicroscope):
 
     def _find_camera(self, name):
         """Find camera object by name"""
-        if isinstance(name, CCDCamera):
+        if isinstance(name, CCDCamera) or isinstance(name, AdvancedCamera):
             return name
         for cam in self._tem_acquisition.Cameras:
             if cam.Info.Name == name:
+                return cam
+        for cam in self._tem_acquisitions.CameraSingleAcquisition.SupportedCameras:
+        # for cam in self._tem_acquisitions.Cameras:
+            if cam.Name == name:
                 return cam
         raise KeyError("No camera with name %s" % name)
 

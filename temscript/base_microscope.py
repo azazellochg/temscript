@@ -218,38 +218,13 @@ class BaseMicroscope(ABC):
                 * "width": Width of the detector
                 * "pixel_size(um)": Pixel size in micrometers
                 * "binnings": List of supported binnings
-                * "shutter_modes": List of supported shutter modes (see :class:`AcqShutterMode`)
-                * "pre_exposure_limits(s)": Tuple with Min/Max values of pre exposure times in seconds
-                * "pre_exposure_pause_limits(s)": Tuple with Min/Max values of pre exposure pause times in seconds
+                ...
 
         For "STEM_DETECTOR" detectors the embedded dict will additionally have the following keys:
 
                 * "binnings": List of supported binnings
 
         .. versionadded:: 2.0
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_cameras_advanced(self):
-        """
-        Return dictionary with all available cameras that use Advanced Scripting.
-        The method will return a dict, indexed by camera name, with another dict as values.
-
-        For cameras the embedded dict will additionally have the following keys:
-
-                * "type": "CAMERA_ADVANCED"
-                * "height": Height of the detector
-                * "width": Width of the detector
-                * "pixel_size(um)": Pixel size in micrometers
-                * "binnings": List of supported binnings
-                * "exposure_time_range(s)": Range of exposure times supported by the camera
-                * "supports_dose_fractions": whether the camera supports the acquisition of dose fractions
-                * "supports_drift_correction": whether the camera supports drift correction;
-                * "supports_electron_counting":  whether the camera supports the electron counting mode
-                * "supports_eer": whether the camera supports the EER
-
-        .. versionadded:: 2.1
         """
         raise NotImplementedError
 

@@ -443,6 +443,17 @@ class Gun(IUnknown):
     Tilt = VectorProperty(get_index=14, put_index=15)
 
 
+class Gun1(IUnknown):
+    IID = UUID("?")
+
+    HighVoltageOffset = DoubleProperty(get_index=8, put_index=9)
+
+    GET_HIGH_VOLTAGE_OFFSET_RANGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "GetHighVoltageOffsetRange")
+
+    def GetHighVoltageOffsetRange(self):
+        return Gun1.GET_HIGH_VOLTAGE_OFFSET_RANGE_METHOD(self.get())
+
+
 class BlankerShutter(IUnknown):
     IID = UUID("f1f59bb0-f8a0-439d-a3bf-87f527b600c4")
 
@@ -489,6 +500,7 @@ class Instrument(IUnknown):
     Acquisition = ObjectProperty(Acquisition, get_index=24)
     Configuration = ObjectProperty(Configuration, get_index=25)
     #ApertureMechanismCollection = ObjectProperty(ApertureMechanismCollection, get_index=26)
+    #Gun1 = ObjectProperty(Gun1, get_index=27, put_index=28)
 
     NORMALIZE_ALL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "NormalizeAll")
 
