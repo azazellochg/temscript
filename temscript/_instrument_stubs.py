@@ -83,7 +83,15 @@ class Instrument:
     pass
 
 
+class AdvancedInstrument:
+    pass
+
+
 class CameraAcquisitionCapabilities:
+    pass
+
+
+class AdvancedCamera:
     pass
 
 
@@ -109,4 +117,9 @@ class Phaseplate:
 
 def GetInstrument():
     """Returns Instrument instance."""
+    raise RuntimeError("temscript microscope API is not accessible")
+
+
+def GetAdvancedInstrument():
+    """Returns Advanced Instrument instance."""
     raise RuntimeError("temscript microscope API is not accessible")

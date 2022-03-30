@@ -127,7 +127,7 @@ class NullMicroscope(BaseMicroscope):
         return socket.gethostname()
 
     def get_version(self):
-        from .version import __version__
+        from temscript import __version__
         return __version__
 
     def get_voltage(self):

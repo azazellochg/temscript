@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from temscript import GetInstrument
+from temscript.instrument import GetInstrument
 
 
 def test_projection(instrument):

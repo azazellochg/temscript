@@ -2,9 +2,9 @@ from .enums import *
 from ._properties import *
 
 
-__all__ = ('GetInstrument', 'CameraAcquisitionCapabilities', 'CameraSettings',
-           'Camera', 'AcquiredImage', 'CameraSingleAcquisition',
-           'Acquisitions', 'Phaseplate', 'Instrument')
+__all__ = ('GetAdvancedInstrument', 'CameraAcquisitionCapabilities', 'CameraSettings',
+           'AdvancedCamera', 'AcquiredImage', 'CameraSingleAcquisition',
+           'Acquisitions', 'Phaseplate', 'AdvancedInstrument')
 
 
 class Binning(IUnknown):
@@ -63,12 +63,21 @@ class CameraAcquisitionCapabilities(IUnknown):
     MaximumNumberOfDoseFractions = LongProperty(get_index=10)
     SupportsDriftCorrection = VariantBoolProperty(get_index=11)
     SupportsElectronCounting = VariantBoolProperty(get_index=12)
-    SupportsEER = VariantBoolProperty(get_index=13)
+    _SupportsEER = VariantBoolProperty(get_index=13)
 
     @property
     def SupportedBinnings(self):
         collection = self._SupportedBinnings
         return [Binning(item) for item in collection]
+
+    @property
+    def SupportsEER(self):
+        """ Older advanced tem scripting does not have this property. """
+        try:
+            eer = self._SupportsEER
+            return eer
+        except:
+            return False
 
 
 class CameraSettings(IUnknown):
@@ -91,7 +100,7 @@ class CameraSettings(IUnknown):
         CameraSettings.CALCULATE_NUMBER_OF_FRAMES_METHOD(self.get())
 
 
-class Camera(IUnknown):
+class AdvancedCamera(IUnknown):
     IID = UUID("ba60831e-7a06-4f1d-abe9-80d26227fcb9")
 
     Name = StringProperty(get_index=7)
@@ -104,10 +113,10 @@ class Camera(IUnknown):
     RETRACT_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(13, "Retract")
 
     def Insert(self):
-        Camera.INSERT_METHOD(self.get())
+        AdvancedCamera.INSERT_METHOD(self.get())
 
     def Retract(self):
-        Camera.RETRACT_METHOD(self.get())
+        AdvancedCamera.RETRACT_METHOD(self.get())
 
 
 class AcquiredImage(IUnknown):
@@ -141,7 +150,7 @@ class CameraSingleAcquisition(IUnknown):
     IID = UUID("a927ea10-74b0-45a9-8368-fcdd52498053")
 
     _SupportedCameras = CollectionProperty(get_index=7)
-    Camera = ObjectProperty(Camera, get_index=None, put_index=8)  # maybe CollectionProperty?
+    Camera = ObjectProperty(AdvancedCamera, get_index=None, put_index=8)  # maybe CollectionProperty?
     CameraSettings = ObjectProperty(CameraSettings, get_index=9)
     IsActive = VariantBoolProperty(get_index=11)
 
@@ -151,7 +160,7 @@ class CameraSingleAcquisition(IUnknown):
     @property
     def SupportedCameras(self):
         collection = self._SupportedCameras
-        return [Camera(item) for item in collection]
+        return [AdvancedCamera(item) for item in collection]
 
     @property
     def Acquire(self):
@@ -172,7 +181,7 @@ class Acquisitions(IUnknown):
     @property
     def Cameras(self):
         collection = self._Cameras
-        return [Camera(item) for item in collection]
+        return [AdvancedCamera(item) for item in collection]
 
 
 class Phaseplate(IUnknown):
@@ -186,7 +195,7 @@ class Phaseplate(IUnknown):
         Phaseplate.SELECT_NEXT_PRESET_POSITION_METHOD(self.get())
 
 
-class Instrument(IUnknown):
+class AdvancedInstrument(IUnknown):
     IID = UUID("c7452318-374a-4161-9b68-90ca3c3f5bea")
 
     Acquisitions = ObjectProperty(Acquisitions, get_index=7)
@@ -197,7 +206,7 @@ class Instrument(IUnknown):
 CLSID_ADV_INSTRUMENT = UUID("B89721DF-F6F8-4567-9293-D2228012985D")
 
 
-def GetInstrument():
-    """Returns Instrument instance."""
-    instrument = co_create_instance(CLSID_ADV_INSTRUMENT, CLSCTX_ALL, Instrument)
+def GetAdvancedInstrument():
+    """Returns Advanced Instrument instance."""
+    instrument = co_create_instance(CLSID_ADV_INSTRUMENT, CLSCTX_ALL, AdvancedInstrument)
     return instrument
