@@ -3,7 +3,7 @@ import math
 from temscript.base_microscope import set_enum_attr_from_dict, set_attr_from_dict
 
 from .base_microscope import BaseMicroscope, parse_enum, STAGE_AXES
-from .instrument import CCDCamera, GetInstrument, STEMDetector
+from .instrument import CCDCamera, GetInstrument, GetAdvancedInstrument, STEMDetector
 from .enums import *
 
 
@@ -21,17 +21,20 @@ class Microscope(BaseMicroscope):
     """
     def __init__(self):
         tem = GetInstrument()
+        adv_tem = GetAdvancedInstrument()
         self._tem_instrument = tem
         self._tem_gun = tem.Gun
         self._tem_illumination = tem.Illumination
         self._tem_projection = tem.Projection
         self._tem_stage = tem.Stage
         self._tem_acquisition = tem.Acquisition
+        self._tem_acquisitions = adv_tem.Acquisitions
         self._tem_temperature_control = tem.TemperatureControl
         self._tem_autoloader = tem.AutoLoader
         self._tem_vacuum = tem.Vacuum
         self._tem_camera = tem.Camera
         self._tem_control = tem.InstrumentModeControl
+        self._tem_vpp = adv_tem.Phaseplate
         self._family = tem.Configuration.ProductFamily
 
     def get_family(self):
@@ -110,6 +113,26 @@ class Microscope(BaseMicroscope):
                 "shutter_modes": [AcqShutterMode(x).name for x in info.ShutterModes],
                 "pre_exposure_limits(s)": (param.MinPreExposureTime, param.MaxPreExposureTime),
                 "pre_exposure_pause_limits(s)": (param.MinPreExposurePauseTime, param.MaxPreExposurePauseTime)
+            }
+        return cameras
+
+    def get_cameras_advanced(self):
+        cameras = {}
+        csa = self._tem_acquisitions.CameraSingleAcquisition
+        for cam in csa.SupportedCameras:
+            csa.Camera = cam
+            params = csa.CameraSettings.Capabilities
+            cameras[cam.Name] = {
+                "type": "CAMERA_ADVANCED",
+                "height": cam.Height,
+                "width": cam.Width,
+                "pixel_size(um)": tuple(size / 1e-6 for size in cam.PixelSize),
+                "binnings": [int(b) for b in params.SupportedBinnings],
+                "exposure_time_range(s)": (params.ExposureTimeRange.Begin, params.ExposureTimeRange.End),
+                "supports_dose_fractions": params.SupportsDoseFractions,
+                "supports_drift_correction": params.SupportsDriftCorrection,
+                "supports_electron_counting": params.SupportsElectronCounting,
+                "supports_eer": params.SupportsEER
             }
         return cameras
 
@@ -458,3 +481,9 @@ class Microscope(BaseMicroscope):
         for b in self._tem_instrument.UserButtons:
             buttons[b.Name] = b.Label
         return buttons
+
+    def get_phase_plate_position(self):
+        return self._tem_vpp.GetCurrentPresetPosition
+
+    def change_phase_plate_position(self):
+        self._tem_vpp.SelectNextPresetPosition()
