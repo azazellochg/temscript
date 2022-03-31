@@ -79,38 +79,24 @@ administrator privileges):
 # Supported functions of the COM interface
 
 Relative to Titan V1.1 standard scripting adapter:
-* AcqImage: complete
 * Acquisition: complete
 * ApertureMechanismCollection: missing
 * AutoLoader: complete (but untested)
 * BlankerShutter: complete
 * Camera: complete
-* CCDAcqParams: complete
-* CCDCamera: complete
-* CCDCameraInfo: complete
 * Configuration: complete
-* Gauge: complete
 * Gun: complete
 * Gun1: missing (requires TEM Server 7.10)
 * Illumination: complete
 * InstrumentModeControl: complete
 * Projection: complete
 * Stage: complete
-* StagePosition: complete
-* STEMAcqParams: complete (but untested)
-* STEMDetector: complete (but untested)
-* STEMDetectorInfo: complete (but untested)
 * TemperatureControl: complete (but untested)
 * UserButton(s): complete (but untested), no events handling
 * Vacuum: complete
 
 Relative to Titan V2 advanced scripting adapter:
-* AcquiredImage: complete (but untested)
 * Acquisitions: complete (but untested)
-* CameraAcquisitionCapabilities: complete (but untested)
-* Camera (called AdvancedCamera here): complete (but untested)
-* CameraSettings: complete (but untested)
-* CameraSingleAcquisition: complete (but untested)
 * Phaseplate: complete (but untested)
 * PiezoStage: missing
 * Source: missing

@@ -34,8 +34,8 @@ class GaugeStatus(IntEnum):
     UNDEFINED = 0
     UNDERFLOW = 1
     OVERFLOW = 2
-    VALID = 3
-    INVALID = 4
+    INVALID = 3
+    VALID = 4
 
 
 class GaugePressureLevel(IntEnum):
@@ -63,10 +63,10 @@ class MeasurementUnitType(IntEnum):
 
 
 class StageHolderType(IntEnum):
-    INVALID = 0
+    NONE = 0
     SINGLE_TILT = 1
     DOUBLE_TILT = 2
-    NONE = 4
+    INVALD = 4
     POLARA = 5
     DUAL_AXIS = 6
 
