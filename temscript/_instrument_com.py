@@ -514,7 +514,7 @@ class ApertureMechanism(IUnknown):
 
     def SelectAperture(self, aperture):
         if not isinstance(aperture, Aperture):
-            raise TypeError("Expected aperture to be instance of types Aperture")
+            raise TypeError("Expected aperture to be instance of type Aperture")
         ApertureMechanism.SELECT_APERTURE_METHOD(self.get(), aperture.get())
 
     def RetractAperture(self):
@@ -544,7 +544,7 @@ class Instrument(IUnknown):
     InstrumentModeControl = ObjectProperty(InstrumentModeControl, get_index=23)
     Acquisition = ObjectProperty(Acquisition, get_index=24)
     Configuration = ObjectProperty(Configuration, get_index=25)
-    ApertureMechanismCollection = EnumProperty(ApertureMechanism, get_index=26)
+    ApertureMechanismCollection = CollectionProperty(get_index=26, interface=ApertureMechanism)
     #Gun1 = ObjectProperty(Gun1, get_index=27, put_index=28)
 
     NORMALIZE_ALL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "NormalizeAll")
