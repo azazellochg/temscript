@@ -78,9 +78,9 @@ administrator privileges):
 
 # Supported functions of the COM interface
 
-Relative to Titan V1.1 standard scripting adapter:
+Relative to Titan V1.9 standard scripting adapter:
 * Acquisition: complete
-* ApertureMechanismCollection: missing
+* ApertureMechanismCollection: complete (but untested)
 * AutoLoader: complete (but untested)
 * BlankerShutter: complete
 * Camera: complete
@@ -95,10 +95,10 @@ Relative to Titan V1.1 standard scripting adapter:
 * UserButton(s): complete (but untested), no events handling
 * Vacuum: complete
 
-Relative to Titan V2 advanced scripting adapter:
+Relative to Titan V1.2 advanced scripting adapter:
 * Acquisitions: complete (but untested)
 * Phaseplate: complete (but untested)
-* PiezoStage: missing
+* PiezoStage: complete (but untested)
 * Source: missing
 * UserDoorHatch: missing
 

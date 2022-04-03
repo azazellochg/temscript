@@ -141,13 +141,13 @@ class STEMDetector(IUnknown):
 class AcqImage(IUnknown):
     IID = UUID("e15f4810-43c6-489a-9e8a-588b0949e153")
 
-    Name = StringProperty(get_index=8)
-    Width = LongProperty(get_index=9)
-    Height = LongProperty(get_index=10)
-    Depth = LongProperty(get_index=11)
-    _AsSafeArray = SafeArrayProperty(get_index=12)
+    Name = StringProperty(get_index=7)
+    Width = LongProperty(get_index=8)
+    Height = LongProperty(get_index=9)
+    Depth = LongProperty(get_index=10)
+    _AsSafeArray = SafeArrayProperty(get_index=11)
 
-    AS_FILE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_wchar_p, ctypes.c_int, ctypes.c_short)(7, "AsFile")
+    AS_FILE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_wchar_p, ctypes.c_int, ctypes.c_short)(13, "AsFile")
 
     def AsFile(self, name, format, normalize=False):
         name_bstr = BStr(name)
@@ -228,14 +228,18 @@ class TemperatureControl(IUnknown):
     IID = UUID("71b6e709-b21f-435f-9529-1aee55cfa029")
 
     TemperatureControlAvailable = VariantBoolProperty(get_index=8)
-    RefrigerantLevel = EnumProperty(RefrigerantLevel, get_index=9)
     DewarsRemainingTime = LongProperty(get_index=10)
     DewarsAreBusyFilling = VariantBoolProperty(get_index=11)
 
     FORCE_REFILL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "ForceRefill")
+    REFRIGERANT_LEVEL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(9, "RefrigerantLevel")
 
     def ForceRefill(self):
         TemperatureControl.FORCE_REFILL_METHOD(self.get())
+
+    def RefrigerantLevel(self, rl):
+        # rl = RefrigerantLevel
+        return TemperatureControl.REFRIGERANT_LEVEL_METHOD(self.get(), rl)
 
 
 class AutoLoader(IUnknown):
@@ -243,12 +247,12 @@ class AutoLoader(IUnknown):
 
     AutoLoaderAvailable = VariantBoolProperty(get_index=11)
     NumberOfCassetteSlots = LongProperty(get_index=12)
-    SlotStatus = EnumProperty(CassetteSlotStatus, get_index=13)
 
-    LOAD_CARTRIDGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(7, "LoadCartridge")
+    LOAD_CARTRIDGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long)(7, "LoadCartridge")
     UNLOAD_CARTRIDGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(8, "UnloadCartridge")
     PERFORM_CASSETTE_INVENTORY_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(9, "PerformCassetteInventory")
     BUFFER_CYCLE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(10, "BufferCycle")
+    SLOT_STATUS_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long)(13, "SlotStatus")
 
     def LoadCartridge(self, slot):
         AutoLoader.LOAD_CARTRIDGE_METHOD(self.get(), slot)
@@ -261,6 +265,10 @@ class AutoLoader(IUnknown):
 
     def BufferCycle(self):
         AutoLoader.BUFFER_CYCLE_METHOD(self.get())
+
+    def SlotStatus(self, slot):
+        # returns CassetteSlotStatus
+        return AutoLoader.SLOT_STATUS_METHOD(self.get(), slot)
 
 
 class Gauge(IUnknown):
@@ -345,7 +353,7 @@ class Stage(IUnknown):
 
     GOTO_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_int)(7, 'GoTo')
     MOVETO_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_int)(8, 'MoveTo')
-    GET_AXIS_DATA_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int, ctypes.c_void_p)(12, 'get_AxisData')
+    AXIS_DATA_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int, ctypes.c_void_p)(12, 'AxisData')
     GOTO_WITH_SPEED_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_int, ctypes.c_double)(13, 'GoToWithSpeed')
 
     @property
@@ -375,7 +383,7 @@ class Stage(IUnknown):
         except KeyError:
             raise ValueError("Expected axis name: 'x', 'y', 'z', 'a', or 'b'")
         data = StageAxisData()
-        Stage.GET_AXIS_DATA_METHOD(self.get(), mask, data.byref())
+        Stage.AXIS_DATA_METHOD(self.get(), mask, data.byref())
         return (data.MinPos, data.MaxPos, Stage.UNIT_STRING.get(data.UnitType))
 
 
@@ -482,6 +490,43 @@ class Configuration(IUnknown):
     CondenserLensSystem = EnumProperty(CondenserLensSystem, get_index=8)
 
 
+class Aperture(IUnknown):
+    IID = UUID("cbf4e5b8-378d-43dd-9c58-f588d5e3444b")
+
+    Name = StringProperty(get_index=7)
+    Type = EnumProperty(ApertureType, get_index=8)
+    Diameter = DoubleProperty(get_index=9)
+
+
+class ApertureMechanism(IUnknown):
+    IID = UUID("86c13ce3-934e-47de-a211-2009e10e1ee1")
+
+    ApertureCollection = CollectionProperty(get_index=7, interface=Aperture)
+    Id = EnumProperty(MechanismId, get_index=8)
+    SelectedAperture = ObjectProperty(Aperture, get_index=10)
+    State = EnumProperty(MechanismState, get_index=11)
+    IsRetractable = VariantBoolProperty(get_index=12)
+
+    SELECT_APERTURE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(9, "SelectAperture")
+    RETRACT_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(13, "Retract")
+    ENABLE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(14, "Enable")
+    DISABLE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(15, "Disable")
+
+    def SelectAperture(self, aperture):
+        if not isinstance(aperture, Aperture):
+            raise TypeError("Expected aperture to be instance of types Aperture")
+        ApertureMechanism.SELECT_APERTURE_METHOD(self.get(), aperture.get())
+
+    def RetractAperture(self):
+        ApertureMechanism.RETRACT_METHOD(self.get())
+
+    def Enable(self):
+        ApertureMechanism.ENABLE_METHOD(self.get())
+
+    def Disable(self):
+        ApertureMechanism.DISABLE_METHOD(self.get())
+
+
 class Instrument(IUnknown):
     IID = UUID("bc0a2b11-10ff-11d3-ae00-00a024cba50c")
 
@@ -499,7 +544,7 @@ class Instrument(IUnknown):
     InstrumentModeControl = ObjectProperty(InstrumentModeControl, get_index=23)
     Acquisition = ObjectProperty(Acquisition, get_index=24)
     Configuration = ObjectProperty(Configuration, get_index=25)
-    #ApertureMechanismCollection = ObjectProperty(ApertureMechanismCollection, get_index=26)
+    ApertureMechanismCollection = EnumProperty(ApertureMechanism, get_index=26)
     #Gun1 = ObjectProperty(Gun1, get_index=27, put_index=28)
 
     NORMALIZE_ALL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "NormalizeAll")

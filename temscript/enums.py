@@ -69,6 +69,7 @@ class StageHolderType(IntEnum):
     INVALD = 4
     POLARA = 5
     DUAL_AXIS = 6
+    ROTATION_AXIS = 7
 
 
 class StageAxes(IntEnum):
@@ -205,7 +206,7 @@ class ScreenPosition(IntEnum):
 
 
 class PlateLabelDateFormat(IntEnum):
-    NO_DATA = 0
+    NO_DATE = 0
     DDMMYY = 1
     MMDDYY = 2
     YYMMDD = 3
@@ -228,3 +229,31 @@ class ImagePixelType(IntEnum):
     UNSIGNED_INT = 0
     SIGNED_INT = 1
     FLOAT = 2
+
+
+class MechanismId(IntEnum):
+    UNKNOWN = 0
+    C1 = 1
+    C2 = 2
+    C3 = 3
+    OBJ = 4
+    SA = 5
+
+
+class MechanismState(IntEnum):
+    DISABLED = 0
+    INSERTED = 1
+    MOVING = 2
+    RETRACTED = 3
+    ARBITRARY = 4
+    HOMING = 5
+    ALIGNING = 6
+    ERROR = 7
+
+
+class ApertureType(IntEnum):
+    UNKNOWN = 0
+    CIRCULAR = 1
+    BIPRISM = 2
+    ENERGY_SLIT = 3
+    FARADAY_CUP = 4

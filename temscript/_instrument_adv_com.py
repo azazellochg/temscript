@@ -195,14 +195,92 @@ class Phaseplate(IUnknown):
         Phaseplate.SELECT_NEXT_PRESET_POSITION_METHOD(self.get())
 
 
+class PiezoStagePosition(IUnknown):
+    IID = UUID("7609fe63-eb1c-4e03-8f41-fa17dbd26cae")
+
+    X = DoubleProperty(get_index=7, put_index=8)
+    Y = DoubleProperty(get_index=9, put_index=10)
+    Z = DoubleProperty(get_index=11, put_index=12)
+
+
+class PiezoStageVelocity(IUnknown):
+    IID = UUID("7d5b599a-000f-4d37-93b8-708896109200")
+
+    X = DoubleProperty(get_index=7, put_index=8)
+    Y = DoubleProperty(get_index=9, put_index=10)
+    Z = DoubleProperty(get_index=11, put_index=12)
+
+
+class PiezoStage(IUnknown):
+    IID = UUID("d7d3091c-2b98-495b-af47-78990e19a0a9")
+
+    CurrentPosition = ObjectProperty(PiezoStagePosition, get_index=12)
+    CurrentJogVelocity = ObjectProperty(PiezoStageVelocity, get_index=13)
+    AvailableAxes = LongProperty(get_index=15)
+    HighResolution = VariantBoolProperty(get_index=16, put_index=17)
+
+    GOTO_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_long)(7, "Goto")
+    START_JOG_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_long)(8, "StartJog")
+    CHANGE_VELOCITY_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_long)(9, "ChangeVelocity")
+    STOP_JOG_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long)(10, "StopJog")
+    RESET_POSITION_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long)(11, "ResetPosition")
+    GET_POSITION_RANGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(14, "GetPositionRange")
+    CREATE_POSITION_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(18, "CreatePosition")
+    CREATE_VELOCITY_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(19, "CreateVelocity")
+
+    def Goto(self, position, axisMask):
+        pos = PiezoStagePosition(position)
+        PiezoStage.GOTO_METHOD(self.get(), pos.get(), axisMask)
+
+    def StartJog(self, velocity, axisMask):
+        v = PiezoStageVelocity(velocity)
+        PiezoStage.START_JOG_METHOD(self.get(), v.get(), axisMask)
+
+    def ChangeVelocity(self, velocity, axisMask):
+        v = PiezoStageVelocity(velocity)
+        PiezoStage.CHANGE_VELOCITY_METHOD(self.get(), v.get(), axisMask)
+
+    def StopJog(self, axisMask):
+        PiezoStage.STOP_JOG_METHOD(self.get(), axisMask)
+
+    def ResetPosition(self, axisMask):
+        PiezoStage.RESET_POSITION_METHOD(self.get(), axisMask)
+
+    def GetPositionRange(self):
+        min, max = PiezoStage.GET_POSITION_RANGE_METHOD(self.get())
+        posMin = PiezoStagePosition(min)
+        posMax = PiezoStagePosition(max)
+        return posMin, posMax
+
+    def CreatePosition(self):
+        PiezoStage.CREATE_POSITION_METHOD(self.get())
+
+    def CreateVelocity(self):
+        PiezoStage.CREATE_VELOCITY_METHOD(self.get())
+
+
 class AdvancedInstrument(IUnknown):
     IID = UUID("c7452318-374a-4161-9b68-90ca3c3f5bea")
 
     Acquisitions = ObjectProperty(Acquisitions, get_index=7)
     Phaseplate = ObjectProperty(Phaseplate, get_index=8)
-    PiezoStage = None
-    UserDoorHatch = None
-    Source = None
+    PiezoStage = ObjectProperty(PiezoStage, get_index=9)
+    #UserDoorHatch = None
+    #Source = None
+
+
+class CameraSettingsInternal(IUnknown):
+    IID = UUID("e76bb771-821b-4ed2-b7aF-50de5749690f")
+
+    IsTemScriptingLicensed = VariantBoolProperty(get_index=7)
+    IsDoseFractionsLicensed = VariantBoolProperty(get_index=8)
+    IsElectronCountingLicensed = VariantBoolProperty(get_index=9)
+
+
+class AdvancedInstrumentInternal(IUnknown):
+    IID = UUID("3d50ee81-db96-4c44-a733-ccd0032571e6")
+
+    IsTemScriptingLicensed = VariantBoolProperty(get_index=7)
 
 
 # TEMAdvancedScripting.AdvancedInstrument.2
