@@ -8,7 +8,8 @@ The COM interface
 The methods and classes directly represent the COM objects exposed by the *Scripting* interface.
 The interface is described in detail in the scripting manual of your microscope
 (usually in the file ``scripting.pdf`` located in the ``C:\Titan\Tem_help\manual`` or
-``C:\Tecnai\tem_help\manual`` directories).
+``C:\Tecnai\tem_help\manual`` directories). Advanced scripting manual can be found in
+``C:\Titan\Scripting\Advanced TEM Scripting User Guide.pdf``.
 
 The manual is your ultimate reference, this documentation will only describe the
 python wrapper to the COM interface.

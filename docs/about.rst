@@ -6,14 +6,14 @@ About
 Introduction
 ------------
 
-The ``temscript`` package provides a Python wrapper for the scripting
-interface of Thermo Fisher Scientific and FEI microscopes. The functionality is
-limited to the functionality of the original scripting interface. For detailed information
+The ``temscript`` package provides a Python wrapper for both standard and advanced scripting
+interfaces of Thermo Fisher Scientific and FEI microscopes. The functionality is
+limited to the functionality of the original scripting interfaces. For detailed information
 about TEM scripting see the documentation accompanying your microscope.
 
 The ``temscript`` package provides two interfaces to the microsope. The first one
-corresponds directly to the COM interface and is implemented by the :class:`Instrument` class. A more thorough
-description of this interface can be found in the :ref:`instrument` section.
+corresponds directly to the COM interfaces and is implemented by :class:`Instrument` and :class:`AdvancedInstrument` classes. A more thorough
+description of this interfaces can be found in the :ref:`instrument` section.
 
 The other interface is provided by the :class:`Microscope` class. While instances of the :class:`temscript.Microscope` class
 operate on the computer connected to the microscope directly, there are two replacement classes, which provide the

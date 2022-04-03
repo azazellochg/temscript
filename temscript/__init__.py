@@ -1,3 +1,4 @@
+from .base_microscope import BaseMicroscope
 from .microscope import Microscope
 from .null_microscope import NullMicroscope
 from .remote_microscope import RemoteMicroscope

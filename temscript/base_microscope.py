@@ -218,7 +218,6 @@ class BaseMicroscope(ABC):
                 * "width": Width of the detector
                 * "pixel_size(um)": Pixel size in micrometers
                 * "binnings": List of supported binnings
-                ...
 
         For "STEM_DETECTOR" detectors the embedded dict will additionally have the following keys:
 

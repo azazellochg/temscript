@@ -152,9 +152,9 @@ class AcqImage(IUnknown):
 
     def AsFile(self, name, format, normalize=False):
         name_bstr = BStr(name)
-        format = AcqImageFileFormat[str(format).upper()]
+        fmt = AcqImageFileFormat[format]
         bool_value = 0xffff if normalize else 0x0000
-        AcqImage.AS_FILE_METHOD(self.get(), name_bstr.get(), format, bool_value)
+        AcqImage.AS_FILE_METHOD(self.get(), name_bstr.get(), fmt, bool_value)
 
     @property
     def Array(self):
@@ -426,7 +426,7 @@ class Illumination(IUnknown):
     RotationCenter = VectorProperty(get_index=24, put_index=25)
     CondenserStigmator = VectorProperty(get_index=26, put_index=27)
     DFMode = EnumProperty(DarkFieldMode, get_index=28, put_index=29)
-    #DarkFieldMode = EnumProperty(DarkFieldMode, get_index=28, put_index=29)
+    DarkFieldMode = EnumProperty(DarkFieldMode, get_index=28, put_index=29)
     CondenserMode = EnumProperty(CondenserMode, get_index=30, put_index=31)
     IlluminatedArea = DoubleProperty(get_index=32, put_index=33)
     ProbeDefocus = DoubleProperty(get_index=34)

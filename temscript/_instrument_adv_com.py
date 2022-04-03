@@ -38,9 +38,9 @@ class FrameRangeList(IUnknown):
     CLEAR_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(12, "Clear")
 
     def Add(self, value):
-        range = FrameRange()
-        range.Begin, range.End = value[0], value[1]
-        FrameRangeList.ADD_METHOD(self.get(), range.get())
+        rng = FrameRange()
+        rng.Begin, rng.End = value[0], value[1]
+        FrameRangeList.ADD_METHOD(self.get(), rng.get())
 
     def AddRange(self, begin, end):
         FrameRangeList.ADD_RANGE_METHOD(self.get(), int(begin), int(end))
@@ -249,9 +249,9 @@ class PiezoStage(IUnknown):
         PiezoStage.RESET_POSITION_METHOD(self.get(), axisMask)
 
     def GetPositionRange(self):
-        min, max = PiezoStage.GET_POSITION_RANGE_METHOD(self.get())
-        posMin = PiezoStagePosition(min)
-        posMax = PiezoStagePosition(max)
+        pmin, pmax = PiezoStage.GET_POSITION_RANGE_METHOD(self.get())
+        posMin = PiezoStagePosition(pmin)
+        posMax = PiezoStagePosition(pmax)
         return posMin, posMax
 
     def CreatePosition(self):
