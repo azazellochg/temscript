@@ -6,7 +6,8 @@ __all__ = ('GetInstrument', 'Projection', 'CCDCameraInfo', 'CCDAcqParams', 'CCDC
            'STEMDetectorInfo', 'STEMAcqParams', 'STEMDetector', 'AcqImage', 'Acquisition',
            'TemperatureControl', 'AutoLoader', 'UserButton', 'Gauge', 'Vacuum',
            'Stage', 'Camera', 'Illumination', 'Gun', 'BlankerShutter',
-           'InstrumentModeControl', 'Configuration', 'Instrument')
+           'InstrumentModeControl', 'Configuration', 'Aperture', 'ApertureMechanism',
+           'Instrument')
 
 
 class Projection(IUnknown):
@@ -545,7 +546,7 @@ class Instrument(IUnknown):
     Acquisition = ObjectProperty(Acquisition, get_index=24)
     Configuration = ObjectProperty(Configuration, get_index=25)
     ApertureMechanismCollection = CollectionProperty(get_index=26, interface=ApertureMechanism)
-    #Gun1 = ObjectProperty(Gun1, get_index=27, put_index=28)
+    #Gun1 = ObjectProperty(Gun1, get_index=27)
 
     NORMALIZE_ALL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "NormalizeAll")
 

@@ -4,7 +4,9 @@ from ._properties import *
 
 __all__ = ('GetAdvancedInstrument', 'CameraAcquisitionCapabilities', 'CameraSettings',
            'AdvancedCamera', 'AcquiredImage', 'CameraSingleAcquisition',
-           'Acquisitions', 'Phaseplate', 'AdvancedInstrument')
+           'Acquisitions', 'Phaseplate', 'PiezoStagePosition',
+           'PiezoStageVelocity', 'PiezoStage', 'AdvancedInstrument',
+           'CameraSettingsInternal', 'AdvancedInstrumentInternal')
 
 
 class Binning(IUnknown):

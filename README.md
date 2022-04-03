@@ -1,11 +1,11 @@
 # About
 
-The ``temscript`` package provides a Python wrapper for the both standard and advanced scripting
+The ``temscript`` package provides a Python wrapper for both standard and advanced scripting
 interfaces of Thermo Fisher Scientific and FEI microscopes. The functionality is
 limited to the functionality of the original scripting interfaces. For detailed information
 about TEM scripting see the documentation accompanying your microscope.
 
-The ``temscript`` package provides two interfaces to the microsope. The first one
+The ``temscript`` package provides two interfaces to the microscope. The first one
 corresponds directly to the COM interface. The other interface is a more high level interface.
 Within the ``temscript`` package three implementation for the high level interface are provided,
 one for running scripts directly on the microscope PC, one to run scripts remotely over network, and
