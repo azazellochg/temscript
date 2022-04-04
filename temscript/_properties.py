@@ -203,3 +203,15 @@ class SafeArrayProperty(BaseProperty):
         prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
         prototype(obj.get(), result.byref())
         return result
+
+
+class FegFocusIndexProperty(BaseProperty):
+    __slots__ = '_get_index', '_name'
+
+    def __get__(self, obj, objtype=None):
+        if self._get_index is None:
+            raise AttributeError("Attribute %sis not readable" % self._name)
+        result = FegFocusIndex()
+        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
+        prototype(obj.get(), ctypes.byref(result))
+        return result.Coarse, result.Fine

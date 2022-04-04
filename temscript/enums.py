@@ -257,3 +257,21 @@ class ApertureType(IntEnum):
     BIPRISM = 2
     ENERGY_SLIT = 3
     FARADAY_CUP = 4
+
+
+class HatchState(IntEnum):
+    UNKNOWN = 0
+    OPEN = 1
+    OPENING = 2
+    CLOSED = 3
+    CLOSING = 4
+
+
+class FegState(IntEnum):
+    NOT_EMITTING = 0
+    EMITTING = 1
+
+
+class FegFlashingType(IntEnum):
+    LOW_T = 0
+    HIGH_T = 1

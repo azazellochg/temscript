@@ -56,6 +56,13 @@ class KeyValuePair(IUnknown):
     ValueAsString = StringProperty(get_index=8)
 
 
+class PixelSize(IUnknown):
+    IID = UUID("38d86b8f-8681-4eaf-b4d2-a7312a0fb981")
+
+    Width = DoubleProperty(get_index=7, put_index=8)
+    Height = DoubleProperty(get_index=9, put_index=10)
+
+
 class CameraAcquisitionCapabilities(IUnknown):
     IID = UUID("c4c83905-0d53-47f3-8ae4-91f1248aa0f9")
 
@@ -108,7 +115,7 @@ class AdvancedCamera(IUnknown):
     Name = StringProperty(get_index=7)
     Width = LongProperty(get_index=8)
     Height = LongProperty(get_index=9)
-    PixelSize = VectorProperty(get_index=10)
+    PixelSize = ObjectProperty(PixelSize, get_index=10)
     IsInserted = VariantBoolProperty(get_index=11)
 
     INSERT_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(12, "Insert")
@@ -261,14 +268,53 @@ class PiezoStage(IUnknown):
         PiezoStage.CREATE_VELOCITY_METHOD(self.get())
 
 
+class UserDoorHatch(IUnknown):
+    IID = UUID("2dfdb202-e61d-467e-b59c-c3d21d16c903")
+
+    State = EnumProperty(HatchState, get_index=9)
+    IsControlAllowed = VariantBoolProperty(get_index=10)
+
+    OPEN_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "Open")
+    CLOSE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(8, "Close")
+
+    def Open(self):
+        UserDoorHatch.OPEN_METHOD(self.get())
+
+    def Close(self):
+        UserDoorHatch.CLOSE_METHOD(self.get())
+
+
+class FegFlashing(IUnknown):
+    IID = UUID("25258776-0e99-4d29-9220-07edec3dbf6d")
+
+    IS_FLASHING_ADVISED_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(7, "IsFlashingAdvised")
+    PERFORM_FLASHING_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(8, "PerformFlashing")
+
+    def IsFlashingAdvised(self, flashing_type):
+        FegFlashing.IS_FLASHING_ADVISED_METHOD(self.get(), FegFlashingType[flashing_type])
+
+    def PerformFlashing(self, flashing_type):
+        FegFlashing.PERFORM_FLASHING_METHOD(self.get(), FegFlashingType[flashing_type])
+
+
+class Feg(IUnknown):
+    IID = UUID("b2bc347f-c31f-4a51-b6B4-94b9bc2c17fb")
+
+    State = EnumProperty(FegState, get_index=7)
+    BeamCurrent = DoubleProperty(get_index=8)
+    ExtractorVoltage = DoubleProperty(get_index=9)
+    Flashing = ObjectProperty(FegFlashing, get_index=10)
+    FocusIndex = FegFocusIndexProperty(get_index=11)
+
+
 class AdvancedInstrument(IUnknown):
     IID = UUID("c7452318-374a-4161-9b68-90ca3c3f5bea")
 
     Acquisitions = ObjectProperty(Acquisitions, get_index=7)
     Phaseplate = ObjectProperty(Phaseplate, get_index=8)
     PiezoStage = ObjectProperty(PiezoStage, get_index=9)
-    #UserDoorHatch = None
-    #Source = None
+    UserDoorHatch = ObjectProperty(UserDoorHatch, get_index=10)
+    Source = ObjectProperty(Feg, get_index=11)
 
 
 class CameraSettingsInternal(IUnknown):

@@ -2,7 +2,7 @@ import ctypes
 from uuid import UUID
 from enum import IntEnum
 
-__all__ = 'UUID', 'CLSCTX_ALL', 'IUnknown', 'co_create_instance', 'SafeArray', 'BStr', 'Variant', 'VARIANT', 'VariantType'
+__all__ = 'UUID', 'CLSCTX_ALL', 'IUnknown', 'co_create_instance', 'SafeArray', 'BStr', 'Variant', 'VARIANT', 'VariantType', 'FegFocusIndex'
 
 # COM constants
 COINIT_MULTITHREADED = 0
@@ -136,6 +136,11 @@ class VariantType(IntEnum):
     INT = 22  # intVal
     UINT = 23  # uintVal
     SAFEARRAY = 27  # TODO
+
+
+class FegFocusIndex(ctypes.Structure):
+    _fields_ = [('Coarse', ctypes.c_long),
+                ('Fine', ctypes.c_long)]
 
 
 class VARIANT(ctypes.Structure):
