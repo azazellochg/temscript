@@ -117,7 +117,7 @@ with or endorsement by them.
 temscript is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-LICENCE.txt file for any details.
+LICENCE file for any details.
 
 All product and company names are trademarks or registered trademarks of
 their respective holders. Use of them does not imply any affiliation 

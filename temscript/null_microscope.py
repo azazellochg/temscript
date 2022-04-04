@@ -3,7 +3,7 @@ from enum import Enum
 import numpy as np
 from math import pi
 
-from .enums import *
+from temscript.utils.enums import *
 from .base_microscope import BaseMicroscope, parse_enum
 
 
@@ -60,7 +60,7 @@ class NullMicroscope(BaseMicroscope):
     """
     Microscope-like class which emulates an microscope.
 
-    :param wait_exposure: Whether the acquire calls waits the exposure time until returning, emulating
+    :param wait_exposure: Whether the acquire call waits the exposure time until returning, emulating
         the timing of the real microscope
     :type wait_exposure: bool
     :param voltage: High tension value the microscope report in kV

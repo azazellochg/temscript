@@ -1,12 +1,13 @@
-from .enums import *
-from ._properties import *
+from temscript.utils.enums import *
+from temscript.utils.properties import *
 
 
 __all__ = ('GetAdvancedInstrument', 'CameraAcquisitionCapabilities', 'CameraSettings',
            'AdvancedCamera', 'AcquiredImage', 'CameraSingleAcquisition',
            'Acquisitions', 'Phaseplate', 'PiezoStagePosition',
-           'PiezoStageVelocity', 'PiezoStage', 'AdvancedInstrument',
-           'CameraSettingsInternal', 'AdvancedInstrumentInternal')
+           'PiezoStageVelocity', 'PiezoStage', 'UserDoorHatch',
+           'Feg', 'AdvancedInstrument', 'CameraSettingsInternal',
+           'AdvancedInstrumentInternal')
 
 
 class Binning(IUnknown):

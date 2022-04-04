@@ -4,7 +4,7 @@ from http.client import HTTPConnection
 from urllib.parse import urlencode, quote_plus
 
 from .base_microscope import BaseMicroscope
-from .marshall import ExtendedJsonEncoder, unpack_array, gzip_decode, MIME_TYPE_PICKLE, MIME_TYPE_JSON
+from temscript.utils.marshall import ExtendedJsonEncoder, unpack_array, gzip_decode, MIME_TYPE_PICKLE, MIME_TYPE_JSON
 
 
 class RemoteMicroscope(BaseMicroscope):

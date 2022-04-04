@@ -1,5 +1,5 @@
 import ctypes
-from ._com import *
+from temscript.com.com_base import *
 
 
 class BaseProperty:

@@ -79,11 +79,15 @@ class Configuration:
     pass
 
 
-class Instrument:
+class Aperture:
     pass
 
 
-class AdvancedInstrument:
+class ApertureMechanism:
+    pass
+
+
+class Instrument:
     pass
 
 
@@ -91,11 +95,11 @@ class CameraAcquisitionCapabilities:
     pass
 
 
-class AdvancedCamera:
+class CameraSettings:
     pass
 
 
-class CameraSettings:
+class AdvancedCamera:
     pass
 
 
@@ -112,6 +116,38 @@ class Acquisitions:
 
 
 class Phaseplate:
+    pass
+
+
+class PiezoStagePosition:
+    pass
+
+
+class PiezoStageVelocity:
+    pass
+
+
+class PiezoStage:
+    pass
+
+
+class UserDoorHatch:
+    pass
+
+
+class Feg:
+    pass
+
+
+class AdvancedInstrument:
+    pass
+
+
+class CameraSettingsInternal:
+    pass
+
+
+class AdvancedInstrumentInternal:
     pass
 
 

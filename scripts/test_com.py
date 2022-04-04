@@ -101,7 +101,7 @@ def run_tree():
         #titan.ApertureMechanismCollection,
     ]
 
-    #run_logs(objs)
+    run_logs(objs)
 
 
 def run_tree_adv():
@@ -156,7 +156,7 @@ def run_logs(objs):
 
 
 if __name__ == '__main__':
-    #run()
+    run()
     run_tree()
     run_tree_adv()
 

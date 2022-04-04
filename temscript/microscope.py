@@ -5,7 +5,7 @@ from temscript.base_microscope import set_enum_attr_from_dict, set_attr_from_dic
 from .base_microscope import BaseMicroscope, parse_enum, STAGE_AXES
 from .instrument import (CCDCamera, GetInstrument, GetAdvancedInstrument,
                          STEMDetector, AdvancedCamera)
-from .enums import *
+from temscript.utils.enums import *
 
 
 class Microscope(BaseMicroscope):
