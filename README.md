@@ -99,13 +99,15 @@ Relative to Titan V1.2 advanced scripting adapter:
 * Acquisitions: complete (but untested)
 * Phaseplate: complete (but untested)
 * PiezoStage: complete (but untested)
-* Source: missing
-* UserDoorHatch: missing
+* Source: complete (but untested)
+* UserDoorHatch: complete (but untested)
 
 # Copyright & Disclaimer
 
 Copyright (c) 2012-2021 by Tore Niermann
 Contact: tore.niermann (at) tu-berlin.de
+Copyright (c) 2022 by Grigory Sharov
+Contact: gsharov (at) mrc-lmb.cam.ac.uk
 
 All product and company names are trademarks or registered trademarks 
 of their respective holders. Use of them does not imply any affiliation

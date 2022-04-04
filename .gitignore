@@ -1,7 +1,10 @@
 /dist
 /build
-/temscript.egg-info
-/MANIFEST
+*.egg-info/
+*.egg
+*.py[cod]
 docs/_build
 .idea
-__pycache__
+__pycache__/
+*.so
+*~
