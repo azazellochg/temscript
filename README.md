@@ -106,6 +106,7 @@ Relative to Titan V1.2 advanced scripting adapter:
 
 Copyright (c) 2012-2021 by Tore Niermann
 Contact: tore.niermann (at) tu-berlin.de
+
 Copyright (c) 2022 by Grigory Sharov
 Contact: gsharov (at) mrc-lmb.cam.ac.uk
 
