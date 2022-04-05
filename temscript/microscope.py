@@ -31,6 +31,7 @@ class Microscope(BaseMicroscope):
         self._tem_stage = tem.Stage
         self._tem_acquisition = tem.Acquisition
         self._tem_acquisitions = adv_tem.Acquisitions
+        self._tem_csa = adv_tem.Acquisitions.CameraSingleAcquisition
         self._tem_temperature_control = tem.TemperatureControl
         self._tem_autoloader = tem.AutoLoader
         self._tem_vacuum = tem.Vacuum
@@ -116,24 +117,34 @@ class Microscope(BaseMicroscope):
                 "pre_exposure_limits(s)": (param.MinPreExposureTime, param.MaxPreExposureTime),
                 "pre_exposure_pause_limits(s)": (param.MinPreExposurePauseTime, param.MaxPreExposurePauseTime)
             }
-        csa = self._tem_acquisitions.CameraSingleAcquisition
-        for cam in csa.SupportedCameras:
-            csa.Camera = cam
-            params = csa.CameraSettings.Capabilities
+        for cam in self._tem_csa.SupportedCameras:
+            self._tem_csa.Camera = cam
+            param = self._tem_csa.CameraSettings.Capabilities
             self.cameras[cam.Name] = {
                 "type": "CAMERA_ADVANCED",
                 "height": cam.Height,
                 "width": cam.Width,
-                "pixel_size(um)": tuple(size / 1e-6 for size in cam.PixelSize),
-                "binnings": [int(b) for b in params.SupportedBinnings],
-                "exposure_time_range(s)": (params.ExposureTimeRange.Begin, params.ExposureTimeRange.End),
-                "supports_dose_fractions": params.SupportsDoseFractions,
-                "supports_drift_correction": params.SupportsDriftCorrection,
-                "supports_electron_counting": params.SupportsElectronCounting,
-                "supports_eer": params.SupportsEER
+                "pixel_size(um)": (cam.PixelSize.Width / 1e-6, cam.PixelSize.Height / 1e-6),
+                "binnings": [int(b.Width) for b in param.SupportedBinnings],
+                "exposure_time_range(s)": (param.ExposureTimeRange.Begin, param.ExposureTimeRange.End),
+                "supports_dose_fractions": param.SupportsDoseFractions,
+                "supports_drift_correction": param.SupportsDriftCorrection,
+                "supports_electron_counting": param.SupportsElectronCounting,
+                "supports_eer": param.SupportsEER
             }
 
         return self.cameras
+
+    def _check_binning(self, binning):
+        """ Check if input binning is in SupportedBinnings for a single-acquisition camera.
+        Assume that the camera is set: self._tem_csa.Camera = camera.
+        Returns Binning object.
+        """
+        param = self._tem_csa.CameraSettings.Capabilities
+        for b in param.SupportedBinnings:
+            if int(b.Width) == int(binning):
+                return b
+        return False
 
     def get_stem_detectors(self):
         detectors = {}
@@ -153,8 +164,7 @@ class Microscope(BaseMicroscope):
         for cam in self._tem_acquisition.Cameras:
             if cam.Info.Name == name:
                 return cam
-        for cam in self._tem_acquisitions.CameraSingleAcquisition.SupportedCameras:
-        # for cam in self._tem_acquisitions.Cameras:
+        for cam in self._tem_csa.SupportedCameras:
             if cam.Name == name:
                 return cam
         raise KeyError("No camera with name %s" % name)
@@ -170,37 +180,64 @@ class Microscope(BaseMicroscope):
 
     def get_camera_param(self, name):
         camera = self._find_camera(name)
-        info = camera.Info
-        param = camera.AcqParams
-        return {
-            "image_size": param.ImageSize.name,
-            "exposure(s)": param.ExposureTime,
-            "binning": param.Binning,
-            "correction": param.ImageCorrection.name,
-            "exposure_mode": param.ExposureMode.name,
-            "shutter_mode": info.ShutterMode.name,
-            "pre_exposure(s)": param.PreExposureTime,
-            "pre_exposure_pause(s)": param.PreExposurePauseTime
-        }
+        if isinstance(camera, AdvancedCamera):
+            self._tem_csa.Camera = camera
+            param = self._tem_csa.CameraSettings
+            return {
+                "image_size": param.ReadoutArea.name,
+                "exposure(s)": param.ExposureTime,
+                "binning": param.Binning.Width,
+                "align_image": param.AlignImage,
+                "electron_counting": param.ElectronCounting,
+                "EER": param.EER,
+            }
+        else:
+            info = camera.Info
+            param = camera.AcqParams
+            return {
+                "image_size": param.ImageSize.name,
+                "exposure(s)": param.ExposureTime,
+                "binning": param.Binning,
+                "correction": param.ImageCorrection.name,
+                "exposure_mode": param.ExposureMode.name,
+                "shutter_mode": info.ShutterMode.name,
+                "pre_exposure(s)": param.PreExposureTime,
+                "pre_exposure_pause(s)": param.PreExposurePauseTime
+            }
 
     def set_camera_param(self, name, values, ignore_errors=False):
         camera = self._find_camera(name)
         values = dict(values)
-        info = camera.Info
-        param = camera.AcqParams
-        set_enum_attr_from_dict(param, 'ImageSize', AcqImageSize, values, 'image_size', ignore_errors=ignore_errors)
-        set_attr_from_dict(param, 'Binning', values, 'binning', ignore_errors=ignore_errors)
-        set_enum_attr_from_dict(param, 'ImageCorrection', AcqImageCorrection, values, 'correction',
-                                ignore_errors=ignore_errors)
-        set_enum_attr_from_dict(param, 'ExposureMode', AcqExposureMode, values, 'exposure_mode',
-                                ignore_errors=ignore_errors)
-        set_enum_attr_from_dict(info, 'ShutterMode', AcqShutterMode, values, 'shutter_mode',
-                                ignore_errors=ignore_errors)
-        set_attr_from_dict(param, 'PreExposureTime', values, 'pre_exposure(s)', ignore_errors=ignore_errors)
-        set_attr_from_dict(param, 'PreExposurePauseTime', values, 'pre_exposure_pause(s)', ignore_errors=ignore_errors)
 
-        # Set exposure after binning, since it adjusted automatically when binning is set
-        set_attr_from_dict(param, 'ExposureTime', values, 'exposure(s)', ignore_errors=ignore_errors)
+        if isinstance(camera, AdvancedCamera):
+            self._tem_csa.Camera = camera
+            param = self._tem_csa.CameraSettings
+            set_enum_attr_from_dict(param, 'ReadoutArea', AcqImageSize, values, 'image_size', ignore_errors=ignore_errors)
+
+            binning = self._check_binning(values['binning'])
+            if binning:
+                values['binning'] = binning
+                set_attr_from_dict(param, 'Binning', values, 'binning', ignore_errors=ignore_errors)
+
+            # Set exposure after binning, since it adjusted automatically when binning is set
+            set_attr_from_dict(param, 'ExposureTime', values, 'exposure(s)', ignore_errors=ignore_errors)
+
+        else:
+            info = camera.Info
+            param = camera.AcqParams
+            set_enum_attr_from_dict(param, 'ImageSize', AcqImageSize, values, 'image_size', ignore_errors=ignore_errors)
+            set_attr_from_dict(param, 'Binning', values, 'binning', ignore_errors=ignore_errors)
+            set_enum_attr_from_dict(param, 'ImageCorrection', AcqImageCorrection, values, 'correction',
+                                    ignore_errors=ignore_errors)
+            set_enum_attr_from_dict(param, 'ExposureMode', AcqExposureMode, values, 'exposure_mode',
+                                    ignore_errors=ignore_errors)
+            set_enum_attr_from_dict(info, 'ShutterMode', AcqShutterMode, values, 'shutter_mode',
+                                    ignore_errors=ignore_errors)
+            set_attr_from_dict(param, 'PreExposureTime', values, 'pre_exposure(s)', ignore_errors=ignore_errors)
+            set_attr_from_dict(param, 'PreExposurePauseTime', values, 'pre_exposure_pause(s)', ignore_errors=ignore_errors)
+
+            # Set exposure after binning, since it adjusted automatically when binning is set
+            set_attr_from_dict(param, 'ExposureTime', values, 'exposure(s)', ignore_errors=ignore_errors)
 
         if not ignore_errors and values:
             raise ValueError("Unknown keys in parameter dictionary.")
@@ -242,17 +279,27 @@ class Microscope(BaseMicroscope):
             raise ValueError("Unknown keys in parameter dictionary.")
 
     def acquire(self, *args):
+        result = {}
         self._tem_acquisition.RemoveAllAcqDevices()
         for det in args:
             try:
                 self._tem_acquisition.AddAcqDeviceByName(det)
             except Exception:
                 pass
-        images = self._tem_acquisition.AcquireImages()
-        result = {}
-        for img in images:
-            result[img.Name] = img.Array
-        return result
+        if len(self._tem_acquisition.Cameras):
+            images = self._tem_acquisition.AcquireImages()
+            for img in images:
+                result[img.Name] = img.Array
+
+        for det in args:
+            try:
+                self._tem_csa.Camera = det
+                img = self._tem_csa.Acquire()
+                md = img.Metadata
+                img_name = md['DetectorName'] + '_' + md['TimeStamp']
+                result[img_name] = img.Array
+            except Exception:
+                pass
 
     def get_image_shift(self):
         return self._tem_projection.ImageShift
@@ -452,23 +499,26 @@ class Microscope(BaseMicroscope):
         mode = parse_enum(InstrumentMode, mode)
         self._tem_control.InstrumentMode = mode
 
-    def get_dewars(self):
-        return {
-            "available": self._tem_temperature_control.TemperatureControlAvailable,
-            "refrigerant_level": self._tem_temperature_control.RefrigerantLevel,
-            "dewars_remaining_time": self._tem_temperature_control.DewarsRemainingTime,
-            "dewars_are_busy_filling": self._tem_temperature_control.DewarsAreBusyFilling
-        }
+    def get_refrigerant_levels(self):
+        if self._tem_temperature_control.TemperatureControlAvailable:
+            return {rl.name: self._tem_temperature_control.RefrigerantLevel[rl] for rl in RefrigerantLevel}
+        else:
+            raise Exception("Temperature control is not available.")
+
+    def get_dewars_remaining_time(self):
+        return self._tem_temperature_control.DewarsRemainingTime
+
+    def dewars_are_filling(self):
+        return self._tem_temperature_control.DewarsAreBusyFilling
 
     def force_refill(self):
         self._tem_temperature_control.ForceRefill()
 
-    def get_autoloader(self):
-        return {
-            "available": self._tem_autoloader.AutoLoaderAvailable,
-            "number_of_cassette_slots": self._tem_autoloader.NumberOfCassetteSlots,
-            "slot_status": self._tem_autoloader.SlotStatus
-        }
+    def get_number_of_cassette_slots(self):
+        if self._tem_autoloader.AutoLoaderAvailable:
+            return self._tem_autoloader.NumberOfCassetteSlots
+        else:
+            raise Exception("Autoloader is not available.")
 
     def load_cartridge(self, slot):
         self._tem_autoloader.LoadCartridge(int(slot))

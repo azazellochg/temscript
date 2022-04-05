@@ -75,7 +75,6 @@ def run():
 
 def run_tree():
     titan = CreateObject("TEMScripting.Instrument.1")
-    constants = Constants(titan)
 
     objs = [
         titan,
@@ -106,7 +105,6 @@ def run_tree():
 
 def run_tree_adv():
     titan = CreateObject("TEMAdvancedScripting.AdvancedInstrument.2")
-    constants = Constants(titan)
     acq = titan.Acquisitions
     csa = acq.CameraSingleAcquisition
     cams = csa.SupportedCameras
@@ -146,6 +144,45 @@ def run_tree_adv():
         logging.info("%s --> %s" % (str(i.Key), str(i.ValueAsString)))
 
 
+def find_cameras():
+    tem = CreateObject("TEMScripting.Instrument.1")
+    tem_adv = CreateObject("TEMAdvancedScripting.AdvancedInstrument.2")
+    cameras = {}
+
+    for cam in tem.Acquisition.Cameras:
+        info = cam.Info
+        param = cam.AcqParams
+        name = info.Name
+        cameras[name] = {
+            "type": "CAMERA",
+            "height": info.Height,
+            "width": info.Width,
+            "pixel_size(um)": tuple(size / 1e-6 for size in info.PixelSize),
+            "binnings": [int(b) for b in info.Binnings],
+            "pre_exposure_limits(s)": (param.MinPreExposureTime, param.MaxPreExposureTime),
+            "pre_exposure_pause_limits(s)": (param.MinPreExposurePauseTime, param.MaxPreExposurePauseTime)
+        }
+
+    csa = tem_adv.Acquisitions.CameraSingleAcquisition
+    for cam in csa.SupportedCameras:
+        csa.Camera = cam
+        params = csa.CameraSettings.Capabilities
+        cameras[cam.Name] = {
+            "type": "CAMERA_ADVANCED",
+            "height": cam.Height,
+            "width": cam.Width,
+            "pixel_size(um)": (cam.PixelSize.Width / 1e-6, cam.PixelSize.Height / 1e-6),
+            "binnings": [int(b.Width) for b in params.SupportedBinnings],
+            "exposure_time_range(s)": (params.ExposureTimeRange.Begin, params.ExposureTimeRange.End),
+            "supports_dose_fractions": params.SupportsDoseFractions,
+            "supports_drift_correction": params.SupportsDriftCorrection,
+            "supports_electron_counting": params.SupportsElectronCounting,
+            "supports_eer": params.SupportsEER
+        }
+
+    logging.info(cameras.items())
+
+
 def run_logs(objs):
     for obj in objs:
         logging.info(f"{str(obj)} uuid: {str(obj._iid_).lower()}")
@@ -156,9 +193,10 @@ def run_logs(objs):
 
 
 if __name__ == '__main__':
-    run()
-    run_tree()
-    run_tree_adv()
+    #run()
+    #run_tree()
+    #run_tree_adv()
+    find_cameras()
 
 
 '''

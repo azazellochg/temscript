@@ -239,7 +239,6 @@ class TemperatureControl(IUnknown):
         TemperatureControl.FORCE_REFILL_METHOD(self.get())
 
     def RefrigerantLevel(self, rl):
-        # rl = RefrigerantLevel
         return TemperatureControl.REFRIGERANT_LEVEL_METHOD(self.get(), rl)
 
 

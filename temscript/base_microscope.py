@@ -448,7 +448,7 @@ class BaseMicroscope(ABC):
     def acquire(self, *args):
         """
         Acquire images for all detectors given as argument.
-        The images are returned in an dict indexed by detector name.
+        The images are returned in a dict indexed by detector name.
         """
         raise NotImplementedError
 

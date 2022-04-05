@@ -102,12 +102,21 @@ class CameraSettings(IUnknown):
     DoseFractionsDefinition = ObjectProperty(FrameRangeList, get_index=17)
     AlignImage = VariantBoolProperty(get_index=18, put_index=19)
     ElectronCounting = VariantBoolProperty(get_index=20, put_index=21)
-    EER = VariantBoolProperty(get_index=23, put_index=24)
+    _EER = VariantBoolProperty(get_index=23, put_index=24)
 
     CALCULATE_NUMBER_OF_FRAMES_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(22, "CalculateNumberOfFrames")
 
     def CalculateNumberOfFrames(self):
         CameraSettings.CALCULATE_NUMBER_OF_FRAMES_METHOD(self.get())
+
+    @property
+    def EER(self):
+        """ Older advanced tem scripting does not have this property. """
+        try:
+            eer = self._EER
+            return eer
+        except:
+            return False
 
 
 class AdvancedCamera(IUnknown):
@@ -149,7 +158,8 @@ class AcquiredImage(IUnknown):
     @property
     def Metadata(self):
         collection = self._Metadata
-        return [KeyValuePair(item) for item in collection]
+        md_list = [KeyValuePair(item) for item in collection]
+        return {i.Key: i.ValueAsString for i in md_list}
 
     @property
     def Array(self):
