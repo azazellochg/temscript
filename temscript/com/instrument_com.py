@@ -452,7 +452,7 @@ class Gun(IUnknown):
 
 
 class Gun1(IUnknown):
-    IID = UUID("?")
+    #IID = UUID("")
 
     HighVoltageOffset = DoubleProperty(get_index=8, put_index=9)
 

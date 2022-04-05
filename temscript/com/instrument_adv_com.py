@@ -67,18 +67,13 @@ class PixelSize(IUnknown):
 class CameraAcquisitionCapabilities(IUnknown):
     IID = UUID("c4c83905-0d53-47f3-8ae4-91f1248aa0f9")
 
-    _SupportedBinnings = CollectionProperty(get_index=7)
+    SupportedBinnings = NewCollectionProperty(get_index=7, interface=Binning)
     ExposureTimeRange = ObjectProperty(TimeRange, get_index=8)
     SupportsDoseFractions = VariantBoolProperty(get_index=9)
     MaximumNumberOfDoseFractions = LongProperty(get_index=10)
     SupportsDriftCorrection = VariantBoolProperty(get_index=11)
     SupportsElectronCounting = VariantBoolProperty(get_index=12)
     _SupportsEER = VariantBoolProperty(get_index=13)
-
-    @property
-    def SupportedBinnings(self):
-        collection = self._SupportedBinnings
-        return [Binning(item) for item in collection]
 
     @property
     def SupportsEER(self):
@@ -145,7 +140,7 @@ class AcquiredImage(IUnknown):
     Height = LongProperty(get_index=8)
     PixelType = EnumProperty(ImagePixelType, get_index=9)
     BitDepth = LongProperty(get_index=10)
-    _Metadata = CollectionProperty(get_index=11)
+    _Metadata = NewCollectionProperty(get_index=11)
     _AsSafeArray = SafeArrayProperty(get_index=12)
 
     SAVE_TO_FILE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_wchar_p, ctypes.c_short)(14, "SaveToFile")
@@ -169,18 +164,13 @@ class AcquiredImage(IUnknown):
 class CameraSingleAcquisition(IUnknown):
     IID = UUID("a927ea10-74b0-45a9-8368-fcdd52498053")
 
-    _SupportedCameras = CollectionProperty(get_index=7)
-    Camera = ObjectProperty(AdvancedCamera, get_index=None, put_index=8)  # maybe CollectionProperty?
+    SupportedCameras = NewCollectionProperty(get_index=7, interface=AdvancedCamera)
+    Camera = ObjectProperty(AdvancedCamera, get_index=None, put_index=8)
     CameraSettings = ObjectProperty(CameraSettings, get_index=9)
     IsActive = VariantBoolProperty(get_index=11)
 
     ACQUIRE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(10, "Acquire")
     WAIT_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(12, "Wait")
-
-    @property
-    def SupportedCameras(self):
-        collection = self._SupportedCameras
-        return [AdvancedCamera(item) for item in collection]
 
     @property
     def Acquire(self):
@@ -195,13 +185,8 @@ class CameraSingleAcquisition(IUnknown):
 class Acquisitions(IUnknown):
     IID = UUID("27f7ddc7-bad9-4e2e-b9b6-e7644eb152ec")
 
-    _Cameras = CollectionProperty(get_index=7)
+    Cameras = NewCollectionProperty(get_index=7, interface=AdvancedCamera)
     CameraSingleAcquisition = ObjectProperty(CameraSingleAcquisition, get_index=8)
-
-    @property
-    def Cameras(self):
-        collection = self._Cameras
-        return [AdvancedCamera(item) for item in collection]
 
 
 class Phaseplate(IUnknown):

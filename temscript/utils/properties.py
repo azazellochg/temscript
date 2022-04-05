@@ -197,6 +197,36 @@ class CollectionProperty(BaseProperty):
         return result
 
 
+class NewCollectionProperty(BaseProperty):
+    """ Advanced scripting uses c_long for item index. """
+    __slots__ = '_interface'
+
+    GET_COUNT_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(7, "get_Count")
+    GET_ITEM_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long, ctypes.c_void_p)(8, "get_Item")
+
+    def __init__(self, get_index, interface=None):
+        super(NewCollectionProperty, self).__init__(get_index=get_index)
+        if interface is None:
+            interface = IUnknown
+        self._interface = interface
+
+    def __get__(self, obj, objtype=None):
+        collection = IUnknown()
+        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
+        prototype(obj.get(), collection.byref())
+
+        count = ctypes.c_long(-1)
+        NewCollectionProperty.GET_COUNT_METHOD(collection.get(), ctypes.byref(count))
+        result = []
+
+        for n in range(count.value):
+            item = self._interface()
+            NewCollectionProperty.GET_ITEM_METHOD(collection.get(), ctypes.c_long(n), item.byref())
+            result.append(item)
+
+        return result
+
+
 class SafeArrayProperty(BaseProperty):
     def __get__(self, obj, objtype=None):
         result = SafeArray()

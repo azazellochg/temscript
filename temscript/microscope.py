@@ -31,7 +31,7 @@ class Microscope(BaseMicroscope):
         self._tem_stage = tem.Stage
         self._tem_acquisition = tem.Acquisition
         self._tem_acquisitions = adv_tem.Acquisitions
-        self._tem_csa = adv_tem.Acquisitions.CameraSingleAcquisition
+        self._tem_csa = self._tem_acquisitions.CameraSingleAcquisition
         self._tem_temperature_control = tem.TemperatureControl
         self._tem_autoloader = tem.AutoLoader
         self._tem_vacuum = tem.Vacuum
@@ -501,7 +501,7 @@ class Microscope(BaseMicroscope):
 
     def get_refrigerant_levels(self):
         if self._tem_temperature_control.TemperatureControlAvailable:
-            return {rl.name: self._tem_temperature_control.RefrigerantLevel[rl] for rl in RefrigerantLevel}
+            return {rl.name: self._tem_temperature_control.RefrigerantLevel(rl) for rl in RefrigerantLevel}
         else:
             raise Exception("Temperature control is not available.")
 
@@ -536,7 +536,14 @@ class Microscope(BaseMicroscope):
         return buttons
 
     def get_phase_plate_position(self):
-        return self._tem_vpp.GetCurrentPresetPosition
+        try:
+            pos = self._tem_vpp.GetCurrentPresetPosition
+            return pos
+        except:
+            raise Exception("Phase plate is not inserted or not available or you do not have a license.")
 
     def change_phase_plate_position(self):
-        self._tem_vpp.SelectNextPresetPosition()
+        try:
+            self._tem_vpp.SelectNextPresetPosition()
+        except:
+            raise Exception("Phase plate is not inserted or not available or you do not have a license.")
