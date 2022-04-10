@@ -501,7 +501,7 @@ class Microscope(BaseMicroscope):
 
     def get_refrigerant_levels(self):
         if self._tem_temperature_control.TemperatureControlAvailable:
-            return {rl.name: self._tem_temperature_control.RefrigerantLevel(rl.value) for rl in RefrigerantLevel}
+            return self._tem_temperature_control.RefrigerantLevels()
         else:
             raise Exception("Temperature control is not available.")
 

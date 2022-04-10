@@ -233,13 +233,21 @@ class TemperatureControl(IUnknown):
     DewarsAreBusyFilling = VariantBoolProperty(get_index=11)
 
     FORCE_REFILL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(7, "ForceRefill")
-    REFRIGERANT_LEVEL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(9, "RefrigerantLevel")
+    REFRIGERANT_LEVEL_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int, ctypes.c_void_p)(9, "RefrigerantLevel")
 
     def ForceRefill(self):
         TemperatureControl.FORCE_REFILL_METHOD(self.get())
 
-    def RefrigerantLevel(self, rl):
-        return TemperatureControl.REFRIGERANT_LEVEL_METHOD(self.get(), rl)
+    def RefrigerantLevels(self):
+        levels = dict()
+        res = ctypes.c_double(-1)
+        for dewar in RefrigerantLevel:
+            try:
+                TemperatureControl.REFRIGERANT_LEVEL_METHOD(self.get(), dewar.value, ctypes.byref(res))
+                levels[dewar.name] = res.value
+            except:
+                pass
+        return levels
 
 
 class AutoLoader(IUnknown):
