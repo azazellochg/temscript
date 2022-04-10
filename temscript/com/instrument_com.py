@@ -152,7 +152,7 @@ class AcqImage(IUnknown):
 
     def AsFile(self, name, format, normalize=False):
         name_bstr = BStr(name)
-        fmt = AcqImageFileFormat[format]
+        fmt = AcqImageFileFormat[format.upper()]
         bool_value = 0xffff if normalize else 0x0000
         AcqImage.AS_FILE_METHOD(self.get(), name_bstr.get(), fmt, bool_value)
 
@@ -260,10 +260,10 @@ class AutoLoader(IUnknown):
     UNLOAD_CARTRIDGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(8, "UnloadCartridge")
     PERFORM_CASSETTE_INVENTORY_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(9, "PerformCassetteInventory")
     BUFFER_CYCLE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(10, "BufferCycle")
-    SLOT_STATUS_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long)(13, "SlotStatus")
+    SLOT_STATUS_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long, ctypes.c_void_p)(13, "SlotStatus")
 
     def LoadCartridge(self, slot):
-        AutoLoader.LOAD_CARTRIDGE_METHOD(self.get(), slot)
+        AutoLoader.LOAD_CARTRIDGE_METHOD(self.get(), int(slot))
 
     def UnloadCartridge(self):
         AutoLoader.UNLOAD_CARTRIDGE_METHOD(self.get())
@@ -275,8 +275,9 @@ class AutoLoader(IUnknown):
         AutoLoader.BUFFER_CYCLE_METHOD(self.get())
 
     def SlotStatus(self, slot):
-        # returns CassetteSlotStatus
-        return AutoLoader.SLOT_STATUS_METHOD(self.get(), slot)
+        res = ctypes.c_int(-1)
+        AutoLoader.SLOT_STATUS_METHOD(self.get(), int(slot), ctypes.byref(res))
+        return CassetteSlotStatus(res.value)
 
 
 class Gauge(IUnknown):

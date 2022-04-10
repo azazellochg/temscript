@@ -39,9 +39,12 @@ class FrameRangeList(IUnknown):
     CLEAR_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(12, "Clear")
 
     def Add(self, value):
-        rng = FrameRange()
-        rng.Begin, rng.End = value[0], value[1]
-        FrameRangeList.ADD_METHOD(self.get(), rng.get())
+        if isinstance(value, tuple) or isinstance(value, list):
+            rng = FrameRange()
+            rng.Begin, rng.End = value[0], value[1]
+            FrameRangeList.ADD_METHOD(self.get(), rng.get())
+        else:
+            raise TypeError("Input value must be a tuple or a list!")
 
     def AddRange(self, begin, end):
         FrameRangeList.ADD_RANGE_METHOD(self.get(), int(begin), int(end))
@@ -99,10 +102,12 @@ class CameraSettings(IUnknown):
     ElectronCounting = VariantBoolProperty(get_index=20, put_index=21)
     _EER = VariantBoolProperty(get_index=23, put_index=24)
 
-    CALCULATE_NUMBER_OF_FRAMES_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(22, "CalculateNumberOfFrames")
+    CALCULATE_NUMBER_OF_FRAMES_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(22, "CalculateNumberOfFrames")
 
     def CalculateNumberOfFrames(self):
-        CameraSettings.CALCULATE_NUMBER_OF_FRAMES_METHOD(self.get())
+        res = ctypes.c_long(-1)
+        CameraSettings.CALCULATE_NUMBER_OF_FRAMES_METHOD(self.get(), ctypes.byref(res))
+        return res.value
 
     @property
     def EER(self):
@@ -169,7 +174,7 @@ class CameraSingleAcquisition(IUnknown):
     CameraSettings = ObjectProperty(CameraSettings, get_index=9)
     IsActive = VariantBoolProperty(get_index=11)
 
-    ACQUIRE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(10, "Acquire")
+    ACQUIRE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(10, "Acquire")
     WAIT_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(12, "Wait")
 
     @property
@@ -229,7 +234,7 @@ class PiezoStage(IUnknown):
     CHANGE_VELOCITY_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_long)(9, "ChangeVelocity")
     STOP_JOG_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long)(10, "StopJog")
     RESET_POSITION_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long)(11, "ResetPosition")
-    GET_POSITION_RANGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(14, "GetPositionRange")
+    GET_POSITION_RANGE_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.c_void_p)(14, "GetPositionRange")
     CREATE_POSITION_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(18, "CreatePosition")
     CREATE_VELOCITY_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT)(19, "CreateVelocity")
 
@@ -252,10 +257,9 @@ class PiezoStage(IUnknown):
         PiezoStage.RESET_POSITION_METHOD(self.get(), axisMask)
 
     def GetPositionRange(self):
-        pmin, pmax = PiezoStage.GET_POSITION_RANGE_METHOD(self.get())
-        posMin = PiezoStagePosition(pmin)
-        posMax = PiezoStagePosition(pmax)
-        return posMin, posMax
+        pmin, pmax = PiezoStagePosition(), PiezoStagePosition()
+        PiezoStage.GET_POSITION_RANGE_METHOD(self.get(), pmin.byref(), pmax.byref())
+        return pmin, pmax
 
     def CreatePosition(self):
         PiezoStage.CREATE_POSITION_METHOD(self.get())
@@ -283,14 +287,16 @@ class UserDoorHatch(IUnknown):
 class FegFlashing(IUnknown):
     IID = UUID("25258776-0e99-4d29-9220-07edec3dbf6d")
 
-    IS_FLASHING_ADVISED_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(7, "IsFlashingAdvised")
+    IS_FLASHING_ADVISED_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int, ctypes.c_void_p)(7, "IsFlashingAdvised")
     PERFORM_FLASHING_METHOD = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_int)(8, "PerformFlashing")
 
     def IsFlashingAdvised(self, flashing_type):
-        FegFlashing.IS_FLASHING_ADVISED_METHOD(self.get(), FegFlashingType[flashing_type])
+        result = ctypes.c_short(-1)
+        FegFlashing.IS_FLASHING_ADVISED_METHOD(self.get(), FegFlashingType[flashing_type.upper()], ctypes.byref(result))
+        return bool(result.value)
 
     def PerformFlashing(self, flashing_type):
-        FegFlashing.PERFORM_FLASHING_METHOD(self.get(), FegFlashingType[flashing_type])
+        FegFlashing.PERFORM_FLASHING_METHOD(self.get(), FegFlashingType[flashing_type.upper()])
 
 
 class Feg(IUnknown):
