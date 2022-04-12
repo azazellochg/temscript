@@ -174,7 +174,7 @@ class MicroscopeServer(HTTPServer, object):
         :param microscope_factory: callable creating the BaseMicroscope instance to use
         """
         if microscope_factory is None:
-            from .microscope import Microscope
+            from .microscope_old import Microscope
             microscope_factory = Microscope
         self.microscope = microscope_factory()
         super(MicroscopeServer, self).__init__(server_address, MicroscopeHandler)
