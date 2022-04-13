@@ -3,44 +3,34 @@ from temscript.com.com_base import *
 
 
 class BaseProperty:
-    __slots__ = '_get_index', '_put_index', '_name'
+    __slots__ = '_com_obj', '_name', '_writeable'
 
-    def __init__(self, get_index=None, put_index=None):
-        self._get_index = get_index
-        self._put_index = put_index
-        self._name = ''
+    def __init__(self, com_obj, name='', write=True):
+        self._com_obj = com_obj
+        self._name = name
+        self._writeable = write
+        self._get_index = 0
+        self._put_index = 0
 
     def __set_name__(self, owner, name):
         self._name = " '%s'" % name
 
 
 class LongProperty(BaseProperty):
-    __slots__ = '_get_index', '_put_index', '_name'
 
     def __get__(self, obj, objtype=None):
-        if self._get_index is None:
-            raise AttributeError("Attribute %s is not readable" % self._name)
-        result = ctypes.c_long(-1)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), ctypes.byref(result))
-        return result.value
+        return getattr(self._com_obj, self._name, None)
 
     def __set__(self, obj, value):
-        if self._put_index is None:
+        if not self._writeable:
             raise AttributeError("Attribute %s is not writable" % self._name)
         value = int(value)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long)(self._put_index, "put_property")
-        prototype(obj.get(), value)
+        setattr(self._com_obj, self._name, value)
 
 
 class VariantBoolProperty(BaseProperty):
     def __get__(self, obj, objtype=None):
-        if self._get_index is None:
-            raise AttributeError("Attribute %s is not readable" % self._name)
-        result = ctypes.c_short(-1)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), ctypes.byref(result))
-        return bool(result.value)
+        return bool(getattr(self._com_obj, self._name, None))
 
     def __set__(self, obj, value):
         if self._put_index is None:

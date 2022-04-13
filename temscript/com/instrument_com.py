@@ -241,7 +241,7 @@ class TemperatureControl(IUnknown):
     def RefrigerantLevels(self):
         levels = dict()
         res = ctypes.c_double(-1)
-        for dewar in RefrigerantLevel:
+        for dewar in RefrigerantDewar:
             try:
                 TemperatureControl.REFRIGERANT_LEVEL_METHOD(self.get(), dewar.value, ctypes.byref(res))
                 levels[dewar.name] = res.value

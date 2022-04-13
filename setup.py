@@ -35,7 +35,7 @@ setup(name='temscript',
           'License :: OSI Approved :: BSD License',
           'Operating System :: OS Independent'
       ],
-      install_requires=['numpy'],
+      install_requires=['numpy', 'comtypes'],
       entry_points={'console_scripts': ['temscript-server = temscript.server:run_server']},
       url="https://github.com/azazellochg/temscript",
       project_urls={

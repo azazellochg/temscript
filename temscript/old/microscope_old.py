@@ -1,6 +1,6 @@
 import math
 
-from temscript.base_microscope import set_enum_attr_from_dict, set_attr_from_dict
+from temscript.old.base_microscope import set_enum_attr_from_dict, set_attr_from_dict
 
 from .base_microscope import BaseMicroscope, parse_enum, STAGE_AXES
 from .instrument import (CCDCamera, GetInstrument, GetAdvancedInstrument,

@@ -1,55 +1,140 @@
-from comtypes.client import CreateObject
-from http.client import HTTPConnection
-import logging
-
-#from .base_microscope import BaseMicroscope
-from .objects import *
-from utils.constants import *
+from .base_microscope import *
 
 
-class Microscope:
-    """ Main class """
+class Microscope(BaseMicroscope):
+    """ Main class. """
 
     def __init__(self, address=None, timeout=None, simulate=False, logLevel=logging.INFO):
-        self.tem = None
-        self.tem_adv = None
-        self.cameras = dict()
-        self.address = address
-        self.timeout = timeout
+        super().__init__(address, timeout, simulate, logLevel)
 
         self.acquisition = Acquisition(self)
-        self.detectors = Detectors(self)  # Cameras, STEM detectors
-        self.optics = Optics(self)  # Gun, Projection, Illumination, Apertures, VPP
+        self.detectors = Detectors(self)
+        self.optics = Optics(self)
         self.temperature = Temperature(self)
         self.vacuum = Vacuum(self)
-        self.sample = Sample(self)  # Autoloader and Stage
+        self.sample = Sample(self)
 
-        logging.basicConfig(level=logLevel,
-                            handlers=[
-                                logging.FileHandler("debug.log"),
-                                logging.StreamHandler()])
+    @property
+    def family(self):
+        return self.tem.Configuration.ProductFamily
 
-        if simulate:
-            raise NotImplementedError()
-        elif address is None:
-            # local connection
-            self._createInstrument()
+    @property
+    def user_buttons(self):
+        buttons = {}
+        for b in self.tem.UserButtons:
+            buttons[b.Name] = b.Label
+        return buttons
+
+
+class Acquisition(BaseAcquisition):
+    """ Image acquisition functions. """
+
+    def acquire_tem_image(self, cameraName, **kwargs):
+        self._acquire(cameraName, **kwargs)
+
+    def acquire_stem_image(self, cameraName, **kwargs):
+        self._acquire(cameraName, stem=True, **kwargs)
+
+
+class Detectors(BaseDetectors):
+    """ CCD/DDD, plate and STEM detectors. """
+
+    def cameras(self):
+        self.get_cameras()
+
+    def stem_detectors(self):
+        self.get_stem_detectors()
+
+
+class Temperature:
+    """ LN dewars and temperature controls. """
+
+    def __init__(self, microscope):
+        self.tem_temp_control = microscope.tem.TemperatureControl
+
+    def force_refill(self):
+        if self.tem_temp_control.TemperatureControlAvailable:
+            self.tem_temp_control.ForceRefill()
         else:
-            raise NotImplementedError()
+            raise Exception("TemperatureControl is not available")
 
-    def _createInstrument(self):
-        """ Try to use both std and advanced scripting. """
-        try:
-            self.tem_adv = CreateObject(SCRIPTING_ADV)
-            self.tem = CreateObject(SCRIPTING_STD)
-            logging.info(f"Connected to {SCRIPTING_ADV} and {SCRIPTING_STD}")
-        except:
-            logging.info(f"Could not connect to {SCRIPTING_ADV}")
-            self.tem = CreateObject(SCRIPTING_STD)
+    def dewar_level(self, dewar):
+        if self.tem_temp_control.TemperatureControlAvailable:
+            dewar = parse_enum(RefrigerantDewar, dewar)
+            return self.tem_temp_control.RefrigerantLevel(dewar)
         else:
-            self.tem = CreateObject(SCRIPTING_TECNAI)
-            logging.info(f"Connected to {SCRIPTING_TECNAI}")
+            raise Exception("TemperatureControl is not available")
 
+    @property
+    def is_filling(self):
+        return self.tem_temp_control.DewarsAreBusyFilling
+
+    @property
+    def remaining_time(self):
+        return self.tem_temp_control.DewarsRemainingType
+
+
+class Sample(BaseSample):
+    """ Autoloader and Stage functions. """
+
+    def __init__(self, microscope):
+        super().__init__(microscope)
+        self.autoloader = Autoloader(self.tem_autoloader)
+        self.stage = Stage(self.tem_stage)
+
+
+class Autoloader:
+
+    def __init__(self, tem_autoloader):
+        self.tem_autoloader = tem_autoloader
+
+    def load_cartridge(self, slot):
+        self.tem_autoloader.LoadCartridge(slot)
+
+    def unload_cartridge(self):
+        self.tem_autoloader.UnloadCartridge()
+
+    def run_inventory(self):
+        self.tem_autoloader.PerformCassetteInventory()
+
+    def get_slot_status(self, slot):
+        status = self.tem_autoloader.SlotStatus(slot)
+        return parse_enum(CassetteSlotStatus, status)
+
+
+class Stage:
+
+    def __init__(self, tem_stage):
+        self.tem_stage = tem_stage
+
+
+class Vacuum:
+    """ Vacuum functions. """
+
+    def __init__(self, microscope):
+        self.tem_vacuum = microscope.tem.Vacuum
+
+    def is_column_open(self):
+        return self.tem_vacuum.ColumnValvesOpen
+
+    def run_buffer_cycle(self):
+        self.tem_vacuum.RunBufferCycle()
+
+
+class Optics(BaseOptics):
+    """ Gun, Projection, Illumination, Apertures, VPP. """
+    
+    def __init__(self, microscope):
+        super().__init__(microscope)
+        self.mode = InstrumentMode(self.tem_control)
+        self.voltage = Voltage(self.tem_gun)
+
+    def is_stem_available(self):
+        return self.tem_control.StemAvailable
+
+    @property
+    def voltage_max(self):
+        return self.tem_gun.HTMaxValue
 
 '''
 
