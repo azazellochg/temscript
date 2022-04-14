@@ -183,6 +183,16 @@ def find_cameras():
     logging.info(cameras.items())
 
 
+def test_properties():
+    tem = CreateObject("TEMScripting.Instrument.1")
+    tc = tem.TemperatureControl
+
+    if getattr(tc, 'TemperatureControlAvailable', None) is not None:
+        logging.info("getattr works")
+
+    logging.info(tem.InstrumentModeControl.InstrumentMode)
+
+
 def run_logs(objs):
     for obj in objs:
         logging.info(f"{str(obj)} uuid: {str(obj._iid_).lower()}")
@@ -196,7 +206,8 @@ if __name__ == '__main__':
     #run()
     #run_tree()
     #run_tree_adv()
-    find_cameras()
+    #find_cameras()
+    test_properties()
 
 
 '''

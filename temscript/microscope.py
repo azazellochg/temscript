@@ -1,4 +1,5 @@
 from .base_microscope import *
+from .utils.properties import *
 
 
 class Microscope(BaseMicroscope):
@@ -66,11 +67,11 @@ class Temperature:
             raise Exception("TemperatureControl is not available")
 
     @property
-    def is_filling(self):
+    def is_dewars_filling(self):
         return self.tem_temp_control.DewarsAreBusyFilling
 
     @property
-    def remaining_time(self):
+    def dewars_remaining_time(self):
         return self.tem_temp_control.DewarsRemainingType
 
 
@@ -89,17 +90,26 @@ class Autoloader:
         self.tem_autoloader = tem_autoloader
 
     def load_cartridge(self, slot):
-        self.tem_autoloader.LoadCartridge(slot)
+        if self.tem_autoloader.AutoLoaderAvailable:
+            self.tem_autoloader.LoadCartridge(slot)
 
     def unload_cartridge(self):
-        self.tem_autoloader.UnloadCartridge()
+        if self.tem_autoloader.AutoLoaderAvailable:
+            self.tem_autoloader.UnloadCartridge()
 
     def run_inventory(self):
-        self.tem_autoloader.PerformCassetteInventory()
+        if self.tem_autoloader.AutoLoaderAvailable:
+            self.tem_autoloader.PerformCassetteInventory()
 
     def get_slot_status(self, slot):
-        status = self.tem_autoloader.SlotStatus(slot)
-        return parse_enum(CassetteSlotStatus, status)
+        if self.tem_autoloader.AutoLoaderAvailable:
+            status = self.tem_autoloader.SlotStatus(slot)
+            return parse_enum(CassetteSlotStatus, status)
+
+    @property
+    def number_of_cassette_slots(self):
+        if self.tem_autoloader.AutoLoaderAvailable:
+            return self.tem_autoloader.NumberOfCassetteSlots
 
 
 class Stage:
@@ -114,11 +124,37 @@ class Vacuum:
     def __init__(self, microscope):
         self.tem_vacuum = microscope.tem.Vacuum
 
+    @property
+    def status(self):
+        return self.tem_vacuum.Status
+
+    @property
+    def is_buffer_running(self):
+        return self.tem_vacuum.PVPRunning
+
+    @property
     def is_column_open(self):
         return self.tem_vacuum.ColumnValvesOpen
 
     def run_buffer_cycle(self):
         self.tem_vacuum.RunBufferCycle()
+
+    @property
+    def gauges(self):
+        gauges = {}
+        for g in self.tem_vacuum.Gauges:
+            g.Read()
+            status = GaugeStatus(g.Status)
+
+            name = g.Name
+            if status == GaugeStatus.UNDERFLOW:
+                gauges[name] = "UNDERFLOW"
+            elif status == GaugeStatus.OVERFLOW:
+                gauges[name] = "OVERFLOW"
+            elif status == GaugeStatus.VALID:
+                gauges[name] = g.Pressure
+
+        return gauges
 
 
 class Optics(BaseOptics):
@@ -126,61 +162,13 @@ class Optics(BaseOptics):
     
     def __init__(self, microscope):
         super().__init__(microscope)
-        self.mode = InstrumentMode(self.tem_control)
+        self.mode = self.tem_control.InstrumentMode
         self.voltage = Voltage(self.tem_gun)
 
+    @property
     def is_stem_available(self):
         return self.tem_control.StemAvailable
 
     @property
     def voltage_max(self):
         return self.tem_gun.HTMaxValue
-
-'''
-
-class Prop:
-    """ property """
-    def __get__(self, obj, objType=None):
-        print(f"Getting {obj}")
-        value = obj._age
-        return value
-
-    def __set__(self, obj, value):
-        print(f"Setting {obj} to {value}")
-        self.validate(value)
-        obj._age = value
-
-    def validate(self, value):
-        if not isinstance(value, str):
-            raise TypeError("Value must be a string")
-
-
-class Acquisition:
-    property1 = Prop()
-
-    def do_smth(self):
-        print(f"Got param from Big instance: {Big.get_param}")
-        print(f"Executed do_smth")
-
-
-class Big:
-    acquisition = Acquisition()
-
-    def __init__(self):
-        self.param = None
-
-    def run(self):
-        self.param = os.path.dirname(__file__)
-
-    @property
-    def get_param(self):
-        return getattr(Big, 'param', None)
-
-
-big = Big()
-big.run()
-
-big.acquisition.property1 = "obj value"
-print("Result:", big.acquisition.property1)
-big.acquisition.do_smth()
-'''

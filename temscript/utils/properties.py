@@ -1,16 +1,11 @@
-import ctypes
-from temscript.com.com_base import *
-
 
 class BaseProperty:
-    __slots__ = '_com_obj', '_name', '_writeable'
+    __slots__ = '_com_obj', '_name', '_readonly'
 
-    def __init__(self, com_obj, name='', write=True):
+    def __init__(self, com_obj, name='', readonly=False):
         self._com_obj = com_obj
         self._name = name
-        self._writeable = write
-        self._get_index = 0
-        self._put_index = 0
+        self._readonly = readonly
 
     def __set_name__(self, owner, name):
         self._name = " '%s'" % name
@@ -19,122 +14,85 @@ class BaseProperty:
 class LongProperty(BaseProperty):
 
     def __get__(self, obj, objtype=None):
-        return getattr(self._com_obj, self._name, None)
+        return getattr(self._com_obj, self._name)
 
     def __set__(self, obj, value):
-        if not self._writeable:
+        if self._readonly:
             raise AttributeError("Attribute %s is not writable" % self._name)
-        value = int(value)
-        setattr(self._com_obj, self._name, value)
+        setattr(self._com_obj, self._name, int(value))
 
 
 class VariantBoolProperty(BaseProperty):
     def __get__(self, obj, objtype=None):
-        return bool(getattr(self._com_obj, self._name, None))
+        return bool(getattr(self._com_obj, self._name))
 
     def __set__(self, obj, value):
-        if self._put_index is None:
+        if self._readonly:
             raise AttributeError("Attribute %s is not writable" % self._name)
-        bool_value = 0xffff if value else 0x0000
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_short)(self._put_index, "put_property")
-        prototype(obj.get(), bool_value)
+        setattr(self._com_obj, self._name, bool(value))
 
 
 class DoubleProperty(BaseProperty):
     def __get__(self, obj, objtype=None):
-        if self._get_index is None:
-            raise AttributeError("Attribute %s is not readable" % self._name)
-        result = ctypes.c_double(-1)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), ctypes.byref(result))
-        return result.value
+        return float(getattr(self._com_obj, self._name))
 
     def __set__(self, obj, value):
-        if self._put_index is None:
+        if self._readonly:
             raise AttributeError("Attribute %s is not writable" % self._name)
-        value = float(value)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_double)(self._put_index, "put_property")
-        prototype(obj.get(), value)
+        setattr(self._com_obj, self._name, float(value))
 
 
 class StringProperty(BaseProperty):
     def __get__(self, obj, objtype=None):
-        if self._get_index is None:
-            raise AttributeError("Attribute %s is not readable" % self._name)
-        result = BStr()
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), result.byref())
-        return result.value
+        return str(getattr(self._com_obj, self._name))
 
     def __set__(self, obj, value):
-        if self._put_index is None:
+        if self._readonly:
             raise AttributeError("Attribute %s is not writable" % self._name)
-        value = BStr(str(value))
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._put_index, "put_property")
-        prototype(obj.get(), BStr(value).get())
+        setattr(self._com_obj, self._name, str(value))
 
 
 class EnumProperty(BaseProperty):
     __slots__ = '_enum_type'
 
-    def __init__(self, enum_type, get_index=None, put_index=None):
-        super(EnumProperty, self).__init__(get_index=get_index, put_index=put_index)
+    def __init__(self, com_obj, enum_type, name='', readonly=False):
+        super().__init__(com_obj=com_obj, name=name, readonly=readonly)
         self._enum_type = enum_type
 
     def __get__(self, obj, objtype=None):
-        if self._get_index is None:
-            raise AttributeError("Attribute %s is not readable" % self._name)
-        result = ctypes.c_int(-1)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
-        prototype(obj.get(), ctypes.byref(result))
-        return self._enum_type(result.value)
+        value = getattr(self._com_obj, self._name)
+        return self._enum_type(value)
 
     def __set__(self, obj, value):
-        if self._put_index is None:
+        if self._readonly:
             raise AttributeError("Attribute %s is not writable" % self._name)
-        value = int(value)
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_long)(self._put_index, "put_property")
-        prototype(obj.get(), value)
+        setattr(self._com_obj, self._name, int(value))
 
     def __set_name__(self, owner, name):
         self._name = " '%s'" % name
 
 
-class Vector(IUnknown):
-    IID = UUID("9851bc47-1b8c-11d3-ae0a-00a024cba50c")
-
-    X = DoubleProperty(get_index=7, put_index=8)
-    Y = DoubleProperty(get_index=9, put_index=10)
-
-
 class VectorProperty(BaseProperty):
-    __slots__ = '_get_prototype'
-
-    def __init__(self, get_index, put_index=None):
-        super(VectorProperty, self).__init__(get_index=get_index, put_index=put_index)
-        self._get_prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(get_index, "get_property")
 
     def __get__(self, obj, objtype=None):
-        result = Vector()
-        self._get_prototype(obj.get(), result.byref())
+        result = getattr(self._com_obj, self._name)
         return result.X, result.Y
 
     def __set__(self, obj, value):
-        if self._put_index is None:
-            raise AttributeError("Attribute%s is not writable" % self._name)
+        if self._readonly:
+            raise AttributeError("Attribute %s is not writable" % self._name)
 
         value = [float(c) for c in value]
         if len(value) != 2:
-            raise ValueError("Expected two items for attribute%s." % self._name)
+            raise ValueError("Expected two items for attribute %s." % self._name)
 
-        result = Vector()
-        self._get_prototype(obj.get(), result.byref())
-        result.X = value[0]
-        result.Y = value[1]
-        prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._put_index, "put_property")
-        prototype(obj.get(), result.get())
+        vector = getattr(self._com_obj, self._name)
+        vector.X = value[0]
+        vector.Y = value[1]
 
+        setattr(self._com_obj, self._name, vector)
 
+'''
 class ObjectProperty(BaseProperty):
     __slots__ = '_interface'
 
@@ -235,3 +193,5 @@ class FegFocusIndexProperty(BaseProperty):
         prototype = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)(self._get_index, "get_property")
         prototype(obj.get(), result.byref())
         return result.Coarse, result.Fine
+
+'''
