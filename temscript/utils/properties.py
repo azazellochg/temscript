@@ -7,49 +7,8 @@ class BaseProperty:
         self._name = name
         self._readonly = readonly
 
-    def __set_name__(self, owner, name):
-        self._name = " '%s'" % name
-
-
-class LongProperty(BaseProperty):
-
-    def __get__(self, obj, objtype=None):
-        return getattr(self._com_obj, self._name)
-
-    def __set__(self, obj, value):
-        if self._readonly:
-            raise AttributeError("Attribute %s is not writable" % self._name)
-        setattr(self._com_obj, self._name, int(value))
-
-
-class VariantBoolProperty(BaseProperty):
-    def __get__(self, obj, objtype=None):
-        return bool(getattr(self._com_obj, self._name))
-
-    def __set__(self, obj, value):
-        if self._readonly:
-            raise AttributeError("Attribute %s is not writable" % self._name)
-        setattr(self._com_obj, self._name, bool(value))
-
-
-class DoubleProperty(BaseProperty):
-    def __get__(self, obj, objtype=None):
-        return float(getattr(self._com_obj, self._name))
-
-    def __set__(self, obj, value):
-        if self._readonly:
-            raise AttributeError("Attribute %s is not writable" % self._name)
-        setattr(self._com_obj, self._name, float(value))
-
-
-class StringProperty(BaseProperty):
-    def __get__(self, obj, objtype=None):
-        return str(getattr(self._com_obj, self._name))
-
-    def __set__(self, obj, value):
-        if self._readonly:
-            raise AttributeError("Attribute %s is not writable" % self._name)
-        setattr(self._com_obj, self._name, str(value))
+#    def __set_name__(self, owner, name):
+#        self._name = " '%s'" % name
 
 
 class EnumProperty(BaseProperty):
@@ -61,15 +20,15 @@ class EnumProperty(BaseProperty):
 
     def __get__(self, obj, objtype=None):
         value = getattr(self._com_obj, self._name)
-        return self._enum_type(value)
+        return self._enum_type(value).name
 
     def __set__(self, obj, value):
         if self._readonly:
             raise AttributeError("Attribute %s is not writable" % self._name)
         setattr(self._com_obj, self._name, int(value))
 
-    def __set_name__(self, owner, name):
-        self._name = " '%s'" % name
+    #def __set_name__(self, owner, name):
+    #    self._name = " '%s'" % name
 
 
 class VectorProperty(BaseProperty):
