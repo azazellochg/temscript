@@ -1,189 +1,236 @@
-from .base_microscope import BaseMicroscope
-from .utils.properties import *
-from .utils.methods import *
+from .base_microscope import BaseMicroscope, Image, Vector
 from .utils.enums import *
 
 
 class Microscope(BaseMicroscope):
-    """ Main class. """
+    """ Main class that connects to the COM interface. """
 
     def __init__(self, address=None, timeout=None, simulate=False):
         super().__init__(address, timeout, simulate)
 
         self.acquisition = Acquisition(self)
         self.detectors = Detectors(self)
+        self.gun = Gun(self)
         self.optics = Optics(self)
+        self.apertures = Apertures(self)
         self.temperature = Temperature(self)
         self.vacuum = Vacuum(self)
-        self.sample = Sample(self)
+        self.autoloader = Autoloader(self)
+        self.stage = Stage(self)
+        self.piezo_stage = PiezoStage(self)
+        self.user_door = UserDoor(self)
 
     @property
     def family(self):
-        return self.tem.Configuration.ProductFamily
+        """ Returns the microscope product family / platform. """
+        return ProductFamily(self._tem.Configuration.ProductFamily).name
 
     @property
     def condenser_system(self):
-        return self.tem.Configuration.CondernserLensSystem
+        """ Returns the type of condenser lens system: two or three lenses. """
+        return CondenserLensSystem(self._tem.Configuration.CondenserLensSystem).name
 
     @property
     def user_buttons(self):
-        buttons = {}
-        for b in self.tem.UserButtons:
-            buttons[b.Name] = b.Label
-        return buttons
+        """ Returns a dict with assigned hand panels buttons. """
+        return {b.Name: b.Label for b in self._tem.UserButtons}
+
+    def check_license(self):
+        """ Returns a dict with advanced scripting license information. """
+        return {
+            'tem_scripting': self._lic_cam.IsTemScriptingLicensed,
+            'dose_fractions': self._lic_cam.IsDoseFractionsLicensed,
+            'electron_counting': self._lic_cam.IsElectronCountingLicensed
+        }
+
+
+class UserDoor:
+    """ User door hatch controls. """
+
+    def __init__(self, microscope):
+        self._tem_door = microscope._tem_adv.UserDoorHatch
+
+    @property
+    def state(self):
+        return HatchState(self._tem_door.State).name
+
+    def open(self):
+        if self._tem_door.IsControlAllowed:
+            self._tem_door.Open()
+
+    def close(self):
+        if self._tem_door.IsControlAllowed:
+            self._tem_door.Close()
 
 
 class Acquisition:
     """ Image acquisition functions. """
 
     def __init__(self, microscope):
-        self.tem = microscope.tem
-        self.tem_adv = microscope.tem_adv
-        self.tem_acq = self.tem.Acquisition
-        self.tem_csa = self.tem_adv.Acquisitions.CameraSingleAcquisition
-        self.tem_cam = microscope.Camera
+        self._tem_acq = microscope._tem.Acquisition
+        self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
+        self._tem_cam = microscope._tem.Camera
         self.isAdvanced = False
 
     def _find_camera(self, name):
         """Find camera object by name. Check adv scripting first. """
-        for cam in self.tem_csa.SupportedCameras:
+        for cam in self._tem_csa.SupportedCameras:
             if cam.Name == name:
                 self.isAdvanced = True
                 return cam
-        for cam in self.tem_acq.Cameras:
+        for cam in self._tem_acq.Cameras:
             if cam.Info.Name == name:
                 return cam
-        raise KeyError("No camera with name %s" % name)
+        raise KeyError(f"No camera with name {name}")
 
     def _find_stem_detector(self, name):
         """Find STEM detector object by name"""
-        for stem in self.tem_acq.Detectors:
+        for stem in self._tem_acq.Detectors:
             if stem.Info.Name == name:
                 return stem
-        raise KeyError("No STEM detector with name %s" % name)
+        raise KeyError(f"No STEM detector with name {name}")
 
     def _check_binning(self, binning):
         """ Check if input binning is in SupportedBinnings for a single-acquisition camera.
         Assume that the camera is set: self._tem_csa.Camera = camera.
-        Returns Binning object.
+
+        :param binning: Input binning
+        :type binning: int
+        :returns: Binning object
         """
-        param = self.tem_csa.CameraSettings.Capabilities
+        param = self._tem_csa.CameraSettings.Capabilities
         for b in param.SupportedBinnings:
             if int(b.Width) == int(binning):
                 return b
         return False
 
-    def _set_camera_param(self, name, params, ignore_errors=False):
+    def _set_camera_param(self, name, size, exp_time, binning, **kwargs):
         camera = self._find_camera(name)
 
         if self.isAdvanced:
-            self.tem_csa.Camera = camera
-            settings = self.tem_csa.CameraSettings
-            set_enum_attr_from_dict(settings, 'ReadoutArea', AcqImageSize, params, 'image_size',
-                                    ignore_errors=ignore_errors)
+            self._tem_csa.Camera = camera
+            settings = self._tem_csa.CameraSettings
+            settings.ReadoutArea = size
 
-            binning = self._check_binning(params['binning'])
+            binning = self._check_binning(binning)
             if binning:
-                params['binning'] = binning
-                set_attr_from_dict(settings, 'Binning', params, 'binning', ignore_errors=ignore_errors)
+                settings.Binning = binning
 
             # Set exposure after binning, since it adjusted automatically when binning is set
-            set_attr_from_dict(settings, 'ExposureTime', params, 'exposure(s)', ignore_errors=ignore_errors)
+            settings.ExposureTime = exp_time
 
         else:
             info = camera.Info
             settings = camera.AcqParams
-            set_enum_attr_from_dict(settings, 'ImageSize', AcqImageSize, params, 'image_size', ignore_errors=ignore_errors)
-            set_attr_from_dict(settings, 'Binning', params, 'binning', ignore_errors=ignore_errors)
-            set_enum_attr_from_dict(settings, 'ImageCorrection', AcqImageCorrection, params, 'correction',
-                                    ignore_errors=ignore_errors)
-            set_enum_attr_from_dict(settings, 'ExposureMode', AcqExposureMode, params, 'exposure_mode',
-                                    ignore_errors=ignore_errors)
-            set_enum_attr_from_dict(info, 'ShutterMode', AcqShutterMode, params, 'shutter_mode',
-                                    ignore_errors=ignore_errors)
-            set_attr_from_dict(settings, 'PreExposureTime', params, 'pre_exposure(s)', ignore_errors=ignore_errors)
-            set_attr_from_dict(settings, 'PreExposurePauseTime', params, 'pre_exposure_pause(s)',
-                               ignore_errors=ignore_errors)
+            settings.ImageSize = size
+            settings.Binning = binning
+
+            if 'correction' in kwargs:
+                settings.ImageCorrection = kwargs['correction']
+            if 'exposure_mode' in kwargs:
+                settings.ExposureMode = kwargs['exposure_mode']
+            if 'shutter_mode' in kwargs:
+                info.ShutterMode = kwargs['shutter_mode']
+            if 'pre_exp_time' in kwargs:
+                settings.PreExposureTime = kwargs['pre_exp_time']
+            if 'pre_exp_pause_time' in kwargs:
+                settings.PreExposurePauseTime = kwargs['pre_exp_pause_time']
 
             # Set exposure after binning, since it adjusted automatically when binning is set
-            set_attr_from_dict(settings, 'ExposureTime', params, 'exposure(s)', ignore_errors=ignore_errors)
+            settings.ExposureTime = exp_time
 
-        if not ignore_errors and params:
-            raise ValueError("Unknown keys in parameter dictionary.")
+    def _set_film_param(self, film_text, exp_time, **kwargs):
+        self._tem_cam.FilmText = film_text
+        self._tem_cam.ManualExposureTime = exp_time
 
-    def _set_stem_detector_param(self, name, params, ignore_errors=False):
-        det = self._find_stem_detector(name)
+    def _acquire(self, cameraName):
+        """ Perform actual acquisition.
+
+        :returns: Image object
+        """
+        self._tem_acq.RemoveAllAcqDevices()
+        self._tem_acq.AddAcqDeviceByName(cameraName)
+        img = self._tem_acq.AcquireImages()
+
+        return Image(img)
+
+    def acquire_tem_image(self, cameraName, size, exp_time=1, binning=1, **kwargs):
+        """ Acquire a TEM image.
+
+        :param cameraName: Camera name
+        :type cameraName: str
+        :param size: Image size (AcqImageSize enum)
+        :type size: IntEnum
+        :param exp_time: Exposure time in seconds
+        :type exp_time: float
+        :param binning: Binning factor
+        :returns: Image object
+        """
+        self._set_camera_param(cameraName, size, exp_time, binning, **kwargs)
+        if self.isAdvanced:
+            img = self._tem_csa.Acquire()
+            return Image(img, isAdvanced=True)
+
+        self._acquire(cameraName)
+
+    def acquire_stem_image(self, cameraName, size, dwell_time=1E-6, binning=1, **kwargs):
+        """ Acquire a STEM image.
+
+        :param cameraName: Camera name
+        :type cameraName: str
+        :param size: Image size (AcqImageSize enum)
+        :type size: IntEnum
+        :param dwell_time: Dwell time in seconds
+        :type dwell_time: float
+        :param binning: Binning factor
+        :returns: Image object
+        """
+        det = self._find_stem_detector(cameraName)
         info = det.Info
-        set_attr_from_dict(info, 'Brightness', params, 'brightness')
-        set_attr_from_dict(info, 'Contrast', params, 'contrast')
 
-        settings = self.tem_acq.StemAcqParams
-        set_enum_attr_from_dict(settings, 'ImageSize', AcqImageSize, params, 'image_size', ignore_errors=ignore_errors)
-        set_attr_from_dict(settings, 'Binning', params, 'binning', ignore_errors=ignore_errors)
-        set_attr_from_dict(settings, 'DwellTime', params, 'dwell_time(s)', ignore_errors=ignore_errors)
+        if 'brightness' in kwargs:
+            info.Brightness = kwargs['brightness']
+        if 'contrast' in kwargs:
+            info.Contrast = kwargs['contrast']
 
-        if not ignore_errors and params:
-            raise ValueError("Unknown keys in parameter dictionary.")
+        settings = self._tem_acq.StemAcqParams
+        settings.ImageSize = size
+        settings.Binning = binning
+        settings.DwellTime = dwell_time
 
-    def _set_film_param(self, params, ignore_errors=False):
-        set_attr_from_dict(self.tem_cam, 'FilmText', params, 'film_text',
-                           ignore_errors=ignore_errors)
-        set_attr_from_dict(self.tem_cam, 'ManualExposureTime', params, 'exposure_time(s)',
-                           ignore_errors=ignore_errors)
+        self._acquire(cameraName)
 
-    def _acquire(self, cameraName, stem=False, **kwargs):
-        result = {}
-        if stem:
-            self._set_stem_detector_param(cameraName, **kwargs)
-        else:
-            self._set_camera_param(cameraName, **kwargs)
-            if self.isAdvanced:
-                img = self.tem_csa.Acquire()
-                md = img.Metadata
-                img_name = md['DetectorName'] + '_' + md['TimeStamp']
-                result[img_name] = img._AsSafeArray
-                return result
+    def acquire_film(self, film_text, exp_time, **kwargs):
+        """ Expose a film.
 
-        self.tem_acq.RemoveAllAcqDevices()
-        self.tem_acq.AddAcqDeviceByName(cameraName)
-        img = self.tem_acq.AcquireImages()
-        result[img.Name] = img._AsSafeArray
-
-        return result
-
-    def acquire_tem_image(self, cameraName, **kwargs):
-        self._acquire(cameraName, **kwargs)
-
-    def acquire_stem_image(self, cameraName, **kwargs):
-        self._acquire(cameraName, stem=True, **kwargs)
-
-    def acquire_film(self, **kwargs):
-        if self.tem_cam.Stock > 0:
-            self.tem_cam.PlateLabelDataType = PlateLabelDateFormat.DDMMYY
-            self.tem_cam.ExposureNumber += 1
-            self.tem_cam.MainScreen = ScreenPosition.UP
-            self.tem_cam.ScreenDim = True
-            self._set_film_param(**kwargs)
-            self.tem_cam.TakeExposure()
+        :param film_text: Film text
+        :type film_text: str
+        :param exp_time: Exposure time in seconds
+        :type exp_time: float
+        """
+        if self._tem_cam.Stock > 0:
+            self._tem_cam.PlateLabelDataType = PlateLabelDateFormat.DDMMYY
+            self._tem_cam.ExposureNumber += 1  # TODO: check this
+            self._tem_cam.MainScreen = ScreenPosition.UP
+            self._tem_cam.ScreenDim = True
+            self._set_film_param(film_text, exp_time, **kwargs)
+            self._tem_cam.TakeExposure()
         else:
             raise Exception("Plate stock is empty!")
 
 
 class Detectors:
-    """ CCD/DDD, plate and STEM detectors. """
+    """ CCD/DDD, film/plate and STEM detectors. """
 
     def __init__(self, microscope):
-        self.tem = microscope.tem
-        self.tem_adv = microscope.tem_adv
-        self.tem_acq = self.tem.Acquisition
-        self.tem_csa = self.tem_adv.Acquisitions.CameraSingleAcquisition
-        self.tem_cam = microscope.Camera
-
-        self.screen = EnumProperty(self.tem.Camera, ScreenPosition, 'MainScreen')
+        self._tem_acq = microscope._tem.Acquisition
+        self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
+        self._tem_cam = microscope._tem.Camera
 
     def cameras(self):
+        """ Returns a dict with camera parameters. """
         self.cameras = dict()
-        for cam in self.tem_acq.Cameras:
+        for cam in self._tem_acq.Cameras:
             info = cam.Info
             param = cam.AcqParams
             name = info.Name
@@ -197,9 +244,9 @@ class Detectors:
                 "pre_exposure_limits(s)": (param.MinPreExposureTime, param.MaxPreExposureTime),
                 "pre_exposure_pause_limits(s)": (param.MinPreExposurePauseTime, param.MaxPreExposurePauseTime)
             }
-        for cam in self.tem_csa.SupportedCameras:
-            self.tem_csa.Camera = cam
-            param = self.tem_csa.CameraSettings.Capabilities
+        for cam in self._tem_csa.SupportedCameras:
+            self._tem_csa.Camera = cam
+            param = self._tem_csa.CameraSettings.Capabilities
             self.cameras[cam.Name] = {
                 "type": "CAMERA_ADVANCED",
                 "height": cam.Height,
@@ -216,8 +263,9 @@ class Detectors:
         return self.cameras
 
     def stem_detectors(self):
+        """ Returns a dict with STEM detectors parameters. """
         self.stem_detectors = dict()
-        for det in self.tem_acq.Detectors:
+        for det in self._tem_acq.Detectors:
             info = det.Info
             name = info.Name
             self.stem_detectors[name] = {
@@ -229,14 +277,23 @@ class Detectors:
         return self.stem_detectors
 
     @property
+    def screen(self):
+        return ScreenPosition(self._tem_cam.MainScreen).name
+
+    @screen.setter
+    def screen(self, value):
+        self._tem_cam.MainScreen = value
+
+    @property
     def film_settings(self):
+        """ Returns a dict with film settings. """
         return {
-            "stock": self.tem_cam.Stock,
-            "exposure_time(s)": self.tem_cam.ManualExposureTime,
-            "film_text": self.tem_cam.FilmText,
-            "exposure_number": self.tem_cam.ExposureNumber,
-            "user_code": self.tem_cam.Usercode,
-            "screen_current": self.tem_cam.ScreenCurrent
+            "stock": self._tem_cam.Stock,
+            "exposure_time": self._tem_cam.ManualExposureTime,
+            "film_text": self._tem_cam.FilmText,
+            "exposure_number": self._tem_cam.ExposureNumber,
+            "user_code": self._tem_cam.Usercode,
+            "screen_current": self._tem_cam.ScreenCurrent
         }
 
 
@@ -244,77 +301,80 @@ class Temperature:
     """ LN dewars and temperature controls. """
 
     def __init__(self, microscope):
-        self.tem_temp_control = microscope.tem.TemperatureControl
+        self._tem_temp_control = microscope._tem.TemperatureControl
 
     def force_refill(self):
-        if self.tem_temp_control.TemperatureControlAvailable:
-            self.tem_temp_control.ForceRefill()
+        if self._tem_temp_control.TemperatureControlAvailable:
+            self._tem_temp_control.ForceRefill()
         else:
             raise Exception("TemperatureControl is not available")
 
     def dewar_level(self, dewar):
-        if self.tem_temp_control.TemperatureControlAvailable:
-            dewar = parse_enum(RefrigerantDewar, dewar)
-            return self.tem_temp_control.RefrigerantLevel(dewar)
+        """ Returns LN level in the dewar.
+
+        :param dewar: Dewar name (RefrigerantDewar enum)
+        :type dewar: IntEnum
+        """
+        if self._tem_temp_control.TemperatureControlAvailable:
+            return self._tem_temp_control.RefrigerantLevel(dewar)
         else:
             raise Exception("TemperatureControl is not available")
 
     @property
     def is_dewars_filling(self):
-        return self.tem_temp_control.DewarsAreBusyFilling
+        return self._tem_temp_control.DewarsAreBusyFilling
 
     @property
     def dewars_remaining_time(self):
-        return self.tem_temp_control.DewarsRemainingTime
-
-
-class Sample:
-    """ Autoloader and Stage functions. """
-
-    def __init__(self, microscope):
-        self.tem = microscope.tem
-        self.autoloader = Autoloader(self.tem.AutoLoader)
-        self.stage = Stage(self.tem.Stage)
+        return self._tem_temp_control.DewarsRemainingTime
 
 
 class Autoloader:
     """ Sample loading functions. """
 
-    def __init__(self, tem_autoloader):
-        self.tem_autoloader = tem_autoloader
+    def __init__(self, microscope):
+        self._tem_autoloader = microscope._tem.AutoLoader
 
     def load_cartridge(self, slot):
-        if self.tem_autoloader.AutoLoaderAvailable:
-            self.tem_autoloader.LoadCartridge(slot)
+        if self._tem_autoloader.AutoLoaderAvailable:
+            self._tem_autoloader.LoadCartridge(slot)
+        else:
+            raise Exception("Autoloader is not available")
 
     def unload_cartridge(self):
-        if self.tem_autoloader.AutoLoaderAvailable:
-            self.tem_autoloader.UnloadCartridge()
+        if self._tem_autoloader.AutoLoaderAvailable:
+            self._tem_autoloader.UnloadCartridge()
+        else:
+            raise Exception("Autoloader is not available")
 
     def run_inventory(self):
-        if self.tem_autoloader.AutoLoaderAvailable:
-            self.tem_autoloader.PerformCassetteInventory()
+        if self._tem_autoloader.AutoLoaderAvailable:
+            self._tem_autoloader.PerformCassetteInventory()
+        else:
+            raise Exception("Autoloader is not available")
 
     def get_slot_status(self, slot):
-        if self.tem_autoloader.AutoLoaderAvailable:
-            status = self.tem_autoloader.SlotStatus(slot)
+        if self._tem_autoloader.AutoLoaderAvailable:
+            status = self._tem_autoloader.SlotStatus(slot)
             return CassetteSlotStatus(status).name
+        else:
+            raise Exception("Autoloader is not available")
 
     @property
     def number_of_cassette_slots(self):
-        if self.tem_autoloader.AutoLoaderAvailable:
-            return self.tem_autoloader.NumberOfCassetteSlots
+        if self._tem_autoloader.AutoLoaderAvailable:
+            return self._tem_autoloader.NumberOfCassetteSlots
+        else:
+            raise Exception("Autoloader is not available")
 
 
 class Stage:
     """ Stage functions. """
 
-    def __init__(self, tem_stage):
-        self.tem_stage = tem_stage
-        self.status = EnumProperty(self.tem_stage, StageStatus, "Status", readonly=True)
-        self.holder = EnumProperty(self.tem_stage, StageHolderType, "Holder", readonly=True)
+    def __init__(self, microscope):
+        self._tem_stage = microscope._tem.Stage
 
-    def from_dict(self, position, values):
+    def _from_dict(self, position, values):
         axes = 0
         for key, value in values.items():
             if key not in 'xyzab':
@@ -325,29 +385,38 @@ class Stage:
         return axes
 
     @property
+    def status(self):
+        return StageStatus(self._tem_stage.Status).name
+
+    @property
+    def holder_type(self):
+        return StageHolderType(self._tem_stage.Holder).name
+
+    @property
     def position(self):
-        pos = self.tem_stage.Position
+        pos = self._tem_stage.Position
         axes = 'xyzab'
         return {key: getattr(pos, key.upper()) for key in axes}
 
     def go_to(self, speed=None, **kwargs):
-        pos = self.tem_stage.Position
-        axes = self.from_dict(pos, kwargs)
+        pos = self._tem_stage.Position
+        axes = self._from_dict(pos, kwargs)
         if speed:
-            self.tem_stage.GoToWithSpeed(axes, speed)
+            self._tem_stage.GoToWithSpeed(axes, speed)
         else:
-            self.tem_stage.GoTo(axes)
+            self._tem_stage.GoTo(axes)
 
     def move_to(self, **kwargs):
-        pos = self.tem_stage.Position
-        axes = self.from_dict(pos, kwargs)
-        self.tem_stage.MoveTo(axes)
+        pos = self._tem_stage.Position
+        axes = self._from_dict(pos, kwargs)
+        self._tem_stage.MoveTo(axes)
 
     @property
     def limits(self):
+        """ Returns a dict with stage move limits. """
         result = dict()
         for axis in 'xyzab':
-            data = self.tem_stage.AxisData(StageAxes[axis.upper()])
+            data = self._tem_stage.AxisData(StageAxes[axis.upper()])
             result[axis] = {
                 'min': data.MinPos,
                 'max': data.MaxPos,
@@ -356,28 +425,56 @@ class Stage:
         return result
 
 
+class PiezoStage:
+    """ Piezo stage functions. """
+
+    def __init__(self, microscope):
+        self._tem_pstage = microscope._tem_adv.PiezoStage
+        self.high_resolution = self._tem_pstage.HighResolution
+
+    @property
+    def position(self):
+        pos = self._tem_pstage.CurrentPosition
+        axes = 'xyz'
+        return {key: getattr(pos, key.upper()) for key in axes}
+
+    @property
+    def position_range(self):
+        return self._tem_pstage.GetPositionRange()
+
+    @property
+    def velocity(self):
+        pos = self._tem_pstage.CurrentJogVelocity
+        axes = 'xyz'
+        return {key: getattr(pos, key.upper()) for key in axes}
+
+
 class Vacuum:
     """ Vacuum functions. """
 
     def __init__(self, microscope):
-        self.tem_vacuum = microscope.tem.Vacuum
-        self.status = EnumProperty(self.tem_vacuum, VacuumStatus, "Status", readonly=True)
+        self._tem_vacuum = microscope._tem.Vacuum
+
+    @property
+    def status(self):
+        return VacuumStatus(self._tem_vacuum.Status).name
 
     @property
     def is_buffer_running(self):
-        return self.tem_vacuum.PVPRunning
+        return self._tem_vacuum.PVPRunning
 
     @property
     def is_column_open(self):
-        return self.tem_vacuum.ColumnValvesOpen
+        return self._tem_vacuum.ColumnValvesOpen
 
     def run_buffer_cycle(self):
-        self.tem_vacuum.RunBufferCycle()
+        self._tem_vacuum.RunBufferCycle()
 
     @property
     def gauges(self):
+        """ Returns a dict with vacuum gauges information. """
         gauges = {}
-        for g in self.tem_vacuum.Gauges:
+        for g in self._tem_vacuum.Gauges:
             g.Read()
             gauges[g.Name] = {
                 "status": GaugeStatus(g.Status).name,
@@ -388,47 +485,256 @@ class Vacuum:
 
 
 class Optics:
-    """ Gun, Projection, Illumination, Apertures, VPP. """
+    """ Projection, Illumination functions. """
     
     def __init__(self, microscope):
-        self.tem = microscope.tem
-        self.tem_adv = microscope.tem_adv
-        self.tem_gun = self.tem.Gun
-        self.tem_gun1 = self.tem.Gun
-        self.tem_illumination = self.tem.Illumination
-        self.tem_projection = self.tem.Projection
-        self.tem_control = self.tem.InstrumentModeControl
-        self.tem_vpp = self.tem_adv.Phaseplate
+        self._tem = microscope._tem
+        self._tem_adv = microscope._tem_adv
+        self._tem_illumination = self._tem.Illumination
+        self._tem_projection = self._tem.Projection
+        self._tem_control = self._tem.InstrumentModeControl
+        self.illumination = Illumination(self._tem_illumination)
+        self.projection = Projection(self._tem_projection)
 
-        self.mode = EnumProperty(self.tem_control, InstrumentMode, "InstrumentMode")
-        self.voltage_offset = self.tem_gun1.HighVoltageOffset
-        self.shutter_override = self.tem.BlankerShutter.ShutterOverrideOn
-        self.ht_state = EnumProperty(self.tem_gun, HighTensionState, "HTState")
+    @property
+    def is_beam_blanked(self):
+        return self._tem_illumination.BeamBlanked
+
+    @property
+    def is_shutter_override_on(self):
+        return self._tem.BlankerShutter.ShutterOverrideOn
+
+    @property
+    def mode(self):
+        return InstrumentMode(self._tem_control.InstrumentMode).name
+
+    @mode.setter
+    def mode(self, value):
+        self._tem_control.InstrumentMode = value
 
     @property
     def is_stem_available(self):
-        return self.tem_control.StemAvailable
+        return self._tem_control.StemAvailable
+
+    @property
+    def is_shutter_override(self):
+        return self._tem.BlankerShutter
+
+    @property
+    def is_autonormalize_on(self):
+        return self._tem.AutoNormalizeEnabled
+
+    def normalize_all(self):
+        self._tem.NormalizeAll()
+
+    def normalize(self, mode):
+        if mode in ProjectionNormalization:
+            self._tem_projection.Normalize(mode)
+        elif mode in IlluminationNormalization:
+            self._tem_illumination.Normalize(mode)
+        else:
+            raise ValueError(f"Unknown normalization mode: {mode}")
+
+
+class Illumination:
+    """ Illumination functions. """
+
+    def __init__(self, illumination):
+        self._tem_illumination = illumination
+        self.spotsize = self._tem_illumination.SpotsizeIndex
+        self.intensity = self._tem_illumination.Intensity
+        self.intensity_zoom = self._tem_illumination.IntensityZoomEnabled
+        self.intensity_limit = self._tem_illumination.IntensityLimitEnabled
+        self.shift = Vector(self._tem_illumination, 'Shift')
+        self.tilt = Vector(self._tem_illumination, 'Tilt')
+        self.rotation_center = Vector(self._tem_illumination, 'RotationCenter')
+        self.condenser_stigmator = Vector(self._tem_illumination, 'CondenserStigmator')
+        self.illuminated_area = self._tem_illumination.IlluminatedArea
+        self.probe_defocus = self._tem_illumination.ProbeDefocus
+        self.convergence_angle = self._tem_illumination.ConvergenceAngle
+        self.stem_magnification = self._tem_illumination.StemMagnification
+        self.stem_rotation = self._tem_illumination.StemRotation
+        self.stem_fov = Vector(self._tem_illumination, 'StemFullScanFieldOfView')
+        self.C3_ImageDistance_ParallelOffset = self._tem_illumination.C3ImageDistanceParallelOffset
+
+    @property
+    def mode(self):
+        return IlluminationMode(self._tem_illumination.Mode).name
+
+    @mode.setter
+    def mode(self, value):
+        self._tem_illumination.Mode = value
+
+    @property
+    def dark_field_mode(self):
+        return DarkFieldMode(self._tem_illumination.DFMode).name
+
+    @dark_field_mode.setter
+    def dark_field_mode(self, value):
+        self._tem_illumination.DFMode = value
+
+    @property
+    def condenser_mode(self):
+        return CondenserMode(self._tem_illumination.CondenserMode).name
+
+    @condenser_mode.setter
+    def condenser_mode(self, value):
+        self._tem_illumination.CondenserMode = value
+
+
+class Projection:
+    """ Projection system functions. """
+
+    def __init__(self, projection):
+        self._tem_projection = projection
+
+
+
+class Apertures:
+    """ Apertures and VPP controls. """
+
+    def __init__(self, microscope):
+        self._tem_apertures = microscope._tem.ApertureMechanismCollection
+        self._tem_vpp = microscope._tem_adv.PhasePlate
+
+    def _find_aperture(self, name):
+        """Find aperture object by name. """
+        for ap in self._tem_apertures:
+            if MechanismId(ap.Id).name == name:
+                return ap
+        raise KeyError(f"No aperture with name {name}")
+
+    @property
+    def vpp_position(self):
+        return self._tem_vpp.GetCurrentPresetPosition
+
+    def vpp_next_position(self):
+        self._tem_vpp.SelectNextPresetPosition()
+
+    def enable(self, aperture):
+        ap = self._find_aperture(aperture)
+        ap.Enable()
+
+    def disable(self, aperture):
+        ap = self._find_aperture(aperture)
+        ap.Disable()
+
+    def retract(self, aperture):
+        ap = self._find_aperture(aperture)
+        if ap.IsRetractable:
+            ap.Retract()
+
+    def select(self, aperture, size):
+        """ Select a specific aperture.
+
+        :param aperture: Aperture name
+        :type aperture: str
+        :param size: Aperture size
+        :type size: float
+        """
+        ap = self._find_aperture(aperture)
+        if ap.State == MechanismState.DISABLED:
+            ap.Enable()
+        for a in ap.ApertureCollection:
+            if a.Diameter == size:
+                ap.SelectAperture(a)
+                if ap.SelectedAperture.Diameter == size:
+                    return
+                else:
+                    raise Exception("Could not select aperture!")
+
+    @property
+    def show_all(self):
+        """ Returns a dict with apertures information. """
+        result = {}
+        for ap in self._tem_apertures:
+            result[MechanismId(ap.Id).name] = {"retractable": ap.IsRetractable,
+                                               "state": MechanismState(ap.State).name,
+                                               "sizes": [a.Diameter for a in ap.ApertureCollection]
+                                               }
+        return result
+
+
+class Gun:
+    """ Gun functions. """
+
+    def __init__(self, microscope):
+        self._tem_gun = microscope._tem.Gun
+        self._has_feg = self._init_feg(microscope)
+        self._has_gun1 = self._init_gun1(microscope)
+        self.shift = Vector(self._tem_gun, 'Shift')
+        self.tilt = Vector(self._tem_gun, 'Tilt')
+
+    def _init_gun1(self, microscope):
+        try:
+            self._tem_gun1 = microscope._tem.Gun1
+            self.voltage_offset = self._tem_gun1.HighVoltageOffset
+            return True
+        except:
+            print("Gun1 interface is not available. Requires TEM Server 7.10+")
+            return False
+
+    def _init_feg(self, microscope):
+        try:
+            self._tem_feg = microscope._tem_adv.Source
+            return True
+        except:
+            print("Source/FEG interface is not available.")
+            return False
+
+    @property
+    def feg_state(self):
+        if self._has_feg:
+            return FegState(self._tem_feg.State).name
+
+    @property
+    def ht_state(self):
+        return HighTensionState(self._tem_feg.HTState).name
+
+    @ht_state.setter
+    def ht_state(self, value):
+        self._tem_feg.State = value
 
     @property
     def voltage(self):
-        state = self.tem_gun.HTState
+        state = self._tem_gun.HTState
         if state == HighTensionState.ON:
-            return self.tem_gun.HTValue * 1e-3
+            return self._tem_gun.HTValue * 1e-3
         else:
             return 0.0
 
     @voltage.setter
     def voltage(self, value):
-        self.tem_gun.HTValue = value
+        self._tem_gun.HTValue = value
 
     @property
     def voltage_max(self):
-        return self.tem_gun.HTMaxValue
+        return self._tem_gun.HTMaxValue
 
     @property
     def voltage_offset_range(self):
-        return self.tem_gun1.GetHighVoltageOffsetRange()
+        if self._has_gun1:
+            return self._tem_gun1.GetHighVoltageOffsetRange()
 
     @property
-    def is_shutter_override(self):
-        return self.tem.BlankerShutter
+    def beam_current(self):
+        if self._has_feg:
+            return self._tem_feg.BeamCurrent
+
+    @property
+    def extractor_voltage(self):
+        if self._has_feg:
+            return self._tem_feg.ExtractorVoltage
+
+    @property
+    def focus_index(self):
+        if self._has_feg:
+            focus_index = self._tem_feg.FocusIndex
+            return focus_index.Coarse, focus_index.Fine
+
+    def do_flashing(self, flash_type):
+        if self._has_feg:
+            if self._tem_feg.Flashing.IsFlashingAdvised(flash_type):
+                self._tem_feg.Flashing.PerformFlashing(flash_type)
+            else:
+                raise Exception(f"Flashing type {flash_type} is not advised")

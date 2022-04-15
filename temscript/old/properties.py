@@ -40,7 +40,6 @@ class VectorProperty(BaseProperty):
     def __set__(self, obj, value):
         if self._readonly:
             raise AttributeError("Attribute %s is not writable" % self._name)
-
         value = [float(c) for c in value]
         if len(value) != 2:
             raise ValueError("Expected two items for attribute %s." % self._name)

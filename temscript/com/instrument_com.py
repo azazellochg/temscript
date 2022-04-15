@@ -1,5 +1,5 @@
 from temscript.utils.enums import *
-from temscript.utils.properties import *
+from temscript.old.properties import *
 
 
 __all__ = ('GetInstrument', 'Projection', 'CCDCameraInfo', 'CCDAcqParams', 'CCDCamera',
