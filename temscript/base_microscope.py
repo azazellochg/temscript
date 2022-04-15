@@ -53,12 +53,11 @@ class Image:
     def __init__(self, obj, isAdvanced=False, **kwargs):
         self._img = obj
         self._isAdvanced = isAdvanced
-
         self.name = None if isAdvanced else obj.Name
         self.width = obj.Width
         self.height = obj.Height
         self.bit_depth = obj.BitDepth if isAdvanced else obj.Depth
-        self.data = obj._AsSafeArray
+        self.data = obj.AsSafeArray
         self.metadata = self._get_metadata(obj) if isAdvanced else None
 
     def _get_metadata(self, obj):
@@ -77,17 +76,18 @@ class Image:
         else:
             fmt = os.path.splitext(filename)[1].upper()
             try:
-                fmt = AcqImageFileFormat[fmt]
+                fmt = AcqImageFileFormat[fmt].value
             except KeyError:
                 raise NotImplementedError(f"Format {fmt} is not supported.")
-            self._img.SaveToFile(filename, fmt, normalize)
+            self._img.AsFile(filename, fmt, normalize)
 
 
 class Vector:
     """ Vector object/property. """
-    def __init__(self, com_obj, name='', readonly=False):
+    def __init__(self, com_obj, name='', range=None, readonly=False):
         self._com_obj = com_obj
         self._name = name
+        self._range = range
         self._readonly = readonly
 
     def __get__(self, obj, objtype=None):
@@ -97,12 +97,15 @@ class Vector:
     def __set__(self, obj, value):
         if self._readonly:
             raise AttributeError(f"Attribute {self._name} is not writable")
-        value = [float(c) for c in value]
+        value = [round(float(c), 3) for c in value]
         if len(value) != 2:
             raise ValueError(f"Expected two items for attribute {self._name}")
 
-        vector = getattr(self._com_obj, self._name)
-        vector.X = value[0]
-        vector.Y = value[1]
+        if (self._range[0] <= value[0] <= self._range[1]) and (self._range[0] <= value[1] <= self._range[1]):
+            vector = getattr(self._com_obj, self._name)
+            vector.X = value[0]
+            vector.Y = value[1]
 
-        setattr(self._com_obj, self._name, vector)
+            setattr(self._com_obj, self._name, vector)
+        else:
+            raise ValueError(f"{value} is outside of range {self._range}")

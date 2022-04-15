@@ -70,13 +70,14 @@ class Acquisition:
         self._tem_acq = microscope._tem.Acquisition
         self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
         self._tem_cam = microscope._tem.Camera
-        self.isAdvanced = False
+        self._is_advanced = False
+        self._prev_shutter_mode = None
 
     def _find_camera(self, name):
         """Find camera object by name. Check adv scripting first. """
         for cam in self._tem_csa.SupportedCameras:
             if cam.Name == name:
-                self.isAdvanced = True
+                self._is_advanced = True
                 return cam
         for cam in self._tem_acq.Cameras:
             if cam.Info.Name == name:
@@ -90,46 +91,76 @@ class Acquisition:
                 return stem
         raise KeyError(f"No STEM detector with name {name}")
 
-    def _check_binning(self, binning):
-        """ Check if input binning is in SupportedBinnings for a single-acquisition camera.
-        Assume that the camera is set: self._tem_csa.Camera = camera.
+    def _check_binning(self, binning, camera, is_advanced=False):
+        """ Check if input binning is in SupportedBinnings.
 
         :param binning: Input binning
         :type binning: int
+        :param camera: Camera object
+        :param is_advanced: Is this an advanced camera?
+        :type is_advanced: bool
         :returns: Binning object
         """
-        param = self._tem_csa.CameraSettings.Capabilities
-        for b in param.SupportedBinnings:
-            if int(b.Width) == int(binning):
-                return b
+        if is_advanced:
+            param = self._tem_csa.CameraSettings.Capabilities
+            for b in param.SupportedBinnings:
+                if int(b.Width) == int(binning):
+                    return b
+        else:
+            info = camera.Info
+            for b in info.Binnings:
+                if int(b) == int(binning):
+                    return b
+
         return False
 
     def _set_camera_param(self, name, size, exp_time, binning, **kwargs):
         camera = self._find_camera(name)
 
-        if self.isAdvanced:
+        if self._is_advanced:
             self._tem_csa.Camera = camera
             settings = self._tem_csa.CameraSettings
+            capabilities = settings.Capabilities
             settings.ReadoutArea = size
 
-            binning = self._check_binning(binning)
+            binning = self._check_binning(binning, camera, is_advanced=True)
             if binning:
                 settings.Binning = binning
 
             # Set exposure after binning, since it adjusted automatically when binning is set
             settings.ExposureTime = exp_time
 
+            if 'align_image' in kwargs and capabilities.SupportsDriftCorrection:
+                settings.AlignImage = kwargs['align_image']
+            if 'electron_counting' in kwargs and capabilities.SupportsElectronCounting:
+                settings.ElectronCounting = kwargs['electron_counting']
+            if 'eer' in kwargs and hasattr(capabilities, 'SupportsEER'):
+                self.EER = kwargs['eer']
+            if 'frame_ranges' in kwargs:  # a list of tuples
+                dfd = settings.DoseFractionsDefinition
+                dfd.Clear()
+                for i in kwargs['frame_ranges']:
+                    dfd.AddRange(i)
+
+            print(f"Movie of {settings.CalculateNumberOfFrames()} frames will be "
+                  f"saved to: {settings.PathToImageStorage + settings.SubPathPattern}")
+
         else:
             info = camera.Info
             settings = camera.AcqParams
             settings.ImageSize = size
-            settings.Binning = binning
+
+            binning = self._check_binning(binning, camera)
+            if binning:
+                settings.Binning = binning
 
             if 'correction' in kwargs:
                 settings.ImageCorrection = kwargs['correction']
             if 'exposure_mode' in kwargs:
                 settings.ExposureMode = kwargs['exposure_mode']
             if 'shutter_mode' in kwargs:
+                # Save previous global shutter mode
+                self._prev_shutter_mode = (info, info.ShutterMode)
                 info.ShutterMode = kwargs['shutter_mode']
             if 'pre_exp_time' in kwargs:
                 settings.PreExposureTime = kwargs['pre_exp_time']
@@ -152,7 +183,13 @@ class Acquisition:
         self._tem_acq.AddAcqDeviceByName(cameraName)
         img = self._tem_acq.AcquireImages()
 
-        return Image(img)
+        if self._prev_shutter_mode is not None:
+            # restore previous shutter mode
+            obj = self._prev_shutter_mode[0]
+            old_value = self._prev_shutter_mode[1]
+            obj.ShutterMode = old_value
+
+        return Image(img[0])
 
     def acquire_tem_image(self, cameraName, size, exp_time=1, binning=1, **kwargs):
         """ Acquire a TEM image.
@@ -167,8 +204,9 @@ class Acquisition:
         :returns: Image object
         """
         self._set_camera_param(cameraName, size, exp_time, binning, **kwargs)
-        if self.isAdvanced:
+        if self._is_advanced:
             img = self._tem_csa.Acquire()
+            self._tem_csa.Wait()
             return Image(img, isAdvanced=True)
 
         self._acquire(cameraName)
@@ -180,7 +218,7 @@ class Acquisition:
         :type cameraName: str
         :param size: Image size (AcqImageSize enum)
         :type size: IntEnum
-        :param dwell_time: Dwell time in seconds
+        :param dwell_time: Dwell time in seconds. The frame time equals the dwell time times the number of pixels plus some overhead (typically 20%, used for the line flyback)
         :type dwell_time: float
         :param binning: Binning factor
         :returns: Image object
@@ -195,7 +233,11 @@ class Acquisition:
 
         settings = self._tem_acq.StemAcqParams
         settings.ImageSize = size
-        settings.Binning = binning
+
+        binning = self._check_binning(binning, det)
+        if binning:
+            settings.Binning = binning
+
         settings.DwellTime = dwell_time
 
         self._acquire(cameraName)
@@ -257,7 +299,7 @@ class Detectors:
                 "supports_dose_fractions": param.SupportsDoseFractions,
                 "supports_drift_correction": param.SupportsDriftCorrection,
                 "supports_electron_counting": param.SupportsElectronCounting,
-                "supports_eer": param.SupportsEER
+                "supports_eer": getattr(param, 'SupportsEER', False)
             }
 
         return self.cameras
@@ -525,6 +567,7 @@ class Optics:
         return self._tem.AutoNormalizeEnabled
 
     def normalize_all(self):
+        """ Normalize all lenses. """
         self._tem.NormalizeAll()
 
     def normalize(self, mode):
@@ -548,7 +591,7 @@ class Illumination:
         self.shift = Vector(self._tem_illumination, 'Shift')
         self.tilt = Vector(self._tem_illumination, 'Tilt')
         self.rotation_center = Vector(self._tem_illumination, 'RotationCenter')
-        self.condenser_stigmator = Vector(self._tem_illumination, 'CondenserStigmator')
+        self.condenser_stigmator = Vector(self._tem_illumination, 'CondenserStigmator', range=(-1.0, 1.0))
         self.illuminated_area = self._tem_illumination.IlluminatedArea
         self.probe_defocus = self._tem_illumination.ProbeDefocus
         self.convergence_angle = self._tem_illumination.ConvergenceAngle
@@ -587,7 +630,42 @@ class Projection:
 
     def __init__(self, projection):
         self._tem_projection = projection
+        self.focus = self._tem_projection.Focus
+        self.magnification_index = self._tem_projection.MagnificationIndex
+        self.camera_length_index = self._tem_projection.CameraLengthIndex
+        self.image_shift = Vector(self._tem_projection, 'ImageShift')
+        self.image_beam_shift = Vector(self._tem_projection, 'ImageBeamShift')
+        self.diffraction_shift = Vector(self._tem_projection, 'DiffractionShift')
+        self.diffraction_stigmator = Vector(self._tem_projection, 'DiffractionStigmator', range=(-1.0, 1.0))
+        self.objective_stigmator = Vector(self._tem_projection, 'ObjectiveStigmator', range=(-1.0, 1.0))
+        self.defocus = self._tem_projection.Defocus
+        self.image_beam_tilt = Vector(self._tem_projection, 'ImageBeamTilt')
 
+    @property
+    def magnification(self):
+        return self._tem_projection.Magnification
+
+    @property
+    def camera_length(self):
+        return self._tem_projection.CameraLength
+
+    @property
+    def magnification_range(self):
+        return ProjectionSubMode(self._tem_projection.SubMode).name
+
+    @property
+    def image_rotation(self):
+        return self._tem_projection.ImageRotation
+
+    @property
+    def is_eftem_on(self):
+        return LensProg(self._tem_projection.LensProgram) == LensProg.EFTEM
+
+    def eftem_on(self):
+        self._tem_projection.LensProgram = LensProg.EFTEM
+
+    def reset_defocus(self):
+        self._tem_projection.ResetDefocus()
 
 
 class Apertures:
@@ -662,8 +740,8 @@ class Gun:
         self._tem_gun = microscope._tem.Gun
         self._has_feg = self._init_feg(microscope)
         self._has_gun1 = self._init_gun1(microscope)
-        self.shift = Vector(self._tem_gun, 'Shift')
-        self.tilt = Vector(self._tem_gun, 'Tilt')
+        self.shift = Vector(self._tem_gun, 'Shift', range=(-1.0, 1.0))
+        self.tilt = Vector(self._tem_gun, 'Tilt', range=(-1.0, 1.0))
 
     def _init_gun1(self, microscope):
         try:
