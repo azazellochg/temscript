@@ -45,4 +45,4 @@ if __name__ == '__main__':
     camera_acquire("BM-Falcon", exp_time=0.5, binning=2)
     camera_acquire("BM-Falcon", exp_time=3, binning=1,
                    align_image=True, electron_counting=True,
-                   frame_ranges=[(1,2), (2,3)])
+                   frame_ranges=[(1, 2), (2, 3)])

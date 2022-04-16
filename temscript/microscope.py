@@ -1,4 +1,5 @@
 import math
+import time
 from .base_microscope import BaseMicroscope, Image, Vector
 from .utils.enums import *
 
@@ -14,7 +15,6 @@ class Microscope(BaseMicroscope):
         >>> microscope.family
         "TITAN"
     """
-
     def __init__(self, address=None, timeout=None, simulate=False):
         super().__init__(address, timeout, simulate)
 
@@ -57,7 +57,6 @@ class Microscope(BaseMicroscope):
 
 class UserDoor:
     """ User door hatch controls. """
-
     def __init__(self, microscope):
         try:
             self._tem_door = microscope._tem_adv.UserDoorHatch
@@ -79,11 +78,11 @@ class UserDoor:
 
 class Acquisition:
     """ Image acquisition functions. """
-
     def __init__(self, microscope):
-        self._tem_acq = microscope._tem.Acquisition
+        self._tem = microscope._tem
+        self._tem_acq = self._tem._tem.Acquisition
         self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
-        self._tem_cam = microscope._tem.Camera
+        self._tem_cam = self._tem.Camera
         self._is_advanced = False
         self._prev_shutter_mode = None
 
@@ -182,8 +181,12 @@ class Acquisition:
                 self._prev_shutter_mode = (info, info.ShutterMode)
                 info.ShutterMode = kwargs['shutter_mode']
             if 'pre_exp_time' in kwargs:
+                if kwargs['shutter_mode'] != AcqShutterMode.BOTH:
+                    raise Exception("Pre-exposures can only be be done when the shutter mode is set to BOTH")
                 settings.PreExposureTime = kwargs['pre_exp_time']
             if 'pre_exp_pause_time' in kwargs:
+                if kwargs['shutter_mode'] != AcqShutterMode.BOTH:
+                    raise Exception("Pre-exposures can only be be done when the shutter mode is set to BOTH")
                 settings.PreExposurePauseTime = kwargs['pre_exp_pause_time']
 
             # Set exposure after binning, since it adjusted automatically when binning is set
@@ -210,6 +213,28 @@ class Acquisition:
 
         return Image(img[0])
 
+    def _check_prerequisites(self):
+        """ Check if buffer cycle or LN filling is running before acquisition call. """
+        counter = 0
+        while counter < 10:
+            if self._tem.Vacuum.PVPRunning:
+                print("Buffer cycle in progress, waiting...\r")
+                time.sleep(2)
+                counter += 1
+            else:
+                print("Checking buffer levels...")
+                break
+
+        counter = 0
+        while counter < 40:
+            if self._tem.TemperatureControl.DewarsAreBusyFilling:
+                print("Dewars are filling, waiting...\r")
+                time.sleep(30)
+                counter += 1
+            else:
+                print("Checking dewars levels...")
+                break
+
     def acquire_tem_image(self, cameraName, size, exp_time=1, binning=1, **kwargs):
         """ Acquire a TEM image.
 
@@ -229,9 +254,11 @@ class Acquisition:
         self._set_camera_param(cameraName, size, exp_time, binning, **kwargs)
         if self._is_advanced:
             img = self._tem_csa.Acquire()
+            self._check_prerequisites()
             self._tem_csa.Wait()
             return Image(img, isAdvanced=True)
 
+        self._check_prerequisites()
         self._acquire(cameraName)
 
     def acquire_stem_image(self, cameraName, size, dwell_time=1E-5, binning=1, **kwargs):
@@ -265,6 +292,11 @@ class Acquisition:
 
         settings.DwellTime = dwell_time
 
+        print("Max resolution (?):",
+              settings.MaxResolution.X,
+              settings.MaxResolution.Y)
+
+        self._check_prerequisites()
         self._acquire(cameraName)
 
     def acquire_film(self, film_text, exp_time, **kwargs):
@@ -288,7 +320,6 @@ class Acquisition:
 
 class Detectors:
     """ CCD/DDD, film/plate and STEM detectors. """
-
     def __init__(self, microscope):
         self._tem_acq = microscope._tem.Acquisition
         self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
@@ -368,7 +399,6 @@ class Detectors:
 
 class Temperature:
     """ LN dewars and temperature controls. """
-
     def __init__(self, microscope):
         self._tem_temp_control = microscope._tem.TemperatureControl
 
@@ -406,13 +436,14 @@ class Temperature:
 
 class Autoloader:
     """ Sample loading functions. """
-
     def __init__(self, microscope):
         self._tem_autoloader = microscope._tem.AutoLoader
 
     def load_cartridge(self, slot):
         """ Loads the cartridge in the given slot into the microscope. """
         if self._tem_autoloader.AutoLoaderAvailable:
+            if self.get_slot_status(slot) != CassetteSlotStatus.OCCUPIED.name:
+                raise Exception("Slot %d is not occupied" % slot)
             self._tem_autoloader.LoadCartridge(slot)
         else:
             raise Exception("Autoloader is not available")
@@ -452,7 +483,6 @@ class Autoloader:
 
 class Stage:
     """ Stage functions. """
-
     def __init__(self, microscope):
         self._tem_stage = microscope._tem.Stage
 
@@ -502,7 +532,6 @@ class Stage:
     def move_to(self, **kwargs):
         """ Makes the holder safely move to the new position.
         Keyword args can be x,y,z,a or b.
-        :type position: dict
         """
         if self._tem_stage.Status == StageStatus.READY:
             pos = self._tem_stage.Position
@@ -527,7 +556,6 @@ class Stage:
 
 class PiezoStage:
     """ Piezo stage functions. """
-
     def __init__(self, microscope):
         try:
             self._tem_pstage = microscope._tem_adv.PiezoStage
@@ -554,7 +582,6 @@ class PiezoStage:
 
 class Vacuum:
     """ Vacuum functions. """
-
     def __init__(self, microscope):
         self._tem_vacuum = microscope._tem.Vacuum
 
@@ -604,7 +631,6 @@ class Vacuum:
 
 class Optics:
     """ Projection, Illumination functions. """
-    
     def __init__(self, microscope):
         self._tem = microscope._tem
         self._tem_adv = microscope._tem_adv
@@ -665,7 +691,6 @@ class Optics:
 
 class Stem:
     """ STEM functions. """
-
     def __init__(self, microscope):
         self._tem = microscope._tem
         self._tem_illumination = self._tem.Illumination
@@ -685,33 +710,33 @@ class Stem:
         self._tem_control.InstrumentMode = InstrumentMode.TEM
 
     @property
-    def stem_magnification(self):
+    def magnification(self):
         """ The magnification value in STEM mode. """
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             return self._tem_illumination.StemMagnification
 
-    @stem_magnification.setter
-    def stem_magnification(self, mag):
+    @magnification.setter
+    def magnification(self, mag):
         self._tem_illumination.StemMagnification = mag
 
     @property
-    def stem_rotation(self):
+    def rotation(self):
         """ The STEM rotation angle (in radians). """
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             return self._tem_illumination.StemRotation
 
-    @stem_rotation.setter
-    def stem_rotation(self, rot):
+    @rotation.setter
+    def rotation(self, rot):
         self._tem_illumination.StemRotation = rot
 
     @property
-    def stem_scan_fov(self):
+    def scan_field_of_view(self):
         """ STEM full scan field of view. """
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             return self._tem_illumination.StemFullScanFieldOfView
 
-    @stem_scan_fov.setter
-    def stem_scan_fov(self, values):
+    @scan_field_of_view.setter
+    def scan_field_of_view(self, values):
         vector = self._tem_illumination.StemFullScanFieldOfView
         vector.X = values[0]
         vector.Y = values[1]
@@ -720,7 +745,6 @@ class Stem:
 
 class Illumination:
     """ Illumination functions. """
-
     def __init__(self, tem):
         self._tem = tem
         self._tem_illumination = self._tem.Illumination
@@ -805,19 +829,18 @@ class Illumination:
 
 class Projection:
     """ Projection system functions. """
-
     def __init__(self, projection):
         self._tem_projection = projection
         self.focus = self._tem_projection.Focus
         self.magnification_index = self._tem_projection.MagnificationIndex
         self.camera_length_index = self._tem_projection.CameraLengthIndex
         self.image_shift = Vector(self._tem_projection, 'ImageShift')
-        self.image_beam_shift = Vector(self._tem_projection, 'ImageBeamShift')
+        self.image_beam_shift = Vector(self._tem_projection, 'ImageBeamShift')  # IS with BS compensation
         self.diffraction_shift = Vector(self._tem_projection, 'DiffractionShift')
         self.diffraction_stigmator = Vector(self._tem_projection, 'DiffractionStigmator', range=(-1.0, 1.0))
         self.objective_stigmator = Vector(self._tem_projection, 'ObjectiveStigmator', range=(-1.0, 1.0))
         self.defocus = self._tem_projection.Defocus
-        self.image_beam_tilt = Vector(self._tem_projection, 'ImageBeamTilt')
+        self.image_beam_tilt = Vector(self._tem_projection, 'ImageBeamTilt')  # BT with diffr sh compensation
 
     @property
     def magnification(self):
@@ -871,7 +894,6 @@ class Projection:
 
 class Apertures:
     """ Apertures and VPP controls. """
-
     def __init__(self, microscope):
         self._tem_vpp = microscope._tem_adv.PhasePlate
         try:
@@ -941,7 +963,6 @@ class Apertures:
 
 class Gun:
     """ Gun functions. """
-
     def __init__(self, microscope):
         self._tem_gun = microscope._tem.Gun
         self.shift = Vector(self._tem_gun, 'Shift', range=(-1.0, 1.0))

@@ -40,6 +40,6 @@ setup(name='temscript',
       url="https://github.com/azazellochg/temscript",
       project_urls={
           "Source": "https://github.com/azazellochg/temscript",
-          #'Documentation': "https://temscript.readthedocs.io/"
+          # 'Documentation': "https://temscript.readthedocs.io/"
       }
       )

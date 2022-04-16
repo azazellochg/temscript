@@ -42,7 +42,7 @@ class BaseMicroscope:
 
     def _check_licensing(self):
         try:
-            #self._lic_adv = CreateObject(LICENSE_ADV)
+            # self._lic_adv = CreateObject(LICENSE_ADV)
             self._lic_cam = CreateObject(LICENSE_ADV_CAM)
         except:
             logging.info("Could not connect to advanced instrument")
