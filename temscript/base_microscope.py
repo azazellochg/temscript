@@ -101,11 +101,11 @@ class Vector:
         if len(value) != 2:
             raise ValueError(f"Expected two items for attribute {self._name}")
 
-        if (self._range[0] <= value[0] <= self._range[1]) and (self._range[0] <= value[1] <= self._range[1]):
-            vector = getattr(self._com_obj, self._name)
-            vector.X = value[0]
-            vector.Y = value[1]
+        for v in value:
+            if not(self._range[0] <= v <= self._range[1]):
+                raise ValueError(f"{value} is outside of range {self._range}")
 
-            setattr(self._com_obj, self._name, vector)
-        else:
-            raise ValueError(f"{value} is outside of range {self._range}")
+        vector = getattr(self._com_obj, self._name)
+        vector.X = value[0]
+        vector.Y = value[1]
+        setattr(self._com_obj, self._name, vector)
