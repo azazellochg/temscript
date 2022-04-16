@@ -1,16 +1,18 @@
 Changelog
 =========
 
-Version 2.1.0
-^^^^^^^^^^^^^
+Version 3.0
+^^^^^^^^^^^
 
+* New changes are distributed under GPLv3+
+* Interface re-written using comtypes library
 * Standard scripting interfaces updated to v1.9
 * Add Advanced scripting interfaces v1.2
 
 Version 2.0.0
 ^^^^^^^^^^^^^
 
-* C++ adapter removed, COM interface no directly accessed using ``ctypes``
+* C++ adapter removed, COM interface now directly accessed using ``ctypes``
 * Raised required minimum Python version to 3.4 (dropped support of Python 2.X)
 * More extensive documentation of the high level interfaces and the temscript server
 * Documentation of known issues of the original scripting interface

@@ -4,7 +4,16 @@ from .utils.enums import *
 
 
 class Microscope(BaseMicroscope):
-    """ Main class that connects to the COM interface. """
+    """
+    High level interface to local microscope.
+    Creating an instance of this class already queries the COM interface for the instrument.
+
+    Usage:
+
+        >>> microscope = Microscope()
+        >>> microscope.family
+        "TITAN"
+    """
 
     def __init__(self, address=None, timeout=None, simulate=False):
         super().__init__(address, timeout, simulate)
@@ -87,14 +96,14 @@ class Acquisition:
         for cam in self._tem_acq.Cameras:
             if cam.Info.Name == name:
                 return cam
-        raise KeyError(f"No camera with name {name}")
+        raise KeyError("No camera with name %s" % name)
 
     def _find_stem_detector(self, name):
         """Find STEM detector object by name"""
         for stem in self._tem_acq.Detectors:
             if stem.Info.Name == name:
                 return stem
-        raise KeyError(f"No STEM detector with name {name}")
+        raise KeyError("No STEM detector with name %s" % name)
 
     def _check_binning(self, binning, camera, is_advanced=False):
         """ Check if input binning is in SupportedBinnings.
@@ -151,8 +160,9 @@ class Acquisition:
                 for i in kwargs['frame_ranges']:
                     dfd.AddRange(i)
 
-            print(f"Movie of {settings.CalculateNumberOfFrames()} frames will be "
-                  f"saved to: {settings.PathToImageStorage + settings.SubPathPattern}")
+            print("Movie of %s frames will be saved to: %s" % (
+                settings.CalculateNumberOfFrames(),
+                settings.PathToImageStorage + settings.SubPathPattern))
 
         else:
             info = camera.Info
@@ -650,7 +660,7 @@ class Optics:
         elif mode in IlluminationNormalization:
             self._tem_illumination.Normalize(mode)
         else:
-            raise ValueError(f"Unknown normalization mode: {mode}")
+            raise ValueError("Unknown normalization mode: %s" % mode)
 
 
 class Stem:
@@ -874,7 +884,7 @@ class Apertures:
         for ap in self._tem_apertures:
             if MechanismId(ap.Id).name == name:
                 return ap
-        raise KeyError(f"No aperture with name {name}")
+        raise KeyError("No aperture with name %s" % name)
 
     @property
     def vpp_position(self):
@@ -1012,4 +1022,4 @@ class Gun:
         if self._tem_feg.Flashing.IsFlashingAdvised(flash_type):
             self._tem_feg.Flashing.PerformFlashing(flash_type)
         else:
-            raise Exception(f"Flashing type {flash_type} is not advised")
+            raise Exception("Flashing type %s is not advised" % flash_type)

@@ -1,5 +1,6 @@
 graft docs
 graft scripts
-include LICENSE
+include LICENSE_GPL
+include LICENSE_BSD
 include README.md
 prune docs/_build

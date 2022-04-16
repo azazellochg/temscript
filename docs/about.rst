@@ -11,11 +11,7 @@ interfaces of Thermo Fisher Scientific and FEI microscopes. The functionality is
 limited to the functionality of the original scripting interfaces. For detailed information
 about TEM scripting see the documentation accompanying your microscope.
 
-The ``temscript`` package provides two interfaces to the microsope. The first one
-corresponds directly to the COM interfaces and is implemented by :class:`Instrument` and :class:`AdvancedInstrument` classes. A more thorough
-description of this interfaces can be found in the :ref:`instrument` section.
-
-The other interface is provided by the :class:`Microscope` class. While instances of the :class:`temscript.Microscope` class
+The interface is provided by the :class:`Microscope` class. While instances of the :class:`temscript.Microscope` class
 operate on the computer connected to the microscope directly, there are two replacement classes, which provide the
 same interface to as the :class:`Microscope` class. The first one, :class:`RemoteMicroscope` allows to operate the
 microscope remotely from a computer, which is connected to the microscope PC via network. The other one,
@@ -39,13 +35,13 @@ Execute this on the microscope PC (with ``temscript`` package installed) to crea
 
 Show the current acceleration voltage:
 
-    >>> microscope.get_voltage()
+    >>> microscope.gun.voltage
     300.0
 
 Move beam:
 
-    >>> beam_pos = microscope.get_beam_shift()
+    >>> beam_pos = microscope.optics.illumination.beam_shift
     >>> print(beam_pos)
     (0.0, 0.0)
     >>> new_beam_pos = beam_pos[0], beam_pos[1] + 1e-6
-    >>> microscope.set_beam_shift(new_beam_pos)
+    >>> microscope.optics.illumination.beam_shift(new_beam_pos)

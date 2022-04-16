@@ -15,24 +15,24 @@ with open(path.join(here, "README.md"), "r", encoding="utf-8") as fp:
 
 setup(name='temscript',
       version=__version__,
-      description='TEM Scripting adapter for FEI microscopes',
+      description='TEM Scripting adapter for FEI/TFS microscopes',
       author='Tore Niermann, Grigory Sharov',
       author_email='tore.niermann@tu-berlin.de, gsharov@mrc-lmb.cam.ac.uk',
       long_description=long_description,
       long_description_content_type='text/markdown',
       packages=['temscript'],
       platforms=['any'],
-      license="BSD 3-Clause License",
+      license="GNU General Public License v3 (GPLv3)",
       python_requires='>=3.4',
       classifiers=[
-          'Development Status :: 4 - Beta',
+          'Development Status :: 3 - Alpha',
           'Intended Audience :: Science/Research',
           'Intended Audience :: Developers',
           'Operating System :: OS Independent',
           'Programming Language :: Python :: 3',
           'Topic :: Scientific/Engineering',
           'Topic :: Software Development :: Libraries',
-          'License :: OSI Approved :: BSD License',
+          'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
           'Operating System :: OS Independent'
       ],
       install_requires=['numpy', 'comtypes'],
@@ -40,6 +40,6 @@ setup(name='temscript',
       url="https://github.com/azazellochg/temscript",
       project_urls={
           "Source": "https://github.com/azazellochg/temscript",
-          'Documentation': "https://temscript.readthedocs.io/"
+          #'Documentation': "https://temscript.readthedocs.io/"
       }
       )

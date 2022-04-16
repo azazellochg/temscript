@@ -53,7 +53,7 @@ def test_acquisition(microscope):
             print("\tTimestamp:", image.metadata['TimeStamp'])
 
         fn = cam_name + ".mrc"
-        print(f"Saving to {fn}")
+        print("Saving to ", fn)
         image.save(filename=fn, normalize=False)
 
     for det in detectors:
@@ -62,7 +62,7 @@ def test_acquisition(microscope):
                                                dwell_time=1e-5,
                                                binning=2)
         fn = det + ".mrc"
-        print(f"Saving to {fn}")
+        print("Saving to ", fn)
         image.save(filename=fn, normalize=False)
 
 

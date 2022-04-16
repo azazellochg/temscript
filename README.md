@@ -14,25 +14,27 @@ finally a dummy implementation for offline development & testing exists.
 Currently the ``temscript`` package requires Python 3.4 or higher. The current plan is to keep the minimum
 supported Python version at 3.4, since this is the latest Python version supporting Windows XP.
 
-The sources can be found on GitHub: https://github.com/niermann/temscript
+This is a GPL fork of the original BSD-licensed project: https://github.com/niermann/temscript
+New changes and this whole product is distributed under either version 3 of the GPL License, or
+(at your option) any later version.
 
 # Documentation
 
-The documentation of the latest version can be found at:
+The documentation of the original version can be found at:
 
 https://temscript.readthedocs.io/
 
 # Installation
 
 Requirements:
-* Python >= 3.4 (tested with 3.4)
-* Numpy (tested with 1.9)
-* Sphinx (only for building documentation, tested with 1.6)
+* Python >= 3.4
+* Numpy
+* Sphinx (only for building documentation)
 
 On all platforms the dummy and remote high level interfaces are provided. 
 On Windows platforms the package provides the Python wrapper
-to the scripting COM interface. However, trying to instantiate this wrapper
-will fail, if the scripting COM classes are not installed locally.
+to the scripting COM interface via comtypes library. However, trying to instantiate this wrapper
+will fail if the scripting COM classes are not installed locally.
 
 ### Installation from PyPI (using pip)
 
@@ -65,23 +67,14 @@ administrator privileges):
     python3 -m pip install --upgrade pip
     python3 -m pip install <source_directory>
 
-### Installation from sources (using distutils)
-
-This assumes you have downloaded and extracted the sources into the directory <source_directory> (alternative have
-cloned the sources from GitHub into <source_directory>). 
-
-Execute from the command line (assuming you have your python interpreter in the path, this might require superuser or 
-administrator privileges):
-    
-    cd <source_directory>
-    python3 setup.py install
 
 # Supported functions of the COM interface
 
 Relative to Titan V1.9 standard scripting adapter:
+
 * Acquisition: complete
-* ApertureMechanismCollection: complete (but untested)
-* AutoLoader: complete (but untested)
+* ApertureMechanismCollection: complete
+* AutoLoader: complete
 * BlankerShutter: complete
 * Camera: complete
 * Configuration: complete
@@ -91,34 +84,36 @@ Relative to Titan V1.9 standard scripting adapter:
 * InstrumentModeControl: complete
 * Projection: complete
 * Stage: complete
-* TemperatureControl: complete (but untested)
-* UserButton(s): complete (but untested), no events handling
+* TemperatureControl: complete
+* UserButton(s): complete, no events handling
 * Vacuum: complete
 
 Relative to Titan V1.2 advanced scripting adapter:
-* Acquisitions: complete (but untested)
-* Phaseplate: complete (but untested)
-* PiezoStage: complete (but untested)
-* Source: complete (but untested)
-* UserDoorHatch: complete (but untested)
 
-# Copyright & Disclaimer
+* Acquisitions: complete
+* Phaseplate: complete
+* PiezoStage: complete
+* Source: complete
+* UserDoorHatch: complete
+
+# Disclaimer
 
 Copyright (c) 2012-2021 by Tore Niermann
 Contact: tore.niermann (at) tu-berlin.de
 
-Copyright (c) 2022 by Grigory Sharov
+Copyleft 2022 by Grigory Sharov
 Contact: gsharov (at) mrc-lmb.cam.ac.uk
 
 All product and company names are trademarks or registered trademarks 
 of their respective holders. Use of them does not imply any affiliation
 with or endorsement by them.
 
-temscript is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-LICENCE file for any details.
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
 
-All product and company names are trademarks or registered trademarks of
-their respective holders. Use of them does not imply any affiliation 
-with or endorsement by them. 
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.

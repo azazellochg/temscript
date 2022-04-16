@@ -195,8 +195,8 @@ def test_properties():
 
 def run_logs(objs):
     for obj in objs:
-        logging.info(f"{str(obj)} uuid: {str(obj._iid_).lower()}")
-        logging.info(f"{str(obj)} methods:")
+        logging.info("%s uuid: %s" % (str(obj), str(obj._iid_).lower()))
+        logging.info("%s methods:" % str(obj))
         for m in obj._methods_:
             logging.info(str(m))
         logging.info("\n\n\n")

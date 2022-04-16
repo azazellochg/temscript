@@ -30,13 +30,13 @@ class BaseMicroscope:
         try:
             self._tem_adv = CreateObject(SCRIPTING_ADV)
             self._tem = CreateObject(SCRIPTING_STD)
-            logging.info(f"Connected to {SCRIPTING_ADV} and {SCRIPTING_STD}")
+            logging.info("Connected to %s and %s" % (SCRIPTING_ADV, SCRIPTING_STD))
         except:
-            logging.info(f"Could not connect to {SCRIPTING_ADV}")
+            logging.info("Could not connect to %s" % SCRIPTING_ADV)
             self._tem = CreateObject(SCRIPTING_STD)
         else:
             self._tem = CreateObject(SCRIPTING_TECNAI)
-            logging.info(f"Connected to {SCRIPTING_TECNAI}")
+            logging.info("Connected to %s" % SCRIPTING_TECNAI)
         finally:
             raise Exception("Could not connect to the instrument")
 
@@ -45,7 +45,7 @@ class BaseMicroscope:
             #self._lic_adv = CreateObject(LICENSE_ADV)
             self._lic_cam = CreateObject(LICENSE_ADV_CAM)
         except:
-            logging.info(f"Could not connect to advanced instrument")
+            logging.info("Could not connect to advanced instrument")
 
 
 class Image:
@@ -78,7 +78,7 @@ class Image:
             try:
                 fmt = AcqImageFileFormat[fmt].value
             except KeyError:
-                raise NotImplementedError(f"Format {fmt} is not supported.")
+                raise NotImplementedError("Format %s is not supported" % fmt)
             self._img.AsFile(filename, fmt, normalize)
 
 
@@ -96,14 +96,14 @@ class Vector:
 
     def __set__(self, obj, value):
         if self._readonly:
-            raise AttributeError(f"Attribute {self._name} is not writable")
+            raise AttributeError("Attribute %s is not writable" % self._name)
         value = [round(float(c), 3) for c in value]
         if len(value) != 2:
-            raise ValueError(f"Expected two items for attribute {self._name}")
+            raise ValueError("Expected two items for attribute" % self._name)
 
         for v in value:
             if not(self._range[0] <= v <= self._range[1]):
-                raise ValueError(f"{value} is outside of range {self._range}")
+                raise ValueError("%s is outside of range %s" % (value, self._range))
 
         vector = getattr(self._com_obj, self._name)
         vector.X = value[0]
