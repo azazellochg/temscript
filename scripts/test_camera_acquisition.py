@@ -1,103 +1,48 @@
 #!/usr/bin/env python3
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 
-from temscript import Microscope, NullMicroscope
+from temscript.microscope import Microscope
+from temscript.utils.enums import *
+
+
+def camera_acquire(cam_name, exp_time, binning, **kwargs):
+    """ Acquire a test image and check output metadata. """
+    microscope = Microscope()
+
+    print(f"Available detectors:\n{microscope.detectors.cameras}")
+
+    image = microscope.acquisition.acquire_tem_image(cam_name,
+                                                     size=AcqImageSize.FULL,
+                                                     exp_time=exp_time,
+                                                     binning=binning,
+                                                     **kwargs)
+    print(f"Bit depth = {image.bit_depth}")
+
+    metadata = image.metadata
+    print(f"Timestamp = {metadata['TimeStamp']}")
+
+    assert int(metadata['Binning.Width']) == binning
+    assert math.isclose(float(metadata['ExposureTime']), exp_time, abs_tol=0.01)
+
+    print(f"\tSize: {image.data.shape[1]}, {image.data.shape[0]}")
+    print(f"\tMean: {np.mean(image.data)}")
+    vmin = np.percentile(image.data, 3)
+    vmax = np.percentile(image.data, 97)
+    print(f"\tStdDev: {np.std(image.data)}")
+    plt.imshow(image.data, interpolation="nearest", cmap="gray",
+               vmin=vmin, vmax=vmax)
+    print(f"\tStdDev: {np.std(image.data)}")
+    plt.colorbar()
+    plt.suptitle(cam_name)
+    plt.show()
 
 
 if __name__ == '__main__':
-    # for testing on the Titan microscope PC
     print("Starting Test...")
 
-    microscope = Microscope()
-    cameras = microscope.get_cameras()
-
-    for name in cameras.keys():
-        print("Testing %s:" % name)
-        init_param = microscope.get_camera_param(name)
-        print("\tInitial param:", init_param)
-
-        param = dict(init_param)
-        param["image_size"] = "FULL"
-        param["exposure(s)"] = 1.0
-        param["binning"] = 1
-        microscope.set_camera_param(name, param)
-        print()
-        print("\tFull param:", microscope.get_camera_param(name))
-
-        acq = microscope.acquire(name)
-        image = acq[name]
-        print("\tSize: ", image.shape[1], "x", image.shape[0])
-        print("\tMean: ", np.mean(image))
-        print("\tStdDev: ", np.std(image))
-        vmin = np.percentile(image, 3)
-        vmax = np.percentile(image, 97)
-        plt.subplot(141)
-        plt.imshow(image, interpolation="nearest", cmap="gray", vmin=vmin, vmax=vmax)
-        plt.title("Full")
-        plt.colorbar()
-
-        param = dict(init_param)
-        param["image_size"] = "HALF"
-        param["exposure(s)"] = 1.0
-        param["binning"] = 1
-        microscope.set_camera_param(name, param)
-        print()
-        print("\tHalf param:", microscope.get_camera_param(name))
-
-        acq = microscope.acquire(name)
-        image = acq[name]
-        print("\tSize: ", image.shape[1], "x", image.shape[0])
-        print("\tMean: ", np.mean(image))
-        print("\tStdDev: ", np.std(image))
-        vmin = np.percentile(image, 3)
-        vmax = np.percentile(image, 97)
-        plt.subplot(142)
-        plt.imshow(image, interpolation="nearest", cmap="gray", vmin=vmin, vmax=vmax)
-        plt.title("Half")
-        plt.colorbar()
-
-        param = dict(init_param)
-        param["image_size"] = "FULL"
-        param["exposure(s)"] = 1.0
-        param["binning"] = 2
-        microscope.set_camera_param(name, param)
-        print()
-        print("\tBinned param:", microscope.get_camera_param(name))
-
-        acq = microscope.acquire(name)
-        image = acq[name]
-        print("\tSize: ", image.shape[1], "x", image.shape[0])
-        print("\tMean: ", np.mean(image))
-        print("\tStdDev: ", np.std(image))
-        vmin = np.percentile(image, 3)
-        vmax = np.percentile(image, 97)
-        plt.subplot(143)
-        plt.imshow(image, interpolation="nearest", cmap="gray", vmin=vmin, vmax=vmax)
-        plt.title("Binned")
-        plt.colorbar()
-
-        param = dict(init_param)
-        param["image_size"] = "FULL"
-        param["exposure(s)"] = 2.0
-        param["binning"] = 1
-        microscope.set_camera_param(name, param)
-        print()
-        print("\tLong exposure param:", microscope.get_camera_param(name))
-
-        acq = microscope.acquire(name)
-        image = acq[name]
-        print("\tSize: ", image.shape[1], "x", image.shape[0])
-        print("\tMean: ", np.mean(image))
-        vmin = np.percentile(image, 3)
-        vmax = np.percentile(image, 97)
-        print("\tStdDev: ", np.std(image))
-        plt.subplot(144)
-        plt.imshow(image, interpolation="nearest", cmap="gray", vmin=vmin, vmax=vmax)
-        print("\tStdDev: ", np.std(image))
-        plt.title("Long Exp.")
-        plt.colorbar()
-
-        print()
-        plt.suptitle(name)
-        plt.show()
+    camera_acquire("BM-Falcon", exp_time=0.5, binning=2)
+    camera_acquire("BM-Falcon", exp_time=3, binning=1,
+                   align_image=True, electron_counting=True,
+                   frame_ranges=[(1,2), (2,3)])

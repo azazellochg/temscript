@@ -284,14 +284,15 @@ class Detectors:
         self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
         self._tem_cam = microscope._tem.Camera
 
+    @property
     def cameras(self):
         """ Returns a dict with parameters for all cameras. """
-        self.cameras = dict()
+        self._cameras = dict()
         for cam in self._tem_acq.Cameras:
             info = cam.Info
             param = cam.AcqParams
             name = info.Name
-            self.cameras[name] = {
+            self._cameras[name] = {
                 "type": "CAMERA",
                 "height": info.Height,
                 "width": info.Width,
@@ -304,7 +305,7 @@ class Detectors:
         for cam in self._tem_csa.SupportedCameras:
             self._tem_csa.Camera = cam
             param = self._tem_csa.CameraSettings.Capabilities
-            self.cameras[cam.Name] = {
+            self._cameras[cam.Name] = {
                 "type": "CAMERA_ADVANCED",
                 "height": cam.Height,
                 "width": cam.Width,
@@ -318,19 +319,20 @@ class Detectors:
                 "supports_eer": getattr(param, 'SupportsEER', False)
             }
 
-        return self.cameras
+        return self._cameras
 
+    @property
     def stem_detectors(self):
         """ Returns a dict with STEM detectors parameters. """
-        self.stem_detectors = dict()
+        self._stem_detectors = dict()
         for det in self._tem_acq.Detectors:
             info = det.Info
             name = info.Name
-            self.stem_detectors[name] = {
+            self._stem_detectors[name] = {
                 "type": "STEM_DETECTOR",
                 "binnings": [int(b) for b in info.Binnings]
             }
-        return self.stem_detectors
+        return self._stem_detectors
 
     @property
     def screen(self):
@@ -471,16 +473,15 @@ class Stage:
         axes = 'xyzab'
         return {key: getattr(pos, key.upper()) for key in axes}
 
-    def go_to(self, position, speed=None):
-        """ Makes the holder directly go to the new position by moving all axes simultaneously.
-        :param position: New position dict, e.g. {x,y,z,a,b}
-        :type position: dict
+    def go_to(self, speed=None, **kwargs):
+        """ Makes the holder directly go to the new position by moving all axes
+         simultaneously. Keyword args can be x,y,z,a or b.
         :param speed: fraction of the standard speed setting (max 1.0)
         :type speed: float
         """
         if self._tem_stage.Status == StageStatus.READY:
             pos = self._tem_stage.Position
-            axes = self._from_dict(pos, **position)
+            axes = self._from_dict(pos, **kwargs)
             if speed:
                 self._tem_stage.GoToWithSpeed(axes, speed)
             else:
@@ -488,14 +489,14 @@ class Stage:
         else:
             print("Stage is not ready.")
 
-    def move_to(self, position):
+    def move_to(self, **kwargs):
         """ Makes the holder safely move to the new position.
-        :param position: New position dict, e.g. {x,y,z,a,b}
+        Keyword args can be x,y,z,a or b.
         :type position: dict
         """
         if self._tem_stage.Status == StageStatus.READY:
             pos = self._tem_stage.Position
-            axes = self._from_dict(pos, **position)
+            axes = self._from_dict(pos, **kwargs)
             self._tem_stage.MoveTo(axes)
         else:
             print("Stage is not ready.")
@@ -630,6 +631,10 @@ class Optics:
     def beam_blank(self):
         """ Activates the beam blanker. """
         self._tem_illumination.BeamBlanked = True
+
+    def beam_unblank(self):
+        """ Deactivates the beam blanker. """
+        self._tem_illumination.BeamBlanked = False
 
     def normalize_all(self):
         """ Normalize all lenses. """
@@ -845,6 +850,10 @@ class Projection:
     def eftem_on(self):
         """ Switch on EFTEM. """
         self._tem_projection.LensProgram = LensProg.EFTEM
+
+    def eftem_off(self):
+        """ Switch off EFTEM. """
+        self._tem_projection.LensProgram = LensProg.REGULAR
 
     def reset_defocus(self):
         self._tem_projection.ResetDefocus()
