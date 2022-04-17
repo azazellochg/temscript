@@ -20,9 +20,7 @@ New changes and this whole product is distributed under either version 3 of the 
 
 # Documentation
 
-The documentation of the original version can be found at:
-
-https://temscript.readthedocs.io/
+The documentation can be found in the docs/ folder.
 
 # Installation
 

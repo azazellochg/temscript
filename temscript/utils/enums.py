@@ -1,13 +1,14 @@
 from enum import IntEnum
 
 
-# Not defined by FEI, but used in server/client
 class DetectorType(IntEnum):
+    """ Not defined by FEI, but used in server/client. """
     CAMERA = 1
     STEM_DETECTOR = 2
 
 
 class TEMScriptingError(IntEnum):
+    """ Scripting error codes. """
     E_NOT_OK = -2147155969              # 0x8004ffff
     E_VALUE_CLIP = -2147155970          # 0x8004fffe
     E_OUT_OF_RANGE = -2147155971        # 0x8004fffd
@@ -22,6 +23,7 @@ class TEMScriptingError(IntEnum):
 
 
 class VacuumStatus(IntEnum):
+    """ Vacuum system status. """
     UNKNOWN = 1
     OFF = 2
     CAMERA_AIR = 3
@@ -31,6 +33,7 @@ class VacuumStatus(IntEnum):
 
 
 class GaugeStatus(IntEnum):
+    """Vacuum gauge status. """
     UNDEFINED = 0
     UNDERFLOW = 1
     OVERFLOW = 2
@@ -39,6 +42,7 @@ class GaugeStatus(IntEnum):
 
 
 class GaugePressureLevel(IntEnum):
+    """ Vacuum gauge pressure level. """
     UNDEFINED = 0
     LOW = 1
     LOW_MEDIUM = 2
@@ -47,6 +51,7 @@ class GaugePressureLevel(IntEnum):
 
 
 class StageStatus(IntEnum):
+    """ Stage status. """
     READY = 0
     DISABLED = 1
     NOT_READY = 2
@@ -57,12 +62,14 @@ class StageStatus(IntEnum):
 
 
 class MeasurementUnitType(IntEnum):
+    """ Stage measurement units. """
     UNKNOWN = 0
     METERS = 1
     RADIANS = 2
 
 
 class StageHolderType(IntEnum):
+    """ Specimen holder type. """
     NONE = 0
     SINGLE_TILT = 1
     DOUBLE_TILT = 2
@@ -73,6 +80,7 @@ class StageHolderType(IntEnum):
 
 
 class StageAxes(IntEnum):
+    """ Stage axes. """
     NONE = 0
     X = 1
     Y = 2
@@ -83,6 +91,7 @@ class StageAxes(IntEnum):
 
 
 class IlluminationNormalization(IntEnum):
+    """ Normalization modes for condenser / objective lenses. """
     SPOTSIZE = 1
     INTENSITY = 2
     CONDENSER = 3
@@ -92,33 +101,39 @@ class IlluminationNormalization(IntEnum):
 
 
 class IlluminationMode(IntEnum):
+    """ Illumination mode: nanoprobe or microprobe. """
     NANOPROBE = 0
     MICROPROBE = 1
 
 
 class DarkFieldMode(IntEnum):
+    """ Dark field mode. """
     OFF = 1
     CARTESIAN = 2
     CONICAL = 3
 
 
 class CondenserMode(IntEnum):
+    """ Condenser mode: parallel or probe. """
     PARALLEL = 0
     PROBE = 1
 
 
 class ProjectionNormalization(IntEnum):
+    """ Normalization modes for objective/projector lenses. """
     OBJECTIVE = 10
     PROJECTOR = 11
     ALL = 12
 
 
 class ProjectionMode(IntEnum):
+    """ Imaging or diffraction. """
     IMAGING = 1
     DIFFRACTION = 2
 
 
 class ProjectionSubMode(IntEnum):
+    """ Magnification range mode. """
     LM = 1
     M = 2
     SA = 3
@@ -128,51 +143,62 @@ class ProjectionSubMode(IntEnum):
 
 
 class LensProg(IntEnum):
+    """ TEM or EFTEM mode. """
     REGULAR = 1
     EFTEM = 2
 
 
 class ProjectionDetectorShift(IntEnum):
+    """ Sets the extra shift that projects the image/diffraction
+    pattern onto a detector. """
     ON_AXIS = 0
     NEAR_AXIS = 1
     OFF_AXIS = 2
 
 
 class ProjDetectorShiftMode(IntEnum):
+    """ This property determines, whether the chosen DetectorShift
+    is changed when the fluorescent screen is moved down. """
     AUTO_IGNORE = 1
     MANUAL = 2
     ALIGNMENT = 3
 
 
 class HighTensionState(IntEnum):
+    """ High Tension status. """
     DISABLED = 1
     OFF = 2
     ON = 3
 
 
 class InstrumentMode(IntEnum):
+    """ TEM or STEM mode. """
     TEM = 0
     STEM = 1
 
 
 class AcqShutterMode(IntEnum):
+    """ Shutter mode. """
     PRE_SPECIMEN = 0
     POST_SPECIMEN = 1
     BOTH = 2
 
 
 class AcqImageSize(IntEnum):
+    """ Image size. """
     FULL = 0
     HALF = 1
     QUARTER = 2
 
 
 class AcqImageCorrection(IntEnum):
+    """ Image correction: unprocessed or corrected (gain/bias). """
     UNPROCESSED = 0
     DEFAULT = 1
 
 
 class AcqExposureMode(IntEnum):
+    """ Exposure mode. """
     NONE = 0
     SIMULTANEOUS = 1
     PRE_EXPOSURE = 2
@@ -180,6 +206,7 @@ class AcqExposureMode(IntEnum):
 
 
 class AcqImageFileFormat(IntEnum):
+    """ Image file format. """
     TIFF = 0
     JPG = 1
     PNG = 2
@@ -189,23 +216,27 @@ class AcqImageFileFormat(IntEnum):
 
 
 class ProductFamily(IntEnum):
+    """ Microscope product family. """
     TECNAI = 0
     TITAN = 1
     TALOS = 2
 
 
 class CondenserLensSystem(IntEnum):
+    """ Two or three-condenser lens system. """
     TWO_CONDENSER_LENSES = 0
     THREE_CONDENSER_LENSES = 1
 
 
 class ScreenPosition(IntEnum):
+    """ Fluscreen position. """
     UNKNOWN = 1
     UP = 2
     DOWN = 3
 
 
 class PlateLabelDateFormat(IntEnum):
+    """ Date format for film. """
     NO_DATE = 0
     DDMMYY = 1
     MMDDYY = 2
@@ -213,12 +244,14 @@ class PlateLabelDateFormat(IntEnum):
 
 
 class RefrigerantDewar(IntEnum):
+    """ Nitrogen dewar. """
     AUTOLOADER_DEWAR = 0
     COLUMN_DEWAR = 1
     HELIUM_DEWAR = 2
 
 
 class CassetteSlotStatus(IntEnum):
+    """ Cassette slot status. """
     UNKNOWN = 0
     OCCUPIED = 1
     EMPTY = 2
@@ -226,12 +259,14 @@ class CassetteSlotStatus(IntEnum):
 
 
 class ImagePixelType(IntEnum):
+    """ Image type: uint, int or float. """
     UNSIGNED_INT = 0
     SIGNED_INT = 1
     FLOAT = 2
 
 
 class MechanismId(IntEnum):
+    """ Aperture name. """
     UNKNOWN = 0
     C1 = 1
     C2 = 2
@@ -241,6 +276,7 @@ class MechanismId(IntEnum):
 
 
 class MechanismState(IntEnum):
+    """ Aperture state. """
     DISABLED = 0
     INSERTED = 1
     MOVING = 2
@@ -252,6 +288,7 @@ class MechanismState(IntEnum):
 
 
 class ApertureType(IntEnum):
+    """ Aperture type. """
     UNKNOWN = 0
     CIRCULAR = 1
     BIPRISM = 2
@@ -260,6 +297,7 @@ class ApertureType(IntEnum):
 
 
 class HatchState(IntEnum):
+    """ User door hatch state. """
     UNKNOWN = 0
     OPEN = 1
     OPENING = 2
@@ -268,10 +306,12 @@ class HatchState(IntEnum):
 
 
 class FegState(IntEnum):
+    """ FEG state. """
     NOT_EMITTING = 0
     EMITTING = 1
 
 
 class FegFlashingType(IntEnum):
+    """ Cold FEG flashing type. """
     LOW_T = 0
     HIGH_T = 1

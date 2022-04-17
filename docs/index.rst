@@ -1,28 +1,67 @@
 temscript documentation
 =======================
 
-Contents:
-
 .. toctree::
-    :maxdepth: 2
+   :maxdepth: 1
 
-    about
-    instrument
-    microscope
-    server
-    restrictions
-    changelog
+   about
+   microscope
+   enumerations
+   changelog
+   restrictions
 
-Globals
--------
+Introduction
+------------
 
-.. data:: temscript.__version__
+The ``temscript`` package provides a Python wrapper for both standard and advanced scripting
+interfaces of Thermo Fisher Scientific and FEI microscopes. The functionality is
+limited to the functionality of the original scripting interfaces. For detailed information
+about TEM scripting see the documentation accompanying your microscope.
 
-    A string describing the version of temscript in the format 'X.Y.Z'.
-    Current value is '|release|'. This is not the version of the TEMScripting interface
-    (which can't be queried such easily).
+.. For remote operation of the microscope the temscript server must run on the microscope PC. See section :ref:`server` for details.
 
-# Disclaimer
+The section :ref:`restrictions` describes some known issues with the scripting interface itself. These are restrictions
+of the original scripting interface and not issues related to the ``temscript`` package itself.
+
+Quick example
+-------------
+
+Execute this on the microscope PC (with ``temscript`` package installed) to create an instance of the local
+:class:`Microscope` interface:
+
+.. code-block:: python
+
+    from temscript.microscope import Microscope
+    microscope = Microscope()
+
+Show the current acceleration voltage:
+
+.. code-block:: python
+
+    microscope.gun.voltage
+    300.0
+
+Move beam:
+
+.. code-block:: python
+
+    beam_pos = microscope.optics.illumination.beam_shift
+    print(beam_pos)
+    (0.0, 0.0)
+    new_beam_pos = beam_pos[0], beam_pos[1] + 1e-6
+    microscope.optics.illumination.beam_shift(new_beam_pos)
+
+Take an image:
+
+.. code-block:: python
+
+    image = microscope.acquisition.acquire_tem_image("BM-Ceta",
+                                                     size=AcqImageSize.FULL,  # <-- see enumerations
+                                                     exp_time=0.5,
+                                                     binning=2)
+
+Disclaimer
+----------
 
 Copyright (c) 2012-2021 by Tore Niermann
 Contact: tore.niermann (at) tu-berlin.de
@@ -48,5 +87,5 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`search`
+* :ref:`modindex`
 

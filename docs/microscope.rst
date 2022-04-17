@@ -1,49 +1,45 @@
-.. currentmodule:: temscript
-
 .. _microscope:
 
-The Microscope classes
-======================
+Microscope class
+================
 
-Several classes with a more pythonic interface exists. All these classes implement the same methods as described by
-the :class:`BaseMicroscope`. Currently the following implementations exists:
+The :class:`Microscope` class provides a Python interface to the microscope.
+Below are the main class properties, each represented by a separate class:
 
-* Local Microscope via the :class:`Microscope` class.
-* Dummy Microscope via the :class:`NullMicroscope` class.
-* Remove Microscope via the :class:`RemoteMicroscope` class.
+    * acquisition = :meth:`~temscript.microscope.Acquisition`
+    * detectors = :meth:`~temscript.microscope.Detectors`
+    * gun = :meth:`~temscript.microscope.Gun`
+    * optics = :meth:`~temscript.microscope.Optics`
 
-The BaseMicroscope class
-------------------------
+        * illumination = :meth:`~temscript.microscope.Illumination`
+        * projection = :meth:`~temscript.microscope.Projection`
 
-.. autoclass:: BaseMicroscope
+    * stem = :meth:`~temscript.microscope.Stem`
+    * apertures = :meth:`~temscript.microscope.Apertures`
+    * temperature = :meth:`~temscript.microscope.Temperature`
+    * vacuum = :meth:`~temscript.microscope.Vacuum`
+    * autoloader = :meth:`~temscript.microscope.Autoloader`
+    * stage = :meth:`~temscript.microscope.Stage`
+    * piezo_stage = :meth:`~temscript.microscope.PiezoStage`
+    * user_door = :meth:`~temscript.microscope.UserDoor`
+
+Example usage
+-------------
+
+.. code-block:: python
+
+    microscope = Microscope()
+    curr_pos = microscope.stage.position
+    print(curr_pos['Y'])
+    1.1e-6
+    microscope.stage.move_to(x=-1e-6)
+
+    beam_shift = microscope.optics.illumination.beam_shift
+
+
+Documentation
+-------------
+
+.. automodule:: temscript.microscope
     :members:
 
-
-The Microscope class itself
----------------------------
-
-The :class:`Microscope` class provides a interface to the microscope if the script is run locally on the microscope's
-computer. See :class:`BaseMicroscope` for a description of its methods.
-
-.. autoclass:: Microscope
-
-The RemoteMicroscope class
---------------------------
-
-The :class:`RemoteMicroscope` provides the same methods as the :class:`Microscope` class, but connects to a remote
-microscope server.
-
-The temscript server must be running on the microscope PC. See section :ref:`server` for details.
-
-.. autoclass:: RemoteMicroscope
-    :members:
-
-
-The NullMicroscope class
-------------------------
-
-The :class:`NullMicroscope` is a dummy replacement :class:`Microscope` class, which emulates the
-microscope.
-
-.. autoclass:: NullMicroscope
-    :members:

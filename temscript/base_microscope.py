@@ -1,9 +1,9 @@
 import logging
 import os.path
-from comtypes.client import CreateObject
+import platform
 
-from utils.constants import *
-from utils.enums import AcqImageFileFormat
+from .utils.constants import *
+from .utils.enums import AcqImageFileFormat
 
 
 class BaseMicroscope:
@@ -21,12 +21,16 @@ class BaseMicroscope:
             raise NotImplementedError()
         elif address is None:
             # local connection
-            self._createInstrument()
+            if platform.system() == "Windows":
+                self._createInstrument()
+            else:
+                raise NotImplementedError("Running locally is only supported for Windows platform")
         else:
             raise NotImplementedError()
 
     def _createInstrument(self):
         """ Try to use both std and advanced scripting. """
+        from comtypes.client import CreateObject
         try:
             self._tem_adv = CreateObject(SCRIPTING_ADV)
             self._tem = CreateObject(SCRIPTING_STD)
@@ -41,6 +45,7 @@ class BaseMicroscope:
             raise Exception("Could not connect to the instrument")
 
     def _check_licensing(self):
+        from comtypes.client import CreateObject
         try:
             # self._lic_adv = CreateObject(LICENSE_ADV)
             self._lic_cam = CreateObject(LICENSE_ADV_CAM)
@@ -92,7 +97,7 @@ class Vector:
 
     def __get__(self, obj, objtype=None):
         result = getattr(self._com_obj, self._name)
-        return result.X, result.Y
+        return (result.X, result.Y)
 
     def __set__(self, obj, value):
         if self._readonly:

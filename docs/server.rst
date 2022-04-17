@@ -1,5 +1,3 @@
-.. module:: temscript
-
 .. _server:
 
 The temscript server

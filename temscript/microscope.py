@@ -8,12 +8,6 @@ class Microscope(BaseMicroscope):
     """
     High level interface to local microscope.
     Creating an instance of this class already queries the COM interface for the instrument.
-
-    Usage:
-
-        >>> microscope = Microscope()
-        >>> microscope.family
-        "TITAN"
     """
     def __init__(self, address=None, timeout=None, simulate=False):
         super().__init__(address, timeout, simulate)
@@ -515,7 +509,8 @@ class Stage:
 
     def go_to(self, speed=None, **kwargs):
         """ Makes the holder directly go to the new position by moving all axes
-         simultaneously. Keyword args can be x,y,z,a or b.
+        simultaneously. Keyword args can be x,y,z,a or b.
+
         :param speed: fraction of the standard speed setting (max 1.0)
         :type speed: float
         """
