@@ -5,8 +5,7 @@ from .utils.enums import *
 
 
 class Microscope(BaseMicroscope):
-    """
-    High level interface to local microscope.
+    """ High level interface to the local microscope.
     Creating an instance of this class already queries the COM interface for the instrument.
     """
     def __init__(self, address=None, timeout=None, simulate=False):
@@ -40,32 +39,24 @@ class Microscope(BaseMicroscope):
         """ Returns a dict with assigned hand panels buttons. """
         return {b.Name: b.Label for b in self._tem.UserButtons}
 
-    def check_license(self):
-        """ Returns a dict with advanced scripting license information. """
-        return {
-            'tem_scripting': self._lic_cam.IsTemScriptingLicensed,
-            'dose_fractions': self._lic_cam.IsDoseFractionsLicensed,
-            'electron_counting': self._lic_cam.IsElectronCountingLicensed
-        }
-
 
 class UserDoor:
     """ User door hatch controls. """
     def __init__(self, microscope):
-        try:
-            self._tem_door = microscope._tem_adv.UserDoorHatch
-        except:
-            print("UserDoor interface is not available")
+        self._tem_door = microscope._tem_adv.UserDoorHatch
 
     @property
     def state(self):
+        """ Returns door state. """
         return HatchState(self._tem_door.State).name
 
     def open(self):
+        """ Open the door. """
         if self._tem_door.IsControlAllowed:
             self._tem_door.Open()
 
     def close(self):
+        """ Close the door. """
         if self._tem_door.IsControlAllowed:
             self._tem_door.Close()
 
@@ -74,7 +65,7 @@ class Acquisition:
     """ Image acquisition functions. """
     def __init__(self, microscope):
         self._tem = microscope._tem
-        self._tem_acq = self._tem._tem.Acquisition
+        self._tem_acq = self._tem.Acquisition
         self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
         self._tem_cam = self._tem.Camera
         self._is_advanced = False
@@ -122,6 +113,7 @@ class Acquisition:
         return False
 
     def _set_camera_param(self, name, size, exp_time, binning, **kwargs):
+        """ Find the TEM camera and set its params. """
         camera = self._find_camera(name)
 
         if self._is_advanced:
@@ -187,6 +179,7 @@ class Acquisition:
             settings.ExposureTime = exp_time
 
     def _set_film_param(self, film_text, exp_time, **kwargs):
+        """ Set params for plate camera / film. """
         self._tem_cam.FilmText = film_text
         self._tem_cam.ManualExposureTime = exp_time
 
@@ -331,7 +324,7 @@ class Detectors:
                 "type": "CAMERA",
                 "height": info.Height,
                 "width": info.Width,
-                "pixel_size(um)": tuple(size / 1e-6 for size in info.PixelSize),
+                "pixel_size(um)": (info.PixelSize.X / 1e-6, info.PixelSize.Y / 1e-6),
                 "binnings": [int(b) for b in info.Binnings],
                 "shutter_modes": [AcqShutterMode(x).name for x in info.ShutterModes],
                 "pre_exposure_limits(s)": (param.MinPreExposureTime, param.MaxPreExposureTime),
@@ -381,14 +374,17 @@ class Detectors:
     @property
     def film_settings(self):
         """ Returns a dict with film settings. """
-        return {
-            "stock": self._tem_cam.Stock,
-            "exposure_time": self._tem_cam.ManualExposureTime,
-            "film_text": self._tem_cam.FilmText,
-            "exposure_number": self._tem_cam.ExposureNumber,
-            "user_code": self._tem_cam.Usercode,
-            "screen_current": self._tem_cam.ScreenCurrent
-        }
+        if not hasattr(self._tem_cam, 'Stock'):
+            raise Exception("No plate / film device detected. ")
+        else:
+            return {
+                "stock": self._tem_cam.Stock,
+                "exposure_time": self._tem_cam.ManualExposureTime,
+                "film_text": self._tem_cam.FilmText,
+                "exposure_number": self._tem_cam.ExposureNumber,
+                "user_code": self._tem_cam.Usercode,
+                "screen_current": self._tem_cam.ScreenCurrent
+            }
 
 
 class Temperature:
@@ -421,11 +417,11 @@ class Temperature:
 
     @property
     def dewars_remaining_time(self):
-        """ Returns remaining time until the next dewar refill.
+        """ Returns remaining time (minutes) until the next dewar refill.
         Returns -1 if no refill is scheduled (e.g. All room temperature, or no
-        dewar present).
+        dewar present). Seconds until next autofill
         """
-        return self._tem_temp_control.DewarsRemainingTime
+        return self._tem_temp_control.DewarsRemainingTime / 60
 
 
 class Autoloader:
@@ -453,6 +449,7 @@ class Autoloader:
 
     def run_inventory(self):
         """ Performs an inventory of the cassette. """
+        # TODO: check if cassette is present
         if self._tem_autoloader.AutoLoaderAvailable:
             self._tem_autoloader.PerformCassetteInventory()
         else:
@@ -480,7 +477,7 @@ class Stage:
     def __init__(self, microscope):
         self._tem_stage = microscope._tem.Stage
 
-    def _from_dict(self, position, values):
+    def _from_dict(self, position, **values):
         axes = 0
         for key, value in values.items():
             if key not in 'xyzab':
@@ -517,10 +514,10 @@ class Stage:
         if self._tem_stage.Status == StageStatus.READY:
             pos = self._tem_stage.Position
             axes = self._from_dict(pos, **kwargs)
-            if speed:
+            if speed is not None:
                 self._tem_stage.GoToWithSpeed(axes, speed)
             else:
-                self._tem_stage.GoTo(axes)
+                self._tem_stage.GoTo(axes, mask)
         else:
             print("Stage is not ready.")
 
@@ -531,7 +528,7 @@ class Stage:
         if self._tem_stage.Status == StageStatus.READY:
             pos = self._tem_stage.Position
             axes = self._from_dict(pos, **kwargs)
-            self._tem_stage.MoveTo(axes)
+            self._tem_stage.MoveTo(axes, mask)
         else:
             print("Stage is not ready.")
 
@@ -560,16 +557,19 @@ class PiezoStage:
 
     @property
     def position(self):
+        """ The current position of the piezo stage. """
         pos = self._tem_pstage.CurrentPosition
         axes = 'xyz'
         return {key: getattr(pos, key.upper()) for key in axes}
 
     @property
     def position_range(self):
+        """ Return min and max positions. """
         return self._tem_pstage.GetPositionRange()
 
     @property
     def velocity(self):
+        """ Returns a dict with stage velocities. """
         pos = self._tem_pstage.CurrentJogVelocity
         axes = 'xyz'
         return {key: getattr(pos, key.upper()) for key in axes}
@@ -612,7 +612,9 @@ class Vacuum:
 
     @property
     def gauges(self):
-        """ Returns a dict with vacuum gauges information. """
+        """ Returns a dict with vacuum gauges information.
+        Pressure values are in Pascals.
+        """
         gauges = {}
         for g in self._tem_vacuum.Gauges:
             g.Read()
@@ -692,13 +694,16 @@ class Stem:
         self._tem_control = self._tem.InstrumentModeControl
 
     @property
-    def is_stem_available(self):
+    def is_available(self):
         """ Returns whether the microscope has a STEM system or not. """
         return self._tem_control.StemAvailable
 
     def enable(self):
         """ Switch to STEM mode."""
-        self._tem_control.InstrumentMode = InstrumentMode.STEM
+        if self._tem_control.StemAvailable:
+            self._tem_control.InstrumentMode = InstrumentMode.STEM
+        else:
+            raise Exception("No STEM mode available")
 
     def disable(self):
         """ Switch back to TEM mode. """
@@ -712,7 +717,8 @@ class Stem:
 
     @magnification.setter
     def magnification(self, mag):
-        self._tem_illumination.StemMagnification = mag
+        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
+            self._tem_illumination.StemMagnification = mag
 
     @property
     def rotation(self):
@@ -722,7 +728,8 @@ class Stem:
 
     @rotation.setter
     def rotation(self, rot):
-        self._tem_illumination.StemRotation = rot
+        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
+            self._tem_illumination.StemRotation = rot
 
     @property
     def scan_field_of_view(self):
@@ -732,10 +739,11 @@ class Stem:
 
     @scan_field_of_view.setter
     def scan_field_of_view(self, values):
-        vector = self._tem_illumination.StemFullScanFieldOfView
-        vector.X = values[0]
-        vector.Y = values[1]
-        self._tem_illumination.StemFullScanFieldOfView = vector
+        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
+            vector = self._tem_illumination.StemFullScanFieldOfView
+            vector.X = values[0]
+            vector.Y = values[1]
+            self._tem_illumination.StemFullScanFieldOfView = vector
 
 
 class Illumination:
@@ -747,6 +755,7 @@ class Illumination:
         self.intensity = self._tem_illumination.Intensity
         self.intensity_zoom = self._tem_illumination.IntensityZoomEnabled
         self.intensity_limit = self._tem_illumination.IntensityLimitEnabled
+        # TODO: return x, y tuple
         self.beam_shift = Vector(self._tem_illumination, 'Shift')
         self.rotation_center = Vector(self._tem_illumination, 'RotationCenter')
         self.condenser_stigmator = Vector(self._tem_illumination, 'CondenserStigmator', range=(-1.0, 1.0))
@@ -767,12 +776,12 @@ class Illumination:
         self._tem_illumination.Mode = value
 
     @property
-    def dark_field_mode(self):
+    def dark_field(self):
         """ Dark field mode. """
         return DarkFieldMode(self._tem_illumination.DFMode).name
 
-    @dark_field_mode.setter
-    def dark_field_mode(self, value):
+    @dark_field.setter
+    def dark_field(self, value):
         self._tem_illumination.DFMode = value
 
     @property
@@ -845,7 +854,8 @@ class Projection:
     @property
     def camera_length(self):
         """ The reference camera length (screen up setting). """
-        return self._tem_projection.CameraLength
+        if self._tem_projection.Mode == ProjectionMode.DIFFRACTION:
+            return self._tem_projection.CameraLength
 
     @property
     def mode(self):
@@ -906,11 +916,17 @@ class Apertures:
     @property
     def vpp_position(self):
         """ Returns the zero-based index of the current VPP preset position. """
-        return self._tem_vpp.GetCurrentPresetPosition
+        try:
+            return self._tem_vpp.GetCurrentPresetPosition
+        except:
+            raise Exception("Either no VPP found or it's not enabled and inserted.")
 
     def vpp_next_position(self):
         """ Goes to the next preset location on the VPP aperture. """
-        self._tem_vpp.SelectNextPresetPosition()
+        try:
+            self._tem_vpp.SelectNextPresetPosition()
+        except:
+            raise Exception("Either no VPP found or it's not enabled and inserted.")
 
     def enable(self, aperture):
         ap = self._find_aperture(aperture)
@@ -973,6 +989,7 @@ class Gun:
 
     @property
     def voltage_offset(self):
+        """ High voltage offset. """
         return self._tem_gun1.HighVoltageOffset
 
     @voltage_offset.setter
@@ -981,6 +998,7 @@ class Gun:
 
     @property
     def feg_state(self):
+        """ FEG emitter status. """
         return FegState(self._tem_feg.State).name
 
     @property
@@ -1019,22 +1037,31 @@ class Gun:
 
     @property
     def voltage_offset_range(self):
+        """ Returns the high voltage offset range. """
         return self._tem_gun1.GetHighVoltageOffsetRange()
 
     @property
     def beam_current(self):
+        """ Returns the beam current. """
         return self._tem_feg.BeamCurrent
 
     @property
     def extractor_voltage(self):
+        """ Returns the extractor voltage. """
         return self._tem_feg.ExtractorVoltage
 
     @property
     def focus_index(self):
+        """ Returns coarse and fine focus index. """
         focus_index = self._tem_feg.FocusIndex
-        return focus_index.Coarse, focus_index.Fine
+        return (focus_index.Coarse, focus_index.Fine)
 
     def do_flashing(self, flash_type):
+        """ Perform cold FEG flashing.
+
+        :param flash_type: FEG flashing type (FegFlashingType enum)
+        :type flash_type: IntEnum
+        """
         if self._tem_feg.Flashing.IsFlashingAdvised(flash_type):
             self._tem_feg.Flashing.PerformFlashing(flash_type)
         else:

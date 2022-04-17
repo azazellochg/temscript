@@ -4,7 +4,7 @@ About
 The COM interface
 -----------------
 
-The methods and classes directly represent the COM objects exposed by the *Scripting* interface.
+The methods and classes represent the COM objects exposed by the *Scripting* interface.
 The interface is described in detail in the scripting manual of your microscope
 (usually in the file ``scripting.pdf`` located in the ``C:\Titan\Tem_help\manual`` or
 ``C:\Tecnai\tem_help\manual`` directories). Advanced scripting manual can be found in
@@ -31,8 +31,8 @@ Many of the attributes return values from enumerations. The complete list can be
 Vectors
 -------
 
-Some object attributes handle with two dimensional vectors (e.g. ``ImageShift``). These
-attributes return ``(x, y)`` like tuples and expect iterable objects (``tuple``,
+Some object attributes handle two dimensional vectors (e.g. ``ImageShift``). These
+attributes return ``(x, y)`` tuples and expect iterable objects (``tuple``,
 ``list``, ...) with two floats when written (numpy arrays with two entries also work).
 
 .. code-block:: python

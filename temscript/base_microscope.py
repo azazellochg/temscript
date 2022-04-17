@@ -33,24 +33,15 @@ class BaseMicroscope:
         from comtypes.client import CreateObject
         try:
             self._tem_adv = CreateObject(SCRIPTING_ADV)
-            self._tem = CreateObject(SCRIPTING_STD)
-            logging.info("Connected to %s and %s" % (SCRIPTING_ADV, SCRIPTING_STD))
+            logging.info("Connected to %s" % SCRIPTING_ADV)
         except:
             logging.info("Could not connect to %s" % SCRIPTING_ADV)
+        try:
             self._tem = CreateObject(SCRIPTING_STD)
-        else:
+            logging.info("Connected to %s" % SCRIPTING_STD)
+        except:
             self._tem = CreateObject(SCRIPTING_TECNAI)
             logging.info("Connected to %s" % SCRIPTING_TECNAI)
-        finally:
-            raise Exception("Could not connect to the instrument")
-
-    def _check_licensing(self):
-        from comtypes.client import CreateObject
-        try:
-            # self._lic_adv = CreateObject(LICENSE_ADV)
-            self._lic_cam = CreateObject(LICENSE_ADV_CAM)
-        except:
-            logging.info("Could not connect to advanced instrument")
 
 
 class Image:
