@@ -7,7 +7,6 @@ from .utils.enums import AcqImageFileFormat
 
 
 class BaseMicroscope:
-
     def __init__(self, address=None, timeout=None, simulate=False, logLevel=logging.INFO):
         self._tem = None
         self._tem_adv = None
@@ -78,30 +77,111 @@ class Image:
             self._img.AsFile(filename, fmt, normalize)
 
 
-class Vector:
-    """ Vector object/property. """
-    def __init__(self, com_obj, name='', range=None, readonly=False):
-        self._com_obj = com_obj
-        self._name = name
-        self._range = range
-        self._readonly = readonly
+class BaseProperty:
+    __slots__ = 'com_object', 'name', 'readonly'
 
-    def __get__(self, obj, objtype=None):
-        result = getattr(self._com_obj, self._name)
-        return (result.X, result.Y)
+    def __init__(self, com_object, name=None, readonly=False):
+        self.com_object = com_object
+        self.name = name
+        self.readonly = readonly
 
-    def __set__(self, obj, value):
-        if self._readonly:
-            raise AttributeError("Attribute %s is not writable" % self._name)
-        value = [round(float(c), 3) for c in value]
-        if len(value) != 2:
-            raise ValueError("Expected two items for attribute" % self._name)
 
-        for v in value:
-            if not(self._range[0] <= v <= self._range[1]):
-                raise ValueError("%s is outside of range %s" % (value, self._range))
+class VectorProperty(BaseProperty):
+    """ Wrapper for the Vector COM scripting object. Stores two floats: X and Y.
 
-        vector = getattr(self._com_obj, self._name)
-        vector.X = value[0]
-        vector.Y = value[1]
-        setattr(self._com_obj, self._name, vector)
+    :param com_object: input COM object
+    :param attr_name: attribute name for the COM object
+    :type attr_name: str
+    :param range: tuple with (min, max) values
+    :type range: tuple
+    :param readonly: whether the attribute is read only
+    :type readonly: bool
+    """
+    __slots__ = 'com_object', 'name', 'range', 'readonly'
+
+    def __init__(self, com_object, attr_name=None, range=None, readonly=False):
+        super().__init__(com_object, attr_name, readonly=readonly)
+        self.range = range
+
+    def __get__(self, instance):
+        if self.name is None:
+            return self
+        else:
+            result = getattr(self.com_object, self.name)
+            return [result.X, result.Y]
+
+    def __set__(self, instance, values):
+        if self.readonly:
+            raise AttributeError("Attribute %s is not writable" % self.name)
+
+        values = list(map(float, values))
+        if len(values) != 2:
+            raise ValueError("Expected two items for attribute" % self.name)
+
+        if range is not None:
+            err = "%s are outside of range %s" % (values, self.range)
+            assert self.range[0] <= values[0] <= self.range[1], err
+            assert self.range[0] <= values[1] <= self.range[1], err
+
+        # New attr value should be set as a whole, since get creates a copy
+        vector = getattr(self.com_object, self.name)
+        vector.X, vector.Y = values[0], values[1]
+        setattr(self.com_object, self.name, vector)
+
+
+class EnumProperty(BaseProperty):
+    """ Wrapper for the Enumeration COM scripting object. Stores IntEnum.
+
+    :param com_object: input COM object
+    :param attr_name: attribute name for the COM object
+    :type attr_name: str
+    :param enum_type: IntEnum class from enums.py
+    :type enum_type: IntEnum
+    :param readonly: whether the attribute is read only
+    :type readonly: bool
+    """
+    __slots__ = 'com_object', 'enum_type', 'name', 'readonly'
+
+    def __init__(self, com_object, attr_name=None, enum_type=None, readonly=False):
+        super().__init__(com_object, attr_name, readonly=readonly)
+        self.enum_type = enum_type
+
+    def __get__(self, instance):
+        if self.name is None:
+            return self
+        else:
+            value = getattr(self.com_object, self.name)
+            return self.enum_type(value).name
+
+    def __set__(self, instance, value):
+        if self.readonly:
+            raise AttributeError("Attribute %s is not writable" % self.name)
+        setattr(self.com_object, self.name, int(value))
+
+
+class NumProperty(BaseProperty):
+    """ Wrapper for the long/int property. Stores float/int value.
+
+    :param com_object: input COM object
+    :param attr_name: attribute name for the COM object
+    :type attr_name: str
+    :param attr_type: attribute value type, float or int
+    :param readonly: whether the attribute is read only
+    :type readonly: bool
+    """
+    __slots__ = 'com_object', 'attr_type', 'name', 'readonly'
+
+    def __init__(self, com_object, attr_name=None, attr_type=None, readonly=False):
+        super().__init__(com_object, attr_name, readonly=readonly)
+        self.attr_type = attr_type
+
+    def __get__(self, instance):
+        if self.name is None:
+            return self
+        else:
+            return getattr(self.com_object, self.name)
+
+    def __set__(self, instance, value):
+        if self.readonly:
+            raise AttributeError("Attribute %s is not writable" % self.name)
+        setattr(self.com_object, self.name, self.attr_type(value))
