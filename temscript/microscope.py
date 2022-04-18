@@ -481,11 +481,26 @@ class Stage:
         axes = 0
         for key, value in values.items():
             if key not in 'xyzab':
-                raise ValueError("Unexpected axes: %s" % key)
+                raise ValueError("Unexpected axis: %s" % key)
             attr_name = key.upper()
             setattr(position, attr_name, float(value))
             axes |= getattr(StageAxes, attr_name)
-        return axes
+        return position, axes
+
+    def _change_position(self, direct=False, **kwargs):
+        if self._tem_stage.Status == StageStatus.READY:
+            speed = kwargs.pop("speed", None)
+            current_pos = self._tem_stage.Position
+            new_pos, axes = self._from_dict(current_pos, **kwargs)
+            if not direct:
+                self._tem_stage.MoveTo(new_pos, axes)
+                return
+            if speed is not None:
+                self._tem_stage.GoToWithSpeed(new_pos, axes, speed)
+            else:
+                self._tem_stage.GoTo(new_pos, axes)
+        else:
+            print("Stage is not ready.")
 
     @property
     def status(self):
@@ -504,33 +519,20 @@ class Stage:
         axes = 'xyzab'
         return {key: getattr(pos, key.upper()) for key in axes}
 
-    def go_to(self, speed=None, **kwargs):
+    def go_to(self, **kwargs):
         """ Makes the holder directly go to the new position by moving all axes
         simultaneously. Keyword args can be x,y,z,a or b.
 
-        :param speed: fraction of the standard speed setting (max 1.0)
-        :type speed: float
+        :keyword float speed: fraction of the standard speed setting (max 1.0)
         """
-        if self._tem_stage.Status == StageStatus.READY:
-            pos = self._tem_stage.Position
-            axes = self._from_dict(pos, **kwargs)
-            if speed is not None:
-                self._tem_stage.GoToWithSpeed(axes, speed)
-            else:
-                self._tem_stage.GoTo(axes, mask)
-        else:
-            print("Stage is not ready.")
+        self._change_position(direct=True, **kwargs)
 
     def move_to(self, **kwargs):
         """ Makes the holder safely move to the new position.
         Keyword args can be x,y,z,a or b.
         """
-        if self._tem_stage.Status == StageStatus.READY:
-            pos = self._tem_stage.Position
-            axes = self._from_dict(pos, **kwargs)
-            self._tem_stage.MoveTo(axes, mask)
-        else:
-            print("Stage is not ready.")
+        kwargs['speed'] = None
+        self._change_position(**kwargs)
 
     @property
     def limits(self):
@@ -909,7 +911,7 @@ class Apertures:
     def _find_aperture(self, name):
         """Find aperture object by name. """
         for ap in self._tem_apertures:
-            if MechanismId(ap.Id).name == name:
+            if MechanismId(ap.Id).name == name.upper():
                 return ap
         raise KeyError("No aperture with name %s" % name)
 
