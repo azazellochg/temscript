@@ -1,6 +1,6 @@
 import math
 import time
-from .base_microscope import BaseMicroscope, Image, VectorProperty, EnumProperty, NumProperty
+from .base_microscope import BaseMicroscope, Image, Vector
 from .utils.enums import *
 
 
@@ -428,10 +428,6 @@ class Autoloader:
     """ Sample loading functions. """
     def __init__(self, microscope):
         self._tem_autoloader = microscope._tem.AutoLoader
-        if self._tem_autoloader.AutoLoaderAvailable:
-            self.number_of_cassette_slots = NumProperty(self._tem_autoloader,
-                                                        "NumberOfCassetteSlots",
-                                                        readonly=True)
 
     def load_cartridge(self, slot):
         """ Loads the cartridge in the given slot into the microscope. """
@@ -464,6 +460,14 @@ class Autoloader:
         if self._tem_autoloader.AutoLoaderAvailable:
             status = self._tem_autoloader.SlotStatus(slot)
             return CassetteSlotStatus(status).name
+        else:
+            raise Exception("Autoloader is not available")
+
+    @property
+    def number_of_cassette_slots(self):
+        """ The number of slots in a cassette. """
+        if self._tem_autoloader.AutoLoaderAvailable:
+            return self._tem_autoloader.NumberOfCassetteSlots
         else:
             raise Exception("Autoloader is not available")
 
@@ -691,11 +695,6 @@ class Stem:
         self._tem_illumination = self._tem.Illumination
         self._tem_control = self._tem.InstrumentModeControl
 
-        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            self.scan_field_of_view = VectorProperty(self._tem_illumination,
-                                             "StemFullScanFieldOfView",
-                                                     doc="STEM full scan field of view.")
-
     @property
     def is_available(self):
         """ Returns whether the microscope has a STEM system or not. """
@@ -734,6 +733,20 @@ class Stem:
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             self._tem_illumination.StemRotation = rot
 
+    @property
+    def scan_field_of_view(self):
+        """ STEM full scan field of view. """
+        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
+            return self._tem_illumination.StemFullScanFieldOfView
+
+    @scan_field_of_view.setter
+    def scan_field_of_view(self, values):
+        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
+            vector = self._tem_illumination.StemFullScanFieldOfView
+            vector.X = values[0]
+            vector.Y = values[1]
+            self._tem_illumination.StemFullScanFieldOfView = vector
+
 
 class Illumination:
     """ Illumination functions. """
@@ -744,18 +757,25 @@ class Illumination:
         self.intensity = self._tem_illumination.Intensity
         self.intensity_zoom = self._tem_illumination.IntensityZoomEnabled
         self.intensity_limit = self._tem_illumination.IntensityLimitEnabled
-        self.beam_shift = VectorProperty(self._tem_illumination, "Shift", doc="Beam shift")
-        self.rotation_center = VectorProperty(self._tem_illumination, 'RotationCenter')
-        self.condenser_stigmator = VectorProperty(self._tem_illumination,
-                                          'CondenserStigmator',
-                                                  range=(-1.0, 1.0))
-        self.mode = EnumProperty(self._tem_illumination, "Mode", IlluminationMode)
+        # TODO: return x, y tuple
+        self.beam_shift = Vector(self._tem_illumination, 'Shift')
+        self.rotation_center = Vector(self._tem_illumination, 'RotationCenter')
+        self.condenser_stigmator = Vector(self._tem_illumination, 'CondenserStigmator', range=(-1.0, 1.0))
 
         if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
             self.illuminated_area = self._tem_illumination.IlluminatedArea
             self.probe_defocus = self._tem_illumination.ProbeDefocus
             self.convergence_angle = self._tem_illumination.ConvergenceAngle
             self.C3ImageDistanceParallelOffset = self._tem_illumination.C3ImageDistanceParallelOffset
+
+    @property
+    def mode(self):
+        """ Illumination mode: microprobe or nanoprobe. """
+        return IlluminationMode(self._tem_illumination.Mode).name
+
+    @mode.setter
+    def mode(self, value):
+        self._tem_illumination.Mode = value
 
     @property
     def dark_field(self):
@@ -820,13 +840,13 @@ class Projection:
         self.focus = self._tem_projection.Focus
         self.magnification_index = self._tem_projection.MagnificationIndex
         self.camera_length_index = self._tem_projection.CameraLengthIndex
-        self.image_shift = VectorProperty(self._tem_projection, 'ImageShift')
-        self.image_beam_shift = VectorProperty(self._tem_projection, 'ImageBeamShift')  # IS with BS compensation
-        self.diffraction_shift = VectorProperty(self._tem_projection, 'DiffractionShift')
-        self.diffraction_stigmator = VectorProperty(self._tem_projection, 'DiffractionStigmator', range=(-1.0, 1.0))
-        self.objective_stigmator = VectorProperty(self._tem_projection, 'ObjectiveStigmator', range=(-1.0, 1.0))
+        self.image_shift = Vector(self._tem_projection, 'ImageShift')
+        self.image_beam_shift = Vector(self._tem_projection, 'ImageBeamShift')  # IS with BS compensation
+        self.diffraction_shift = Vector(self._tem_projection, 'DiffractionShift')
+        self.diffraction_stigmator = Vector(self._tem_projection, 'DiffractionStigmator', range=(-1.0, 1.0))
+        self.objective_stigmator = Vector(self._tem_projection, 'ObjectiveStigmator', range=(-1.0, 1.0))
         self.defocus = self._tem_projection.Defocus
-        self.image_beam_tilt = VectorProperty(self._tem_projection, 'ImageBeamTilt')  # BT with diffr sh compensation
+        self.image_beam_tilt = Vector(self._tem_projection, 'ImageBeamTilt')  # BT with diffr sh compensation
 
     @property
     def magnification(self):
@@ -852,12 +872,8 @@ class Projection:
     def magnification_range(self):
         """ Submode of the projection system (either LM, M, SA, MH, LAD or D).
         The imaging submode can change when the magnification is changed.
-
-        :returns: submode, min mag. index, max mag. index
         """
-        return (ProjectionSubMode(self._tem_projection.SubMode).name,
-                self._tem_projection.SubModeMinIndex,
-                self._tem_projection.SubModeMaxIndex)
+        return ProjectionSubMode(self._tem_projection.SubMode).name
 
     @property
     def image_rotation(self):
@@ -865,38 +881,6 @@ class Projection:
         fluorescent screen with respect to the specimen. Units: radians.
         """
         return self._tem_projection.ImageRotation
-
-    @property
-    def detector_shift(self):
-        """ Sets the extra shift that projects the image/diffraction
-        pattern onto a detector.
-        """
-        return ProjectionDetectorShift(self._tem_projection.DetectorShift).name
-
-    @detector_shift.setter
-    def detector_shift(self, value):
-        self._tem_projection.DetectorShift = value
-
-    @property
-    def detector_shift_mode(self):
-        """ This property determines, whether the chosen DetectorShift
-        is changed when the fluorescent screen is moved down.
-        """
-        return ProjDetectorShiftMode(self._tem_projection.DetectorShiftMode).name
-
-    @detector_shift_mode.setter
-    def detector_shift_mode(self, mode):
-        self._tem_projection.DetectorShiftMode = mode
-
-    @property
-    def objective_excitation(self):
-        """ Returns objective lens excitation. """
-        return self._tem_projection.ObjectiveExcitation
-
-    @property
-    def projection_index(self):
-        """ tbd. """
-        return self._tem_projection.ProjectionIndex
 
     @property
     def is_eftem_on(self):
@@ -994,8 +978,8 @@ class Gun:
     """ Gun functions. """
     def __init__(self, microscope):
         self._tem_gun = microscope._tem.Gun
-        self.shift = VectorProperty(self._tem_gun, 'Shift', range=(-1.0, 1.0))
-        self.tilt = VectorProperty(self._tem_gun, 'Tilt', range=(-1.0, 1.0))
+        self.shift = Vector(self._tem_gun, 'Shift', range=(-1.0, 1.0))
+        self.tilt = Vector(self._tem_gun, 'Tilt', range=(-1.0, 1.0))
         try:
             self._tem_gun1 = microscope._tem.Gun1
         except:
