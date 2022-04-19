@@ -299,6 +299,7 @@ class Acquisition:
             self._tem_cam.ExposureNumber += 1  # TODO: check this
             self._tem_cam.MainScreen = ScreenPosition.UP
             self._tem_cam.ScreenDim = True
+
             self._set_film_param(film_text, exp_time, **kwargs)
             self._tem_cam.TakeExposure()
         else:
@@ -417,11 +418,11 @@ class Temperature:
 
     @property
     def dewars_remaining_time(self):
-        """ Returns remaining time (minutes) until the next dewar refill.
+        """ Returns remaining time (seconds) until the next dewar refill.
         Returns -1 if no refill is scheduled (e.g. All room temperature, or no
-        dewar present). Seconds until next autofill
+        dewar present).
         """
-        return self._tem_temp_control.DewarsRemainingTime / 60
+        return self._tem_temp_control.DewarsRemainingTime
 
 
 class Autoloader:
@@ -551,10 +552,10 @@ class Stage:
 class PiezoStage:
     """ Piezo stage functions. """
     def __init__(self, microscope):
-        try:
+        if hasattr(microscope._tem_adv, "PiezoStage"):
             self._tem_pstage = microscope._tem_adv.PiezoStage
             self.high_resolution = self._tem_pstage.HighResolution
-        except:
+        else:
             print("PiezoStage interface is not available.")
 
     @property
@@ -600,18 +601,6 @@ class Vacuum:
         """ The status of the column valves. """
         return self._tem_vacuum.ColumnValvesOpen
 
-    def colvalves_open(self):
-        """ Open column valves. """
-        self._tem_vacuum.ColumnValvesOpen = True
-
-    def colvalves_close(self):
-        """ Close column valves. """
-        self._tem_vacuum.ColumnValvesOpen = False
-
-    def run_buffer_cycle(self):
-        """ Runs a pumping cycle to empty the buffer. """
-        self._tem_vacuum.RunBufferCycle()
-
     @property
     def gauges(self):
         """ Returns a dict with vacuum gauges information.
@@ -627,6 +616,18 @@ class Vacuum:
             }
         return gauges
 
+    def colvalves_open(self):
+        """ Open column valves. """
+        self._tem_vacuum.ColumnValvesOpen = True
+
+    def colvalves_close(self):
+        """ Close column valves. """
+        self._tem_vacuum.ColumnValvesOpen = False
+
+    def run_buffer_cycle(self):
+        """ Runs a pumping cycle to empty the buffer. """
+        self._tem_vacuum.RunBufferCycle()
+
 
 class Optics:
     """ Projection, Illumination functions. """
@@ -637,6 +638,7 @@ class Optics:
         self._tem_illumination = self._tem.Illumination
         self._tem_projection = self._tem.Projection
         self._tem_control = self._tem.InstrumentModeControl
+
         self.illumination = Illumination(self._tem)
         self.projection = Projection(self._tem_projection)
 
@@ -720,7 +722,7 @@ class Stem:
     @magnification.setter
     def magnification(self, mag):
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            self._tem_illumination.StemMagnification = mag
+            self._tem_illumination.StemMagnification = float(mag)
 
     @property
     def rotation(self):
@@ -731,7 +733,7 @@ class Stem:
     @rotation.setter
     def rotation(self, rot):
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            self._tem_illumination.StemRotation = rot
+            self._tem_illumination.StemRotation = float(rot)
 
     @property
     def scan_field_of_view(self):
@@ -742,9 +744,9 @@ class Stem:
     @scan_field_of_view.setter
     def scan_field_of_view(self, values):
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
+            values = list(map(float, values))
             vector = self._tem_illumination.StemFullScanFieldOfView
-            vector.X = values[0]
-            vector.Y = values[1]
+            vector.X, vector.Y = values[0], values[1]
             self._tem_illumination.StemFullScanFieldOfView = vector
 
 
@@ -753,10 +755,42 @@ class Illumination:
     def __init__(self, tem):
         self._tem = tem
         self._tem_illumination = self._tem.Illumination
-        self.spotsize = self._tem_illumination.SpotsizeIndex
-        self.intensity = self._tem_illumination.Intensity
-        self.intensity_zoom = self._tem_illumination.IntensityZoomEnabled
-        self.intensity_limit = self._tem_illumination.IntensityLimitEnabled
+
+    @property
+    def spotsize(self):
+        return self._tem_illumination.SpotsizeIndex
+
+    @spotsize.setter
+    def spotsize(self, value):
+        self._tem_illumination.SpotsizeIndex = int(value)
+
+    @property
+    def intensity(self):
+        return self._tem_illumination.Intensity
+
+    @intensity.setter
+    def intensity(self, value):
+        self._tem_illumination.Intensity = float(value)
+
+    @property
+    def intensity_zoom(self):
+        return self._tem_illumination.IntensityZoomEnabled
+
+    @intensity_zoom.setter
+    def intensity_zoom(self, value):
+        self._tem_illumination.IntensityZoomEnabled = bool(value)
+
+    @property
+    def intensity_limit(self):
+        return self._tem_illumination.IntensityLimitEnabled
+
+    @intensity_limit.setter
+    def intensity_limit(self, value):
+        self._tem_illumination.IntensityLimitEnabled = bool(value)
+
+    @property
+    
+
         # TODO: return x, y tuple
         self.beam_shift = Vector(self._tem_illumination, 'Shift')
         self.rotation_center = Vector(self._tem_illumination, 'RotationCenter')
