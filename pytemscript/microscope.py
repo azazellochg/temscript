@@ -17,13 +17,15 @@ class Microscope(BaseMicroscope):
         self.gun = Gun(self)
         self.optics = Optics(self)
         self.stem = Stem(self)
-        self.apertures = Apertures(self)
         self.temperature = Temperature(self)
         self.vacuum = Vacuum(self)
         self.autoloader = Autoloader(self)
         self.stage = Stage(self)
         self.piezo_stage = PiezoStage(self)
-        self.user_door = UserDoor(self)
+
+        if self._tem_adv is not None:
+            self.user_door = UserDoor(self)
+            self.apertures = Apertures(self)
 
     @property
     def family(self):
@@ -74,14 +76,19 @@ class Acquisition:
         self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
         self._tem_cam = self._tem.Camera
         self._is_advanced = False
+        self._has_advanced = microscope._tem_adv is not None
         self._prev_shutter_mode = None
+
+        if self._has_advanced:
+            self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
 
     def _find_camera(self, name):
         """Find camera object by name. Check adv scripting first. """
-        for cam in self._tem_csa.SupportedCameras:
-            if cam.Name == name:
-                self._is_advanced = True
-                return cam
+        if self._has_advanced:
+            for cam in self._tem_csa.SupportedCameras:
+                if cam.Name == name:
+                    self._is_advanced = True
+                    return cam
         for cam in self._tem_acq.Cameras:
             if cam.Info.Name == name:
                 return cam
@@ -317,8 +324,11 @@ class Detectors:
     """ CCD/DDD, film/plate and STEM detectors. """
     def __init__(self, microscope):
         self._tem_acq = microscope._tem.Acquisition
-        self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
         self._tem_cam = microscope._tem.Camera
+        self._has_advanced = microscope._tem_adv is not None
+
+        if self._has_advanced:
+            self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
 
     @property
     def cameras(self):
@@ -338,6 +348,9 @@ class Detectors:
                 "pre_exposure_limits(s)": (param.MinPreExposureTime, param.MaxPreExposureTime),
                 "pre_exposure_pause_limits(s)": (param.MinPreExposurePauseTime, param.MaxPreExposurePauseTime)
             }
+        if not self._has_advanced:
+            return self._cameras
+
         for cam in self._tem_csa.SupportedCameras:
             self._tem_csa.Camera = cam
             param = self._tem_csa.CameraSettings.Capabilities
@@ -421,7 +434,10 @@ class Temperature:
     @property
     def is_dewars_filling(self):
         """ Returns TRUE if any of the dewars is currently busy filling. """
-        return self._tem_temp_control.DewarsAreBusyFilling
+        if self._tem_temp_control.TemperatureControlAvailable:
+            return self._tem_temp_control.DewarsAreBusyFilling
+        else:
+            raise Exception("TemperatureControl is not available")
 
     @property
     def dewars_remaining_time(self):
@@ -429,7 +445,10 @@ class Temperature:
         Returns -1 if no refill is scheduled (e.g. All room temperature, or no
         dewar present).
         """
-        return self._tem_temp_control.DewarsRemainingTime
+        if self._tem_temp_control.TemperatureControlAvailable:
+            return self._tem_temp_control.DewarsRemainingTime
+        else:
+            raise Exception("TemperatureControl is not available")
 
 
 class Autoloader:
@@ -504,9 +523,16 @@ class Stage:
             axes |= getattr(StageAxes, attr_name)
         return position, axes
 
+    def _beta_available(self):
+        return self.limits['b']['unit'] != MeasurementUnitType.UNKNOWN
+
     def _change_position(self, direct=False, **kwargs):
         if self._tem_stage.Status == StageStatus.READY:
             speed = kwargs.pop("speed", None)
+
+            if 'b' in kwargs and not self._beta_available():
+                raise Exception("B-axis is not available")
+
             current_pos = self._tem_stage.Position
             new_pos, axes = self._from_dict(current_pos, **kwargs)
             if not direct:
@@ -624,11 +650,17 @@ class Vacuum:
         """
         gauges = {}
         for g in self._tem_vacuum.Gauges:
-            g.Read()
+            #g.Read()
+            if g.Status == GaugeStatus.UNDEFINED:
+                # set manually if undefined, otherwise fails
+                pressure_level = GaugePressureLevel.UNDEFINED
+            else:
+                pressure_level = GaugePressureLevel(g.PressureLevel).name
+
             gauges[g.Name] = {
                 "status": GaugeStatus(g.Status).name,
                 "pressure": g.Pressure,
-                "level": GaugePressureLevel(g.PressureLevel).name
+                "level": pressure_level
             }
         return gauges
 
@@ -734,22 +766,30 @@ class Stem:
         """ The magnification value in STEM mode. (read/write)"""
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             return self._tem_illumination.StemMagnification
+        else:
+            raise Exception("Microscope not in STEM mode.")
 
     @magnification.setter
     def magnification(self, mag):
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             self._tem_illumination.StemMagnification = float(mag)
+        else:
+            raise Exception("Microscope not in STEM mode.")
 
     @property
     def rotation(self):
         """ The STEM rotation angle (in radians). (read/write)"""
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             return self._tem_illumination.StemRotation
+        else:
+            raise Exception("Microscope not in STEM mode.")
 
     @rotation.setter
     def rotation(self, rot):
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             self._tem_illumination.StemRotation = float(rot)
+        else:
+            raise Exception("Microscope not in STEM mode.")
 
     @property
     def scan_field_of_view(self):
@@ -757,11 +797,15 @@ class Stem:
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             return (self._tem_illumination.StemFullScanFieldOfView.X,
                     self._tem_illumination.StemFullScanFieldOfView.Y)
+        else:
+            raise Exception("Microscope not in STEM mode.")
 
     @scan_field_of_view.setter
     def scan_field_of_view(self, values):
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             Vector.set(self._tem_illumination, "StemFullScanFieldOfView", values)
+        else:
+            raise Exception("Microscope not in STEM mode.")
 
 
 class Illumination:
@@ -987,6 +1031,8 @@ class Projection:
         """ The reference camera length (screen up setting). """
         if self._tem_projection.Mode == ProjectionMode.DIFFRACTION:
             return self._tem_projection.CameraLength
+        else:
+            raise Exception("Microscope is not in diffraction mode.")
 
     @property
     def image_shift(self):
@@ -1112,7 +1158,8 @@ class Projection:
         self._tem_projection.LensProgram = LensProg.REGULAR
 
     def reset_defocus(self):
-        """ Reset defocus to zero. """
+        """ Reset defocus value in the TEM user interface to zero.
+        Does not change any lenses. """
         self._tem_projection.ResetDefocus()
 
 
@@ -1120,6 +1167,8 @@ class Apertures:
     """ Apertures and VPP controls. """
     def __init__(self, microscope):
         self._tem_vpp = microscope._tem_adv.PhasePlate
+        self._tem_apertures = None
+
         if hasattr(microscope._tem, "ApertureMechanismCollection"):
             self._tem_apertures = microscope._tem.ApertureMechanismCollection
         else:
@@ -1127,6 +1176,8 @@ class Apertures:
 
     def _find_aperture(self, name):
         """Find aperture object by name. """
+        if self._tem_apertures is None:
+            raise Exception("Apertures interface is not available. Requires a separate license")
         for ap in self._tem_apertures:
             if MechanismId(ap.Id).name == name.upper():
                 return ap
@@ -1182,6 +1233,8 @@ class Apertures:
     @property
     def show_all(self):
         """ Returns a dict with apertures information. """
+        if self._tem_apertures is None:
+            raise Exception("Apertures interface is not available. Requires a separate license")
         result = {}
         for ap in self._tem_apertures:
             result[MechanismId(ap.Id).name] = {"retractable": ap.IsRetractable,
@@ -1195,6 +1248,8 @@ class Gun:
     """ Gun functions. """
     def __init__(self, microscope):
         self._tem_gun = microscope._tem.Gun
+        self._tem_gun1 = None
+        self._tem_feg = None
 
         if hasattr(microscope._tem, "Gun1"):
             self._tem_gun1 = microscope._tem.Gun1
@@ -1227,15 +1282,21 @@ class Gun:
     @property
     def voltage_offset(self):
         """ High voltage offset. (read/write)"""
+        if self._tem_gun1 is None:
+            raise Exception("Gun1 interface is not available.")
         return self._tem_gun1.HighVoltageOffset
 
     @voltage_offset.setter
     def voltage_offset(self, offset):
+        if self._tem_gun1 is None:
+            raise Exception("Gun1 interface is not available.")
         self._tem_gun1.HighVoltageOffset = offset
 
     @property
     def feg_state(self):
         """ FEG emitter status. """
+        if self._tem_feg is None:
+            raise Exception("Gun1 interface is not available.")
         return FegState(self._tem_feg.State).name
 
     @property
@@ -1246,10 +1307,14 @@ class Gun:
         the high tension, this function cannot check if and
         when the set value is actually reached. (read/write)
         """
+        if self._tem_feg is None:
+            raise Exception("Source/FEG interface is not available.")
         return HighTensionState(self._tem_feg.HTState).name
 
     @ht_state.setter
     def ht_state(self, value):
+        if self._tem_feg is None:
+            raise Exception("Source/FEG interface is not available.")
         self._tem_feg.State = value
 
     @property
@@ -1275,21 +1340,29 @@ class Gun:
     @property
     def voltage_offset_range(self):
         """ Returns the high voltage offset range. """
+        if self._tem_gun1 is None:
+            raise Exception("Gun1 interface is not available.")
         return self._tem_gun1.GetHighVoltageOffsetRange()
 
     @property
     def beam_current(self):
         """ Returns the beam current. """
+        if self._tem_feg is None:
+            raise Exception("Source/FEG interface is not available.")
         return self._tem_feg.BeamCurrent
 
     @property
     def extractor_voltage(self):
         """ Returns the extractor voltage. """
+        if self._tem_feg is None:
+            raise Exception("Source/FEG interface is not available.")
         return self._tem_feg.ExtractorVoltage
 
     @property
     def focus_index(self):
         """ Returns coarse and fine focus index. """
+        if self._tem_feg is None:
+            raise Exception("Source/FEG interface is not available.")
         focus_index = self._tem_feg.FocusIndex
         return (focus_index.Coarse, focus_index.Fine)
 
@@ -1299,6 +1372,8 @@ class Gun:
         :param flash_type: FEG flashing type (FegFlashingType enum)
         :type flash_type: IntEnum
         """
+        if self._tem_feg is None:
+            raise Exception("Source/FEG interface is not available.")
         if self._tem_feg.Flashing.IsFlashingAdvised(flash_type):
             self._tem_feg.Flashing.PerformFlashing(flash_type)
         else:
