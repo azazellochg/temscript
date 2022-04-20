@@ -14,7 +14,7 @@ Version 2.0.0
 
 * C++ adapter removed, COM interface now directly accessed using ``ctypes``
 * Raised required minimum Python version to 3.4 (dropped support of Python 2.X)
-* More extensive documentation of the high level interfaces and the temscript server
+* More extensive documentation of the high level interfaces and the pytemscript server
 * Documentation of known issues of the original scripting interface
 * Support of the fluorescent screen
 * Separation of STEM detectors and CCD cameras in high level interface
@@ -62,7 +62,7 @@ Version 1.0.3
 Version 1.0.2
 ^^^^^^^^^^^^^
 
-* Renamed project to temscript.
+* Renamed project to pytemscript.
 * Created documentation.
 
 Version 1.0.1

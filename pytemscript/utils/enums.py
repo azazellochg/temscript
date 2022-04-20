@@ -58,7 +58,7 @@ class StageStatus(IntEnum):
     GOING = 3
     MOVING = 4
     WOBBLING = 5
-    DISABLE = 1         # Misnaming in temscript 1.X
+    DISABLE = 1         # Misnaming in pytemscript 1.X
 
 
 class MeasurementUnitType(IntEnum):

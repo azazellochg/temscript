@@ -1,17 +1,17 @@
 # About
 
-The ``temscript`` package provides a Python wrapper for both standard and advanced scripting
+The ``pytemscript`` package provides a Python wrapper for both standard and advanced scripting
 interfaces of Thermo Fisher Scientific and FEI microscopes. The functionality is
 limited to the functionality of the original scripting interfaces. For detailed information
 about TEM scripting see the documentation accompanying your microscope.
 
-The ``temscript`` package provides two interfaces to the microscope. The first one
+The ``pytemscript`` package provides two interfaces to the microscope. The first one
 corresponds directly to the COM interface. The other interface is a more high level interface.
-Within the ``temscript`` package three implementation for the high level interface are provided,
+Within the ``pytemscript`` package three implementation for the high level interface are provided,
 one for running scripts directly on the microscope PC, one to run scripts remotely over network, and
 finally a dummy implementation for offline development & testing exists.
 
-Currently the ``temscript`` package requires Python 3.4 or higher. The current plan is to keep the minimum
+Currently the ``pytemscript`` package requires Python 3.4 or higher. The current plan is to keep the minimum
 supported Python version at 3.4, since this is the latest Python version supporting Windows XP.
 
 This is a GPL fork of the original BSD-licensed project: https://github.com/niermann/temscript
@@ -42,7 +42,7 @@ Execute from the command line (assuming you have your python interpreter in the 
 administrator privileges):
     
     python3 -m pip install --upgrade pip
-    python3 -m pip install temscript
+    python3 -m pip install pytemscript
 
 ### Offline-Installation from wheels file (using pip)
 

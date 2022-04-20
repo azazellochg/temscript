@@ -1,11 +1,11 @@
 import math
 
-from temscript.old.base_microscope import set_enum_attr_from_dict, set_attr_from_dict
+from pytemscript.old.base_microscope import set_enum_attr_from_dict, set_attr_from_dict
 
 from .base_microscope import BaseMicroscope, parse_enum, STAGE_AXES
 from .instrument import (CCDCamera, GetInstrument, GetAdvancedInstrument,
                          STEMDetector, AdvancedCamera)
-from temscript.utils.enums import *
+from pytemscript.utils.enums import *
 
 
 class Microscope(BaseMicroscope):
@@ -49,7 +49,7 @@ class Microscope(BaseMicroscope):
         return socket.gethostname()
 
     def get_version(self):
-        from temscript import __version__
+        from pytemscript import __version__
         return __version__
 
     def get_voltage(self):

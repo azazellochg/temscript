@@ -4,7 +4,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs, unquote
 
 from .base_microscope import STAGE_AXES
-from temscript.utils.marshall import *
+from pytemscript.utils.marshall import *
 
 
 class MicroscopeHandler(BaseHTTPRequestHandler):

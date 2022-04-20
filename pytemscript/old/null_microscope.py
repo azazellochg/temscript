@@ -3,7 +3,7 @@ from enum import Enum
 import numpy as np
 from math import pi
 
-from temscript.utils.enums import *
+from pytemscript.utils.enums import *
 from .base_microscope import BaseMicroscope, parse_enum
 
 
@@ -127,7 +127,7 @@ class NullMicroscope(BaseMicroscope):
         return socket.gethostname()
 
     def get_version(self):
-        from temscript import __version__
+        from pytemscript import __version__
         return __version__
 
     def get_voltage(self):

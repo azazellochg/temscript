@@ -3,8 +3,8 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-from temscript.microscope import Microscope
-from temscript.utils.enums import *
+from pytemscript.microscope import Microscope
+from pytemscript.utils.enums import *
 
 
 def camera_acquire(cam_name, exp_time, binning, **kwargs):

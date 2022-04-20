@@ -1,10 +1,10 @@
 .. _server:
 
-The temscript server
+The pytemscript server
 ====================
 
-If remote scripting of the microscope is required as provided via the :class:`RemoteMicroscope` class, the temscript
-server must run on the microscope PC. The temscript server provides a Web-API to the interface.
+If remote scripting of the microscope is required as provided via the :class:`RemoteMicroscope` class, the pytemscript
+server must run on the microscope PC. The pytemscript server provides a Web-API to the interface.
 
 .. warning::
 
@@ -16,12 +16,12 @@ server must run on the microscope PC. The temscript server provides a Web-API to
 Command line
 ------------
 
-The temscript server is started by the ``temscript-server`` command line script provided with the :mod:`temscript``
-package (obviously :mod:`temscript` must also be installed on the microscope PC).
+The pytemscript server is started by the ``pytemscript-server`` command line script provided with the :mod:`pytemscript``
+package (obviously :mod:`pytemscript` must also be installed on the microscope PC).
 
 .. code-block:: none
 
-    usage: temscript-server [-h] [-p PORT] [--host HOST] [--null]
+    usage: pytemscript-server [-h] [-p PORT] [--host HOST] [--null]
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -32,8 +32,8 @@ package (obviously :mod:`temscript` must also be installed on the microscope PC)
 Python command
 --------------
 
-Alternatively the temscript server can also be run from within Python using :func:`run_server` function.
+Alternatively the pytemscript server can also be run from within Python using :func:`run_server` function.
 
-.. autofunction:: temscript.run_server
+.. autofunction:: pytemscript.run_server
 
 

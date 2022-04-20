@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from temscript.microscope import Microscope
-from temscript.utils.enums import *
+from pytemscript.microscope import Microscope
+from pytemscript.utils.enums import *
 
 
 def test_projection(microscope, eftem=False):

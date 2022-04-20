@@ -92,7 +92,7 @@ class BaseMicroscope(ABC):
     @abstractmethod
     def get_version(self):
         """
-        Return version string for temscript.
+        Return version string for pytemscript.
 
         .. versionadded:: 1.0.8
 
@@ -1097,7 +1097,7 @@ class BaseMicroscope(ABC):
         state = {
             "family": self.get_family(),
             "microscope_id": self.get_microscope_id(),
-            "temscript_version": self.get_version(),
+            "pytemscript_version": self.get_version(),
             "voltage(kV)": self.get_voltage(),
             "stage_holder": self.get_stage_holder(),
             "stage_position": self.get_stage_position(),

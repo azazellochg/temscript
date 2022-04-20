@@ -3,8 +3,8 @@
 Restrictions
 ============
 
-The restrictions listed here are issues with the scripting interface itself. `temscript` only provides Python bindings
-to this scripting interface, thus these issues also occur using `temscript`. As there is no public list of known issues
+The restrictions listed here are issues with the scripting interface itself. `pytemscript` only provides Python bindings
+to this scripting interface, thus these issues also occur using `pytemscript`. As there is no public list of known issues
 with the scripting interfaces by FEI or Thermo Fisher Scientific themself, known issues are listed here for the user's
 reference.
 

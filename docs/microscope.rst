@@ -6,32 +6,32 @@ Microscope class
 The :class:`Microscope` class provides a Python interface to the microscope.
 Below are the main class properties, each represented by a separate class:
 
-    * acquisition = :meth:`~temscript.microscope.Acquisition`
-    * apertures = :meth:`~temscript.microscope.Apertures`
-    * autoloader = :meth:`~temscript.microscope.Autoloader`
-    * detectors = :meth:`~temscript.microscope.Detectors`
-    * gun = :meth:`~temscript.microscope.Gun`
-    * optics = :meth:`~temscript.microscope.Optics`
+    * acquisition = :meth:`~pytemscript.microscope.Acquisition`
+    * apertures = :meth:`~pytemscript.microscope.Apertures`
+    * autoloader = :meth:`~pytemscript.microscope.Autoloader`
+    * detectors = :meth:`~pytemscript.microscope.Detectors`
+    * gun = :meth:`~pytemscript.microscope.Gun`
+    * optics = :meth:`~pytemscript.microscope.Optics`
 
-        * illumination = :meth:`~temscript.microscope.Illumination`
-        * projection = :meth:`~temscript.microscope.Projection`
+        * illumination = :meth:`~pytemscript.microscope.Illumination`
+        * projection = :meth:`~pytemscript.microscope.Projection`
 
-    * piezo_stage = :meth:`~temscript.microscope.PiezoStage`
-    * stage = :meth:`~temscript.microscope.Stage`
-    * stem = :meth:`~temscript.microscope.Stem`
-    * temperature = :meth:`~temscript.microscope.Temperature`
-    * user_door = :meth:`~temscript.microscope.UserDoor`
-    * vacuum = :meth:`~temscript.microscope.Vacuum`
+    * piezo_stage = :meth:`~pytemscript.microscope.PiezoStage`
+    * stage = :meth:`~pytemscript.microscope.Stage`
+    * stem = :meth:`~pytemscript.microscope.Stem`
+    * temperature = :meth:`~pytemscript.microscope.Temperature`
+    * user_door = :meth:`~pytemscript.microscope.UserDoor`
+    * vacuum = :meth:`~pytemscript.microscope.Vacuum`
 
 
 Image object
 ------------
 
-Two acquisition functions: :meth:`~temscript.microscope.Acquisition.acquire_tem_image` and
-:meth:`~temscript.microscope.Acquisition.acquire_stem_image` return an :class:`Image` object
+Two acquisition functions: :meth:`~pytemscript.microscope.Acquisition.acquire_tem_image` and
+:meth:`~pytemscript.microscope.Acquisition.acquire_stem_image` return an :class:`Image` object
 that has the following methods:
 
-.. autoclass:: temscript.base_microscope.Image
+.. autoclass:: pytemscript.base_microscope.Image
     :members:
 
 
@@ -52,6 +52,6 @@ Example usage
 Documentation
 -------------
 
-.. automodule:: temscript.microscope
+.. automodule:: pytemscript.microscope
     :members:
 

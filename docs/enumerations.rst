@@ -11,8 +11,8 @@ Example:
 
 .. code-block:: python
 
-    from temscript.microscope import Microscope
-    from temscript.utils.enums import *
+    from pytemscript.microscope import Microscope
+    from pytemscript.utils.enums import *
 
     microscope = Microscope()
     stage = microscope.stage
@@ -25,5 +25,5 @@ Example:
                                                      exp_time=0.5,
                                                      binning=2)
 
-.. automodule:: temscript.utils.enums
+.. automodule:: pytemscript.utils.enums
     :members:

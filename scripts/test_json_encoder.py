@@ -1,7 +1,7 @@
 import numpy as np
 
-from temscript.old.remote_microscope import ExtendedJsonEncoder
-from temscript.utils.enums import *
+from pytemscript.old.remote_microscope import ExtendedJsonEncoder
+from pytemscript.utils.enums import *
 
 print("RequestJsonEncoder:")
 reqenc = ExtendedJsonEncoder()

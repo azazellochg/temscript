@@ -2,7 +2,7 @@
 from time import sleep
 from argparse import ArgumentParser
 
-from temscript import Microscope, NullMicroscope, RemoteMicroscope
+from pytemscript import Microscope, NullMicroscope, RemoteMicroscope
 
 
 parser = ArgumentParser()

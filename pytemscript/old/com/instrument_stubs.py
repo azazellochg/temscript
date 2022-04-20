@@ -153,9 +153,9 @@ class AdvancedInstrumentInternal:
 
 def GetInstrument():
     """Returns Instrument instance."""
-    raise RuntimeError("temscript microscope API is not accessible")
+    raise RuntimeError("pytemscript microscope API is not accessible")
 
 
 def GetAdvancedInstrument():
     """Returns Advanced Instrument instance."""
-    raise RuntimeError("temscript microscope API is not accessible")
+    raise RuntimeError("pytemscript microscope API is not accessible")
