@@ -80,28 +80,19 @@ class Image:
 
 class Vector:
     """ Vector object/property. """
-    def __init__(self, com_obj, name='', range=None, readonly=False):
-        self._com_obj = com_obj
-        self._name = name
-        self._range = range
-        self._readonly = readonly
 
-    def __get__(self, obj, objtype=None):
-        result = getattr(self._com_obj, self._name)
-        return (result.X, result.Y)
-
-    def __set__(self, obj, value):
-        if self._readonly:
-            raise AttributeError("Attribute %s is not writable" % self._name)
-        value = [round(float(c), 3) for c in value]
+    @staticmethod
+    def set(obj, attr_name, value, range=None):
+        value = [float(c) for c in value]
         if len(value) != 2:
-            raise ValueError("Expected two items for attribute" % self._name)
+            raise ValueError("Expected two items for attribute %s" % attr_name)
 
-        for v in value:
-            if not(self._range[0] <= v <= self._range[1]):
-                raise ValueError("%s is outside of range %s" % (value, self._range))
+        if range is not None:
+            for v in value:
+                if not(range[0] <= v <= range[1]):
+                    raise ValueError("%s is outside of range %s" % (value, range))
 
-        vector = getattr(self._com_obj, self._name)
+        vector = getattr(obj, attr_name)
         vector.X = value[0]
         vector.Y = value[1]
-        setattr(self._com_obj, self._name, vector)
+        setattr(obj, attr_name, vector)

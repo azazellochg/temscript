@@ -1,3 +1,4 @@
+import logging
 import math
 import time
 from .base_microscope import BaseMicroscope, Image, Vector
@@ -54,11 +55,15 @@ class UserDoor:
         """ Open the door. """
         if self._tem_door.IsControlAllowed:
             self._tem_door.Open()
+        else:
+            raise Exception("Door control is unavailable")
 
     def close(self):
         """ Close the door. """
         if self._tem_door.IsControlAllowed:
             self._tem_door.Close()
+        else:
+            raise Exception("Door control is unavailable")
 
 
 class Acquisition:
@@ -296,7 +301,8 @@ class Acquisition:
         """
         if self._tem_cam.Stock > 0:
             self._tem_cam.PlateLabelDataType = PlateLabelDateFormat.DDMMYY
-            self._tem_cam.ExposureNumber += 1  # TODO: check this
+            exp_num = self._tem_cam.ExposureNumber
+            self._tem_cam.ExposureNumber = exp_num + 1
             self._tem_cam.MainScreen = ScreenPosition.UP
             self._tem_cam.ScreenDim = True
 
@@ -430,6 +436,14 @@ class Autoloader:
     def __init__(self, microscope):
         self._tem_autoloader = microscope._tem.AutoLoader
 
+    @property
+    def number_of_cassette_slots(self):
+        """ The number of slots in a cassette. """
+        if self._tem_autoloader.AutoLoaderAvailable:
+            return self._tem_autoloader.NumberOfCassetteSlots
+        else:
+            raise Exception("Autoloader is not available")
+
     def load_cartridge(self, slot):
         """ Loads the cartridge in the given slot into the microscope. """
         if self._tem_autoloader.AutoLoaderAvailable:
@@ -459,16 +473,8 @@ class Autoloader:
     def get_slot_status(self, slot):
         """ The status of the slot specified. """
         if self._tem_autoloader.AutoLoaderAvailable:
-            status = self._tem_autoloader.SlotStatus(slot)
+            status = self._tem_autoloader.SlotStatus(int(slot))
             return CassetteSlotStatus(status).name
-        else:
-            raise Exception("Autoloader is not available")
-
-    @property
-    def number_of_cassette_slots(self):
-        """ The number of slots in a cassette. """
-        if self._tem_autoloader.AutoLoaderAvailable:
-            return self._tem_autoloader.NumberOfCassetteSlots
         else:
             raise Exception("Autoloader is not available")
 
@@ -501,7 +507,7 @@ class Stage:
             else:
                 self._tem_stage.GoTo(new_pos, axes)
         else:
-            print("Stage is not ready.")
+            raise Exception("Stage is not ready.")
 
     @property
     def status(self):
@@ -556,7 +562,7 @@ class PiezoStage:
             self._tem_pstage = microscope._tem_adv.PiezoStage
             self.high_resolution = self._tem_pstage.HighResolution
         else:
-            print("PiezoStage interface is not available.")
+            logging.info("PiezoStage interface is not available.")
 
     @property
     def position(self):
@@ -739,15 +745,13 @@ class Stem:
     def scan_field_of_view(self):
         """ STEM full scan field of view. """
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            return self._tem_illumination.StemFullScanFieldOfView
+            return (self._tem_illumination.StemFullScanFieldOfView.X,
+                    self._tem_illumination.StemFullScanFieldOfView.Y)
 
     @scan_field_of_view.setter
     def scan_field_of_view(self, values):
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            values = list(map(float, values))
-            vector = self._tem_illumination.StemFullScanFieldOfView
-            vector.X, vector.Y = values[0], values[1]
-            self._tem_illumination.StemFullScanFieldOfView = vector
+            Vector.set(self._tem_illumination, "StemFullScanFieldOfView", values)
 
 
 class Illumination:
@@ -758,6 +762,7 @@ class Illumination:
 
     @property
     def spotsize(self):
+        """ Spotsize number, usually 1 to 11. """
         return self._tem_illumination.SpotsizeIndex
 
     @spotsize.setter
@@ -766,6 +771,7 @@ class Illumination:
 
     @property
     def intensity(self):
+        """ Intensity / C2 condenser lens value. """
         return self._tem_illumination.Intensity
 
     @intensity.setter
@@ -774,6 +780,7 @@ class Illumination:
 
     @property
     def intensity_zoom(self):
+        """ Intensity zoom. Set to False to disable. """
         return self._tem_illumination.IntensityZoomEnabled
 
     @intensity_zoom.setter
@@ -782,6 +789,7 @@ class Illumination:
 
     @property
     def intensity_limit(self):
+        """ Intensity limit. Set to False to disable. """
         return self._tem_illumination.IntensityLimitEnabled
 
     @intensity_limit.setter
@@ -789,18 +797,94 @@ class Illumination:
         self._tem_illumination.IntensityLimitEnabled = bool(value)
 
     @property
-    
+    def beam_shift(self):
+        """ Beam shift X and Y."""
+        return (self._tem_illumination.Shift.X,
+                self._tem_illumination.Shift.Y)
 
-        # TODO: return x, y tuple
-        self.beam_shift = Vector(self._tem_illumination, 'Shift')
-        self.rotation_center = Vector(self._tem_illumination, 'RotationCenter')
-        self.condenser_stigmator = Vector(self._tem_illumination, 'CondenserStigmator', range=(-1.0, 1.0))
+    @beam_shift.setter
+    def beam_shift(self, value):
+        Vector.set(self._tem_illumination, "Shift", value)
 
+    @property
+    def rotation_center(self):
+        """ Rotation center X and Y. """
+        return (self._tem_illumination.RotationCenter.X,
+                self._tem_illumination.RotationCenter.Y)
+
+    @rotation_center.setter
+    def rotation_center(self, value):
+        Vector.set(self._tem_illumination, "RotationCenter", value)
+
+    @property
+    def condenser_stigmator(self):
+        """ C2 condenser stigmator X and Y. """
+        return (self._tem_illumination.CondenserStigmator.X,
+                self._tem_illumination.CondenserStigmator.Y)
+
+    @condenser_stigmator.setter
+    def condenser_stigmator(self, value):
+        Vector.set(self._tem_illumination, "CondenserStigmator", value, range=(-1.0, 1.0))
+
+    @property
+    def illuminated_area(self):
+        """ Illuminated area. Works only on 3-condenser lens systems. """
         if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
-            self.illuminated_area = self._tem_illumination.IlluminatedArea
-            self.probe_defocus = self._tem_illumination.ProbeDefocus
-            self.convergence_angle = self._tem_illumination.ConvergenceAngle
-            self.C3ImageDistanceParallelOffset = self._tem_illumination.C3ImageDistanceParallelOffset
+            return self._tem_illumination.IlluminatedArea
+        else:
+            raise NotImplementedError("Illuminated area exists only on 3-condenser lens systems.")
+
+    @illuminated_area.setter
+    def illuminated_area(self, value):
+        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            self._tem_illumination.IlluminatedArea = float(value)
+        else:
+            raise NotImplementedError("Illuminated area exists only on 3-condenser lens systems.")
+
+    @property
+    def probe_defocus(self):
+        """ Probe defocus. Works only on 3-condenser lens systems. """
+        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            return self._tem_illumination.ProbeDefocus
+        else:
+            raise NotImplementedError("Probe defocus exists only on 3-condenser lens systems.")
+
+    @probe_defocus.setter
+    def probe_defocus(self, value):
+        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            self._tem_illumination.ProbeDefocus = float(value)
+        else:
+            raise NotImplementedError("Probe defocus exists only on 3-condenser lens systems.")
+
+    @property
+    def convergence_angle(self):
+        """ Convergence angle. Works only on 3-condenser lens systems. """
+        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            return self._tem_illumination.ConvergenceAngle
+        else:
+            raise NotImplementedError("Convergence angle exists only on 3-condenser lens systems.")
+
+    @convergence_angle.setter
+    def convergence_angle(self, value):
+        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            self._tem_illumination.ConvergenceAngle = float(value)
+        else:
+            raise NotImplementedError("Convergence angle exists only on 3-condenser lens systems.")
+
+    @property
+    def C3ImageDistanceParallelOffset(self):
+        """ C3 image distance parallel offset. Works only on 3-condenser lens systems. """
+        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            return self._tem_illumination.C3ImageDistanceParallelOffset
+        else:
+            raise NotImplementedError("C3ImageDistanceParallelOffset exists only on 3-condenser lens systems.")
+
+    @C3ImageDistanceParallelOffset.setter
+    def C3ImageDistanceParallelOffset(self, value):
+        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            self._tem_illumination.C3ImageDistanceParallelOffset = float(value)
+        else:
+            raise NotImplementedError("C3ImageDistanceParallelOffset exists only on 3-condenser lens systems.")
 
     @property
     def mode(self):
@@ -813,7 +897,7 @@ class Illumination:
 
     @property
     def dark_field(self):
-        """ Dark field mode. """
+        """ Dark field mode: cartesian, conical or off. """
         return DarkFieldMode(self._tem_illumination.DFMode).name
 
     @dark_field.setter
@@ -822,7 +906,7 @@ class Illumination:
 
     @property
     def condenser_mode(self):
-        """ Mode of the illumination system, parallel or probe. """
+        """ Mode of the illumination system: parallel or probe. """
         if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
             return CondenserMode(self._tem_illumination.CondenserMode).name
         else:
@@ -871,16 +955,17 @@ class Projection:
     """ Projection system functions. """
     def __init__(self, projection):
         self._tem_projection = projection
-        self.focus = self._tem_projection.Focus
-        self.magnification_index = self._tem_projection.MagnificationIndex
-        self.camera_length_index = self._tem_projection.CameraLengthIndex
-        self.image_shift = Vector(self._tem_projection, 'ImageShift')
-        self.image_beam_shift = Vector(self._tem_projection, 'ImageBeamShift')  # IS with BS compensation
-        self.diffraction_shift = Vector(self._tem_projection, 'DiffractionShift')
-        self.diffraction_stigmator = Vector(self._tem_projection, 'DiffractionStigmator', range=(-1.0, 1.0))
-        self.objective_stigmator = Vector(self._tem_projection, 'ObjectiveStigmator', range=(-1.0, 1.0))
-        self.defocus = self._tem_projection.Defocus
-        self.image_beam_tilt = Vector(self._tem_projection, 'ImageBeamTilt')  # BT with diffr sh compensation
+        #self.magnification_index = self._tem_projection.MagnificationIndex
+        #self.camera_length_index = self._tem_projection.CameraLengthIndex
+
+    @property
+    def focus(self):
+        """ Absolute focus value. """
+        return self._tem_projection.Focus
+
+    @focus.setter
+    def focus(self, value):
+        self._tem_projection.Focus = float(value)
 
     @property
     def magnification(self):
@@ -892,6 +977,75 @@ class Projection:
         """ The reference camera length (screen up setting). """
         if self._tem_projection.Mode == ProjectionMode.DIFFRACTION:
             return self._tem_projection.CameraLength
+
+    @property
+    def image_shift(self):
+        """ Image shift. """
+        return (self._tem_projection.ImageShift.X,
+                self._tem_projection.ImageShift.Y)
+
+    @image_shift.setter
+    def image_shift(self, value):
+        Vector.set(self._tem_projection, "ImageShift", value)
+
+    @property
+    def image_beam_shift(self):
+        """ Image shift with beam shift compensation. """
+        return (self._tem_projection.ImageBeamShift.X,
+                self._tem_projection.ImageBeamShift.Y)
+
+    @image_beam_shift.setter
+    def image_beam_shift(self, value):
+        Vector.set(self._tem_projection, "ImageBeamShift", value)
+
+    @property
+    def image_beam_tilt(self):
+        """ Beam tilt with diffraction shift compensation. """
+        return (self._tem_projection.ImageBeamTilt.X,
+                self._tem_projection.ImageBeamTilt.Y)
+
+    @image_beam_tilt.setter
+    def image_beam_tilt(self, value):
+        Vector.set(self._tem_projection, "ImageBeamTilt", value)
+
+    @property
+    def diffraction_shift(self):
+        """ Diffraction shift. """
+        return (self._tem_projection.DiffractionShift.X,
+                self._tem_projection.DiffractionShift.Y)
+
+    @diffraction_shift.setter
+    def diffraction_shift(self, value):
+        Vector.set(self._tem_projection, "DiffractionShift", value)
+
+    @property
+    def diffraction_stigmator(self):
+        """ Diffraction stigmator. """
+        return (self._tem_projection.DiffractionStigmator.X,
+                self._tem_projection.DiffractionStigmator.Y)
+
+    @diffraction_stigmator.setter
+    def diffraction_stigmator(self, value):
+        Vector.set(self._tem_projection, "DiffractionStigmator", value, range=(-1.0, 1.0))
+
+    @property
+    def objective_stigmator(self):
+        """ Objective stigmator. """
+        return (self._tem_projection.ObjectiveStigmator.X,
+                self._tem_projection.ObjectiveStigmator.Y)
+
+    @objective_stigmator.setter
+    def objective_stigmator(self, value):
+        Vector.set(self._tem_projection, "ObjectiveStigmator", value, range=(-1.0, 1.0))
+
+    @property
+    def defocus(self):
+        """ Defocus value. """
+        return self._tem_projection.Defocus
+
+    @defocus.setter
+    def defocus(self, value):
+        self._tem_projection.Defocus = float(value)
 
     @property
     def mode(self):
@@ -930,6 +1084,7 @@ class Projection:
         self._tem_projection.LensProgram = LensProg.REGULAR
 
     def reset_defocus(self):
+        """ Reset defocus to zero. """
         self._tem_projection.ResetDefocus()
 
 
@@ -937,10 +1092,10 @@ class Apertures:
     """ Apertures and VPP controls. """
     def __init__(self, microscope):
         self._tem_vpp = microscope._tem_adv.PhasePlate
-        try:
+        if hasattr(microscope._tem, "ApertureMechanismCollection"):
             self._tem_apertures = microscope._tem.ApertureMechanismCollection
-        except:
-            print("Apertures interface is not available. Requires a separate license")
+        else:
+            logging.info("Apertures interface is not available. Requires a separate license")
 
     def _find_aperture(self, name):
         """Find aperture object by name. """
@@ -1012,16 +1167,34 @@ class Gun:
     """ Gun functions. """
     def __init__(self, microscope):
         self._tem_gun = microscope._tem.Gun
-        self.shift = Vector(self._tem_gun, 'Shift', range=(-1.0, 1.0))
-        self.tilt = Vector(self._tem_gun, 'Tilt', range=(-1.0, 1.0))
-        try:
+
+        if hasattr(microscope._tem, "Gun1"):
             self._tem_gun1 = microscope._tem.Gun1
-        except:
-            print("Gun1 interface is not available. Requires TEM Server 7.10+")
-        try:
+        else:
+            logging.info("Gun1 interface is not available. Requires TEM Server 7.10+")
+
+        if hasattr(microscope._tem_adv, "Source"):
             self._tem_feg = microscope._tem_adv.Source
-        except:
-            print("Source/FEG interface is not available.")
+        else:
+            logging.info("Source/FEG interface is not available.")
+
+    @property
+    def shift(self):
+        """ Gun shift. """
+        return (self._tem_gun.Shift.X, self._tem_gun.Shift.Y)
+
+    @shift.setter
+    def shift(self, value):
+        Vector.set(self._tem_gun, "Shift", value, range=(-1.0, 1.0))
+
+    @property
+    def tilt(self):
+        """ Gun tilt. """
+        return (self._tem_gun.Tilt.X, self._tem_gun.Tilt.Y)
+
+    @tilt.setter
+    def tilt(self, value):
+        Vector.set(self._tem_gun, "Tilt", value, range=(-1.0, 1.0))
 
     @property
     def voltage_offset(self):
@@ -1039,11 +1212,11 @@ class Gun:
 
     @property
     def ht_state(self):
-        """ The state of the high tension. (The high tension can be on,
-        off or disabled). Disabling/enabling can only be done via
-        the button on the system on/off-panel, not via script.
-        When switching on the high tension, this function cannot
-        check if and when the set high tension value is actually reached.
+        """ High tension state: on, off or disabled.
+        Disabling/enabling can only be done via the button on the
+        system on/off-panel, not via script. When switching on
+        the high tension, this function cannot check if and
+        when the set value is actually reached.
         """
         return HighTensionState(self._tem_feg.HTState).name
 
@@ -1064,7 +1237,7 @@ class Gun:
 
     @voltage.setter
     def voltage(self, value):
-        self._tem_gun.HTValue = value * 1000
+        self._tem_gun.HTValue = float(value) * 1000
 
     @property
     def voltage_max(self):
