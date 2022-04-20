@@ -73,7 +73,6 @@ class Acquisition:
     def __init__(self, microscope):
         self._tem = microscope._tem
         self._tem_acq = self._tem.Acquisition
-        self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
         self._tem_cam = self._tem.Camera
         self._is_advanced = False
         self._has_advanced = microscope._tem_adv is not None
