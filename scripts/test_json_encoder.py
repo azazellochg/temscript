@@ -14,4 +14,3 @@ print("\tlist:", reqenc.encode([1, 2, 3]))
 print("\tgenerator:", reqenc.encode(range(3)))
 print("\tnp.array:", reqenc.encode(np.arange(3)))
 print("\tStageStatus.MOVING:", reqenc.encode(StageStatus.MOVING))
-
