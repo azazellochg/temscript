@@ -20,50 +20,37 @@ New changes and this whole product is distributed under either version 3 of the 
 
 # Documentation
 
-The documentation can be found in the docs/ folder.
+The documentation can be found at https://pytemscript.readthedocs.io/ (tbd)
 
 # Installation
 
 Requirements:
-* Python >= 3.4
-* Numpy
-* Sphinx (only for building documentation)
+* python >= 3.4
+* numpy
+* sphinx-rtd-theme (only for building documentation)
+* matplotlib (only for running tests)
 
-On all platforms the dummy and remote high level interfaces are provided. 
-On Windows platforms the package provides the Python wrapper
-to the scripting COM interface via comtypes library. However, trying to instantiate this wrapper
-will fail if the scripting COM classes are not installed locally.
-
-### Installation from PyPI (using pip)
+### Installation from PyPI on Windows (using pip)
 
 This assumes you have connection to the internet. 
 
-Execute from the command line (assuming you have your python interpreter in the path, this might require superuser or 
-administrator privileges):
+Execute from the command line (assuming you have your Python interpreter in the path):
     
-    python3 -m pip install --upgrade pip
-    python3 -m pip install pytemscript
+    py -m pip install --upgrade pip
+    py -m pip install pytemscript
 
-### Offline-Installation from wheels file (using pip)
+### Offline-Installation from wheels file on Windows (using pip)
 
-This assumes you have downloaded the wheels file <downloaded-wheels-file>.whl 
+This assumes you have downloaded the wheels file <downloaded-wheels-file>.whl for temscript, numpy and comtypes into the current folder.
 
-Execute from the command line (assuming you have your python interpreter in the path, this might require superuser or 
-administrator privileges):
+Execute from the command line (assuming you have your Python interpreter in the path:
     
-    python3 -m pip install --upgrade pip
-    python3 -m pip install <downloaded-wheels-file>.whl
+    py -m pip install numpy comtypes pytemscript --no-index --find-links .
 
-### Installation from sources (using pip)
-
-This assumes you have downloaded and extracted the sources into the directory <source_directory> (alternative have
-cloned the sources from GitHub into <source_directory>). 
-
-Execute from the command line (assuming you have your python interpreter in the path, this might require superuser or 
-administrator privileges):
+If you want to install pytemscript from sources (you still need to download numpy and comtypes *.whl):
     
-    python3 -m pip install --upgrade pip
-    python3 -m pip install <source_directory>
+    py -m pip install numpy comtypes --no-index --find-links .
+    py -m pip install -e <source_directory>
 
 
 # Supported functions of the COM interface
@@ -71,13 +58,13 @@ administrator privileges):
 Relative to Titan V1.9 standard scripting adapter:
 
 * Acquisition: complete
-* ApertureMechanismCollection: complete
+* ApertureMechanismCollection: complete, untested (requires a separate license)
 * AutoLoader: complete
 * BlankerShutter: complete
 * Camera: complete
 * Configuration: complete
 * Gun: complete
-* Gun1: missing (requires TEM Server 7.10)
+* Gun1: incomplete, untested (requires TEM Server 7.10)
 * Illumination: complete
 * InstrumentModeControl: complete
 * Projection: complete
@@ -90,9 +77,9 @@ Relative to Titan V1.2 advanced scripting adapter:
 
 * Acquisitions: complete
 * Phaseplate: complete
-* PiezoStage: complete
-* Source: complete
-* UserDoorHatch: complete
+* PiezoStage: complete (untested)
+* Source: complete (untested)
+* UserDoorHatch: complete (untested)
 
 # Disclaimer
 

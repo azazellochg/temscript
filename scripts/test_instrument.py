@@ -208,7 +208,6 @@ def test_general(microscope, check_door=False):
     print("\tBlankerShutter.ShutterOverrideOn:",
           microscope.optics.is_shutter_override_on)
     print("\tCondenser system:", microscope.condenser_system)
-    print("\tLicenses:", microscope.check_license())
 
     if check_door:
         print("\tUser door:", microscope.user_door.state)

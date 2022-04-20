@@ -33,7 +33,6 @@ needs_sphinx = '2.0'
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode']
 
 # Add any paths that contain templates here, relative to this directory.
-#templates_path = ['_templates']
 source_suffix = '.rst'
 master_doc = 'index'
 language = 'en'
@@ -52,10 +51,4 @@ pygments_style = 'sphinx'
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
-html_theme_options = {#'logo_only': True,
-                      'sticky_navigation': False}
-
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-#html_static_path = ['_static']
+html_theme_options = {'sticky_navigation': False}
