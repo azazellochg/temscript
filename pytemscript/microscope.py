@@ -1067,6 +1067,24 @@ class Projection:
         self._tem_projection.Mode = mode
 
     @property
+    def detector_shift(self):
+        """ Detector shift. (read/write)"""
+        return ProjectionDetectorShift(self._tem_projection.DetectorShift).name
+
+    @detector_shift.setter
+    def detector_shift(self, value):
+        self._tem_projection.DetectorShift = value
+
+    @property
+    def detector_shift_mode(self):
+        """ Detector shift mode. (read/write)"""
+        return ProjDetectorShiftMode(self._tem_projection.DetectorShiftMode).name
+
+    @detector_shift_mode.setter
+    def detector_shift_mode(self, value):
+        self._tem_projection.DetectorShiftMode = value
+
+    @property
     def magnification_range(self):
         """ Submode of the projection system (either LM, M, SA, MH, LAD or D).
         The imaging submode can change when the magnification is changed.

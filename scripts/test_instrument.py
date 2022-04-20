@@ -9,9 +9,11 @@ def test_projection(microscope, eftem=False):
     projection = microscope.optics.projection
     print("\tMode:", projection.mode)
     print("\tFocus:", projection.focus)
+    print("\tDefocus:", projection.defocus)
     print("\tMagnification:", projection.magnification)
-    print("\tMagnificationIndex:", projection.magnificationIndex)
-    print("\tCameraLengthIndex:", projection.camera_length_index)
+    #print("\tMagnificationIndex:", projection.magnificationIndex)
+    print("\tCameraLength:", projection.camera_length)
+    #print("\tCameraLengthIndex:", projection.camera_length_index)
     print("\tImageShift:", projection.image_shift)
     print("\tImageBeamShift:", projection.image_beam_shift)
     print("\tDiffractionShift:", projection.diffraction_shift)
@@ -20,8 +22,8 @@ def test_projection(microscope, eftem=False):
     print("\tSubMode:", projection.magnification_range)
     print("\tLensProgram:", projection.is_eftem_on)
     print("\tImageRotation:", projection.image_rotation)
-    # print("\tDetectorShift:", projection.DetectorShift)
-    # print("\tDetectorShiftMode:", projection.DetectorShiftMode)
+    print("\tDetectorShift:", projection.detector_shift)
+    print("\tDetectorShiftMode:", projection.detector_shift_mode)
     print("\tImageBeamTilt:", projection.image_beam_tilt)
     print("\tLensProgram:", projection.is_eftem_on)
 
@@ -80,7 +82,7 @@ def test_vacuum(microscope, full_test=False):
         vacuum.run_buffer_cycle()
 
 
-def test_temperature(microscope):
+def test_temperature(microscope, full_test=False):
     print("Testing TemperatureControl...")
     temp = microscope.temperature
     print("\tRefrigerantLevel (autoloader):",
@@ -89,6 +91,9 @@ def test_temperature(microscope):
           temp.dewar_level(RefrigerantDewar.COLUMN_DEWAR))
     print("\tDewarsRemainingTime:", temp.dewars_remaining_time)
     print("\tDewarsAreBusyFilling:", temp.is_dewars_filling)
+
+    if full_test:
+        temp.force_refill()
 
 
 def test_autoloader(microscope, full_test=False, slot=1):
@@ -173,31 +178,48 @@ def test_illumination(microscope):
 def test_stem(microscope):
     print("Testing STEM...")
     stem = microscope.stem
-    print("\tStemAvailable:", stem.is_stem_available)
+    print("\tStemAvailable:", stem.is_available)
 
     if stem.is_stem_available:
         stem.enable()
-        print("\tIllumination.StemMagnification:", stem.stem_magnification)
-        print("\tIllumination.StemRotation:", stem.stem_rotation)
-        print("\tIllumination.StemFullScanFieldOfView:", stem.stem_scan_fov)
+        print("\tIllumination.StemMagnification:", stem.magnification)
+        print("\tIllumination.StemRotation:", stem.rotation)
+        print("\tIllumination.StemFullScanFieldOfView:", stem.scan_field_of_view)
         stem.disable()
 
 
-def test_gun(microscope):
+def test_gun(microscope, has_gun1=False, has_feg=False):
     print("Testing gun...")
     gun = microscope.gun
-    print("\tHTState:", gun.ht_state)
     print("\tHTValue:", gun.voltage)
     print("\tHTMaxValue:", gun.voltage_max)
     print("\tShift:", gun.shift)
     print("\tTilt:", gun.tilt)
 
+    if has_gun1:
+        print("\tHighVoltageOffsetRange:", gun.voltage_offset_range)
+        print("\tHighVoltageOffset:", gun.voltage_offset)
 
-def test_apertures(microscope):
+    if has_feg:
+        print("\tFegState:", gun.feg_state)
+        print("\tHTState:", gun.ht_state)
+        print("\tBeamCurrent:", gun.beam_current)
+        print("\tFocusIndex:", gun.focus_index)
+
+        gun.do_flashing(FegFlashingType.LOW_T)
+
+
+def test_apertures(microscope, hasLicense=False):
     print("Testing apertures...")
     aps = microscope.apertures
     print("\tGetCurrentPresetPosition", aps.vpp_position)
     aps.vpp_next_position()
+
+    if hasLicense:
+        aps.show_all()
+        aps.disable("C2")
+        aps.enable("C2")
+        aps.select("C2", 50)
 
 
 def test_general(microscope, check_door=False):
@@ -211,6 +233,8 @@ def test_general(microscope, check_door=False):
 
     if check_door:
         print("\tUser door:", microscope.user_door.state)
+        microscope.user_door.open()
+        microscope.user_door.close()
 
 
 if __name__ == '__main__':
@@ -222,14 +246,14 @@ if __name__ == '__main__':
     test_detectors(microscope)
     test_vacuum(microscope, full_test=full_test)
     test_autoloader(microscope, full_test=full_test, slot=1)
-    test_temperature(microscope)
+    test_temperature(microscope, full_test=full_test)
     test_stage(microscope, do_move=full_test)
     test_optics(microscope)
     test_illumination(microscope)
-    test_gun(microscope)
+    test_gun(microscope, has_gun1=False, has_feg=False)
     test_general(microscope, check_door=full_test)
 
     if full_test:
         test_acquisition(microscope)
         test_stem(microscope)
-        test_apertures(microscope)
+        test_apertures(microscope, hasLicense=False)
