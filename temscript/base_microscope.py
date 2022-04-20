@@ -49,15 +49,39 @@ class Image:
     def __init__(self, obj, isAdvanced=False, **kwargs):
         self._img = obj
         self._isAdvanced = isAdvanced
-        self.name = None if isAdvanced else obj.Name
-        self.width = obj.Width
-        self.height = obj.Height
-        self.bit_depth = obj.BitDepth if isAdvanced else obj.Depth
-        self.data = obj.AsSafeArray
-        self.metadata = self._get_metadata(obj) if isAdvanced else None
 
     def _get_metadata(self, obj):
         return {item.Key: item.ValueAsString for item in obj.Metadata}
+
+    @property
+    def name(self):
+        """ Image name. """
+        return None if self._isAdvanced else self._img.Name
+
+    @property
+    def width(self):
+        """ Image width in pixels. """
+        return self._img.Width
+
+    @property
+    def height(self):
+        """ Image height in pixels. """
+        return self._img.Height
+
+    @property
+    def bit_depth(self):
+        """ Bit depth. """
+        return self._img.BitDepth if self._isAdvanced else self._img.Depth
+
+    @property
+    def data(self):
+        """ Returns actual image object as numpy array. """
+        return self._img.AsSafeArray
+
+    @property
+    def metadata(self):
+        """ Returns a metadata dict for advanced camera image. """
+        return self._get_metadata(self._img) if self._isAdvanced else None
 
     def save(self, filename, normalize=False):
         """ Save acquired image to a file.

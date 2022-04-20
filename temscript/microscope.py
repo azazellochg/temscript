@@ -237,10 +237,10 @@ class Acquisition:
         :param exp_time: Exposure time in seconds
         :type exp_time: float
         :param binning: Binning factor
-        :keyword bool align_image: Whether frame alignment (i.e. drift correction) is to be applied to the final image as well as the intermediate images
-        :keyword bool electron_counting: Use counting mode
-        :keyword bool eer: Use EER mode
-        :keyword list frame_ranges: List of frame ranges that define the intermediate images, tuples [(1,2), (2,3)]
+        :keyword bool align_image: Whether frame alignment (i.e. drift correction) is to be applied to the final image as well as the intermediate images. Advanced cameras only.
+        :keyword bool electron_counting: Use counting mode. Advanced cameras only.
+        :keyword bool eer: Use EER mode. Advanced cameras only.
+        :keyword list frame_ranges: List of tuple frame ranges that define the intermediate images, e.g. [(1,2), (2,3)]. Advanced cameras only.
         :returns: Image object
         """
         self._set_camera_param(cameraName, size, exp_time, binning, **kwargs)
@@ -263,6 +263,7 @@ class Acquisition:
         :param dwell_time: Dwell time in seconds. The frame time equals the dwell time times the number of pixels plus some overhead (typically 20%, used for the line flyback)
         :type dwell_time: float
         :param binning: Binning factor
+        :type binning: int
         :keyword float brightness: Brightness setting
         :keyword float contrast: Contrast setting
         :returns: Image object
@@ -284,7 +285,7 @@ class Acquisition:
 
         settings.DwellTime = dwell_time
 
-        print("Max resolution (?):",
+        print("Max resolution:",
               settings.MaxResolution.X,
               settings.MaxResolution.Y)
 
@@ -371,7 +372,7 @@ class Detectors:
 
     @property
     def screen(self):
-        """ Get fluorescent screen position. """
+        """ Fluorescent screen position. (read/write)"""
         return ScreenPosition(self._tem_cam.MainScreen).name
 
     @screen.setter
@@ -445,8 +446,13 @@ class Autoloader:
             raise Exception("Autoloader is not available")
 
     def load_cartridge(self, slot):
-        """ Loads the cartridge in the given slot into the microscope. """
+        """ Loads the cartridge in the given slot into the microscope.
+
+        :param slot: Slot number
+        :type slot: int
+        """
         if self._tem_autoloader.AutoLoaderAvailable:
+            slot = int(slot)
             if self.get_slot_status(slot) != CassetteSlotStatus.OCCUPIED.name:
                 raise Exception("Slot %d is not occupied" % slot)
             self._tem_autoloader.LoadCartridge(slot)
@@ -471,7 +477,11 @@ class Autoloader:
             raise Exception("Autoloader is not available")
 
     def get_slot_status(self, slot):
-        """ The status of the slot specified. """
+        """ The status of the slot specified.
+
+        :param slot: Slot number
+        :type slot: int
+        """
         if self._tem_autoloader.AutoLoaderAvailable:
             status = self._tem_autoloader.SlotStatus(int(slot))
             return CassetteSlotStatus(status).name
@@ -721,7 +731,7 @@ class Stem:
 
     @property
     def magnification(self):
-        """ The magnification value in STEM mode. """
+        """ The magnification value in STEM mode. (read/write)"""
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             return self._tem_illumination.StemMagnification
 
@@ -732,7 +742,7 @@ class Stem:
 
     @property
     def rotation(self):
-        """ The STEM rotation angle (in radians). """
+        """ The STEM rotation angle (in radians). (read/write)"""
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             return self._tem_illumination.StemRotation
 
@@ -743,7 +753,7 @@ class Stem:
 
     @property
     def scan_field_of_view(self):
-        """ STEM full scan field of view. """
+        """ STEM full scan field of view. (read/write)"""
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             return (self._tem_illumination.StemFullScanFieldOfView.X,
                     self._tem_illumination.StemFullScanFieldOfView.Y)
@@ -762,7 +772,7 @@ class Illumination:
 
     @property
     def spotsize(self):
-        """ Spotsize number, usually 1 to 11. """
+        """ Spotsize number, usually 1 to 11. (read/write)"""
         return self._tem_illumination.SpotsizeIndex
 
     @spotsize.setter
@@ -771,7 +781,7 @@ class Illumination:
 
     @property
     def intensity(self):
-        """ Intensity / C2 condenser lens value. """
+        """ Intensity / C2 condenser lens value. (read/write)"""
         return self._tem_illumination.Intensity
 
     @intensity.setter
@@ -780,7 +790,7 @@ class Illumination:
 
     @property
     def intensity_zoom(self):
-        """ Intensity zoom. Set to False to disable. """
+        """ Intensity zoom. Set to False to disable. (read/write)"""
         return self._tem_illumination.IntensityZoomEnabled
 
     @intensity_zoom.setter
@@ -789,7 +799,7 @@ class Illumination:
 
     @property
     def intensity_limit(self):
-        """ Intensity limit. Set to False to disable. """
+        """ Intensity limit. Set to False to disable. (read/write)"""
         return self._tem_illumination.IntensityLimitEnabled
 
     @intensity_limit.setter
@@ -798,7 +808,7 @@ class Illumination:
 
     @property
     def beam_shift(self):
-        """ Beam shift X and Y."""
+        """ Beam shift X and Y. (read/write)"""
         return (self._tem_illumination.Shift.X,
                 self._tem_illumination.Shift.Y)
 
@@ -808,7 +818,7 @@ class Illumination:
 
     @property
     def rotation_center(self):
-        """ Rotation center X and Y. """
+        """ Rotation center X and Y. (read/write)"""
         return (self._tem_illumination.RotationCenter.X,
                 self._tem_illumination.RotationCenter.Y)
 
@@ -818,7 +828,7 @@ class Illumination:
 
     @property
     def condenser_stigmator(self):
-        """ C2 condenser stigmator X and Y. """
+        """ C2 condenser stigmator X and Y. (read/write)"""
         return (self._tem_illumination.CondenserStigmator.X,
                 self._tem_illumination.CondenserStigmator.Y)
 
@@ -828,7 +838,7 @@ class Illumination:
 
     @property
     def illuminated_area(self):
-        """ Illuminated area. Works only on 3-condenser lens systems. """
+        """ Illuminated area. Works only on 3-condenser lens systems. (read/write)"""
         if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
             return self._tem_illumination.IlluminatedArea
         else:
@@ -843,7 +853,7 @@ class Illumination:
 
     @property
     def probe_defocus(self):
-        """ Probe defocus. Works only on 3-condenser lens systems. """
+        """ Probe defocus. Works only on 3-condenser lens systems. (read/write)"""
         if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
             return self._tem_illumination.ProbeDefocus
         else:
@@ -858,7 +868,7 @@ class Illumination:
 
     @property
     def convergence_angle(self):
-        """ Convergence angle. Works only on 3-condenser lens systems. """
+        """ Convergence angle. Works only on 3-condenser lens systems. (read/write)"""
         if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
             return self._tem_illumination.ConvergenceAngle
         else:
@@ -873,7 +883,7 @@ class Illumination:
 
     @property
     def C3ImageDistanceParallelOffset(self):
-        """ C3 image distance parallel offset. Works only on 3-condenser lens systems. """
+        """ C3 image distance parallel offset. Works only on 3-condenser lens systems. (read/write)"""
         if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
             return self._tem_illumination.C3ImageDistanceParallelOffset
         else:
@@ -888,7 +898,7 @@ class Illumination:
 
     @property
     def mode(self):
-        """ Illumination mode: microprobe or nanoprobe. """
+        """ Illumination mode: microprobe or nanoprobe. (read/write)"""
         return IlluminationMode(self._tem_illumination.Mode).name
 
     @mode.setter
@@ -897,7 +907,7 @@ class Illumination:
 
     @property
     def dark_field(self):
-        """ Dark field mode: cartesian, conical or off. """
+        """ Dark field mode: cartesian, conical or off. (read/write)"""
         return DarkFieldMode(self._tem_illumination.DFMode).name
 
     @dark_field.setter
@@ -906,7 +916,7 @@ class Illumination:
 
     @property
     def condenser_mode(self):
-        """ Mode of the illumination system: parallel or probe. """
+        """ Mode of the illumination system: parallel or probe. (read/write)"""
         if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
             return CondenserMode(self._tem_illumination.CondenserMode).name
         else:
@@ -925,7 +935,7 @@ class Illumination:
         alignment time. Only operational if dark field mode is active.
         Units: radians, either in Cartesian (x,y) or polar (conical)
         tilt angles. The accuracy of the beam tilt physical units
-        depends on a calibration of the tilt angles.
+        depends on a calibration of the tilt angles. (read/write)
         """
         mode = self._tem_illumination.DFMode
         tilt = self._tem_illumination.Tilt
@@ -960,7 +970,7 @@ class Projection:
 
     @property
     def focus(self):
-        """ Absolute focus value. """
+        """ Absolute focus value. (read/write)"""
         return self._tem_projection.Focus
 
     @focus.setter
@@ -969,7 +979,7 @@ class Projection:
 
     @property
     def magnification(self):
-        """ The reference magnification value (screen up setting). """
+        """ The reference magnification value (screen up setting)."""
         return self._tem_projection.Magnification
 
     @property
@@ -980,7 +990,7 @@ class Projection:
 
     @property
     def image_shift(self):
-        """ Image shift. """
+        """ Image shift. (read/write)"""
         return (self._tem_projection.ImageShift.X,
                 self._tem_projection.ImageShift.Y)
 
@@ -990,7 +1000,7 @@ class Projection:
 
     @property
     def image_beam_shift(self):
-        """ Image shift with beam shift compensation. """
+        """ Image shift with beam shift compensation. (read/write)"""
         return (self._tem_projection.ImageBeamShift.X,
                 self._tem_projection.ImageBeamShift.Y)
 
@@ -1000,7 +1010,7 @@ class Projection:
 
     @property
     def image_beam_tilt(self):
-        """ Beam tilt with diffraction shift compensation. """
+        """ Beam tilt with diffraction shift compensation. (read/write)"""
         return (self._tem_projection.ImageBeamTilt.X,
                 self._tem_projection.ImageBeamTilt.Y)
 
@@ -1010,7 +1020,7 @@ class Projection:
 
     @property
     def diffraction_shift(self):
-        """ Diffraction shift. """
+        """ Diffraction shift. (read/write)"""
         return (self._tem_projection.DiffractionShift.X,
                 self._tem_projection.DiffractionShift.Y)
 
@@ -1020,7 +1030,7 @@ class Projection:
 
     @property
     def diffraction_stigmator(self):
-        """ Diffraction stigmator. """
+        """ Diffraction stigmator. (read/write)"""
         return (self._tem_projection.DiffractionStigmator.X,
                 self._tem_projection.DiffractionStigmator.Y)
 
@@ -1030,7 +1040,7 @@ class Projection:
 
     @property
     def objective_stigmator(self):
-        """ Objective stigmator. """
+        """ Objective stigmator. (read/write)"""
         return (self._tem_projection.ObjectiveStigmator.X,
                 self._tem_projection.ObjectiveStigmator.Y)
 
@@ -1040,7 +1050,7 @@ class Projection:
 
     @property
     def defocus(self):
-        """ Defocus value. """
+        """ Defocus value. (read/write)"""
         return self._tem_projection.Defocus
 
     @defocus.setter
@@ -1049,7 +1059,7 @@ class Projection:
 
     @property
     def mode(self):
-        """ Main mode of the projection system (either imaging or diffraction). """
+        """ Main mode of the projection system (either imaging or diffraction). (read/write)"""
         return ProjectionMode(self._tem_projection.Mode).name
 
     @mode.setter
@@ -1180,7 +1190,7 @@ class Gun:
 
     @property
     def shift(self):
-        """ Gun shift. """
+        """ Gun shift. (read/write)"""
         return (self._tem_gun.Shift.X, self._tem_gun.Shift.Y)
 
     @shift.setter
@@ -1189,7 +1199,7 @@ class Gun:
 
     @property
     def tilt(self):
-        """ Gun tilt. """
+        """ Gun tilt. (read/write)"""
         return (self._tem_gun.Tilt.X, self._tem_gun.Tilt.Y)
 
     @tilt.setter
@@ -1198,7 +1208,7 @@ class Gun:
 
     @property
     def voltage_offset(self):
-        """ High voltage offset. """
+        """ High voltage offset. (read/write)"""
         return self._tem_gun1.HighVoltageOffset
 
     @voltage_offset.setter
@@ -1216,7 +1226,7 @@ class Gun:
         Disabling/enabling can only be done via the button on the
         system on/off-panel, not via script. When switching on
         the high tension, this function cannot check if and
-        when the set value is actually reached.
+        when the set value is actually reached. (read/write)
         """
         return HighTensionState(self._tem_feg.HTState).name
 
@@ -1227,7 +1237,7 @@ class Gun:
     @property
     def voltage(self):
         """ The value of the HT setting as displayed in the TEM user
-        interface. Units: kVolts.
+        interface. Units: kVolts. (read/write)
         """
         state = self._tem_gun.HTState
         if state == HighTensionState.ON:

@@ -7,7 +7,7 @@ Version 3.0
 * New changes are distributed under GPLv3+
 * Interface re-written using comtypes library
 * Standard scripting interfaces updated to v1.9
-* Add Advanced scripting interfaces v1.2
+* Added Advanced scripting interfaces v1.2
 
 Version 2.0.0
 ^^^^^^^^^^^^^
