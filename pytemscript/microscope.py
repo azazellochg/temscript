@@ -440,7 +440,7 @@ class Temperature:
             raise Exception("TemperatureControl is not available")
 
     @property
-    def is_dewars_filling(self):
+    def is_dewar_filling(self):
         """ Returns TRUE if any of the dewars is currently busy filling. """
         if self._tem_temp_control.TemperatureControlAvailable:
             return self._tem_temp_control.DewarsAreBusyFilling
@@ -448,7 +448,7 @@ class Temperature:
             raise Exception("TemperatureControl is not available")
 
     @property
-    def dewars_remaining_time(self):
+    def dewars_time(self):
         """ Returns remaining time (seconds) until the next dewar refill.
         Returns -1 if no refill is scheduled (e.g. All room temperature, or no
         dewar present).
@@ -465,7 +465,7 @@ class Autoloader:
         self._tem_autoloader = microscope._tem.AutoLoader
 
     @property
-    def number_of_cassette_slots(self):
+    def number_of_slots(self):
         """ The number of slots in a cassette. """
         if self._tem_autoloader.AutoLoaderAvailable:
             return self._tem_autoloader.NumberOfCassetteSlots
@@ -479,8 +479,11 @@ class Autoloader:
         :type slot: int
         """
         if self._tem_autoloader.AutoLoaderAvailable:
+            total = self.number_of_slots
             slot = int(slot)
-            if self.get_slot_status(slot) != CassetteSlotStatus.OCCUPIED.name:
+            if slot > total:
+                raise Exception("Only %s slots are available" % total)
+            if self.slot_status(slot) != CassetteSlotStatus.OCCUPIED.name:
                 raise Exception("Slot %d is not occupied" % slot)
             self._tem_autoloader.LoadCartridge(slot)
         else:
@@ -503,13 +506,16 @@ class Autoloader:
         else:
             raise Exception("Autoloader is not available")
 
-    def get_slot_status(self, slot):
+    def slot_status(self, slot):
         """ The status of the slot specified.
 
         :param slot: Slot number
         :type slot: int
         """
         if self._tem_autoloader.AutoLoaderAvailable:
+            total = self.number_of_slots
+            if slot > total:
+                raise Exception("Only %s slots are available" % total)
             status = self._tem_autoloader.SlotStatus(int(slot))
             return CassetteSlotStatus(status).name
         else:
@@ -559,7 +565,7 @@ class Stage:
         return StageStatus(self._tem_stage.Status).name
 
     @property
-    def holder_type(self):
+    def holder(self):
         """ The current specimen holder type. """
         return StageHolderType(self._tem_stage.Holder).name
 
@@ -647,7 +653,7 @@ class Vacuum:
         return self._tem_vacuum.PVPRunning
 
     @property
-    def is_colvalves_open(self):
+    def is_column_open(self):
         """ The status of the column valves. """
         return self._tem_vacuum.ColumnValvesOpen
 
@@ -672,11 +678,11 @@ class Vacuum:
             }
         return gauges
 
-    def colvalves_open(self):
+    def column_open(self):
         """ Open column valves. """
         self._tem_vacuum.ColumnValvesOpen = True
 
-    def colvalves_close(self):
+    def column_close(self):
         """ Close column valves. """
         self._tem_vacuum.ColumnValvesOpen = False
 

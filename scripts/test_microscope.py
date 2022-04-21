@@ -73,12 +73,12 @@ def test_vacuum(microscope, full_test=False):
     vacuum = microscope.vacuum
     print("\tStatus:", vacuum.status)
     print("\tPVPRunning:", vacuum.is_buffer_running)
-    print("\tColumnValvesOpen:", vacuum.is_colvalves_open)
+    print("\tColumnValvesOpen:", vacuum.is_column_open)
     print("\tGauges:", vacuum.gauges)
 
     if full_test:
-        vacuum.colvalves_open()
-        vacuum.colvalves_close()
+        vacuum.column_open()
+        vacuum.column_close()
         vacuum.run_buffer_cycle()
 
 
@@ -99,8 +99,8 @@ def test_temperature(microscope, full_test=False):
 def test_autoloader(microscope, full_test=False, slot=1):
     print("Testing Autoloader...")
     al = microscope.autoloader
-    print("\tNumberOfCassetteSlots", al.number_of_cassette_slots)
-    print("\tSlotStatus", al.get_slot_status(3))
+    print("\tNumberOfCassetteSlots", al.number_of_slots)
+    print("\tSlotStatus", al.slot_status(3))
 
     if full_test:
         al.run_inventory()
@@ -114,7 +114,7 @@ def test_stage(microscope, do_move=False):
     pos = stage.position
     print("\tStatus:", stage.status)
     print("\tPosition:", pos)
-    print("\tHolder:", stage.holder_type)
+    print("\tHolder:", stage.holder)
     print("\tLimits:", stage.limits)
 
     if not do_move:
