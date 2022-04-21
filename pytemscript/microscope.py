@@ -261,7 +261,7 @@ class Acquisition:
             self._check_prerequisites()
             img = self._tem_csa.Acquire()
             self._tem_csa.Wait()
-            return Image(img, isAdvanced=True)
+            return Image(img, name=cameraName, isAdvanced=True)
 
         self._check_prerequisites()
         self._acquire(cameraName)

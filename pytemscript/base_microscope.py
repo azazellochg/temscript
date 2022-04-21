@@ -46,8 +46,9 @@ class BaseMicroscope:
 
 class Image:
     """ Acquired image object. """
-    def __init__(self, obj, isAdvanced=False, **kwargs):
+    def __init__(self, obj, name=None, isAdvanced=False, **kwargs):
         self._img = obj
+        self._name = name
         self._isAdvanced = isAdvanced
 
     def _get_metadata(self, obj):
@@ -56,7 +57,7 @@ class Image:
     @property
     def name(self):
         """ Image name. """
-        return None if self._isAdvanced else self._img.Name
+        return self._name if self._isAdvanced else self._img.Name
 
     @property
     def width(self):
