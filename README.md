@@ -26,6 +26,7 @@ The documentation can be found at https://pytemscript.readthedocs.io/ (tbd)
 
 Requirements:
 * python >= 3.4
+* mrcfile
 * numpy
 * sphinx-rtd-theme (only for building documentation)
 * matplotlib (only for running tests)

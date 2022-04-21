@@ -1,6 +1,8 @@
 import logging
 import os.path
 import platform
+import mrcfile
+from comtypes.safearray import safearray_as_ndarray
 
 from .utils.constants import *
 from .utils.enums import AcqImageFileFormat
@@ -76,7 +78,9 @@ class Image:
     @property
     def data(self):
         """ Returns actual image object as numpy array. """
-        return self._img.AsSafeArray
+        with safearray_as_ndarray:
+            data = self._img.AsSafeArray
+        return data
 
     @property
     def metadata(self):
@@ -91,15 +95,22 @@ class Image:
         :param normalize: Normalize image
         :type normalize: bool
         """
-        if self._isAdvanced:
-            self._img.SaveToFile(filename)
+        fmt = os.path.splitext(filename)[1].upper()
+        if fmt == "MRC":
+            with mrcfile.new(filename) as mrc:
+                if self.metadata is not None:
+                    mrc.voxel_size = float(self.metadata['PixelSize.Width']) * 1e10
+                mrc.set_data(self.data)
         else:
-            fmt = os.path.splitext(filename)[1].upper()
-            try:
-                fmt = AcqImageFileFormat[fmt].value
-            except KeyError:
-                raise NotImplementedError("Format %s is not supported" % fmt)
-            self._img.AsFile(filename, fmt, normalize)
+            # use scripting method to save in other formats
+            if self._isAdvanced:
+                self._img.SaveToFile(filename, normalize=normalize)
+            else:
+                try:
+                    fmt = AcqImageFileFormat[fmt].value
+                except KeyError:
+                    raise NotImplementedError("Format %s is not supported" % fmt)
+                self._img.AsFile(filename, fmt, normalize)
 
 
 class Vector:
