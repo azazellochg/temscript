@@ -92,7 +92,7 @@ class Image:
         :type normalize: bool
         """
         if self._isAdvanced:
-            self._img.SaveToFile(filename, normalize=normalize)
+            self._img.SaveToFile(filename)
         else:
             fmt = os.path.splitext(filename)[1].upper()
             try:

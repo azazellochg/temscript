@@ -78,6 +78,12 @@ class Acquisition:
         self._has_advanced = microscope._tem_adv is not None
         self._prev_shutter_mode = None
 
+        try:
+            _ = self._tem_cam.Stock
+            self._has_film = True
+        except:
+            self._has_film = False
+
         if self._has_advanced:
             self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
 
@@ -128,10 +134,10 @@ class Acquisition:
         camera = self._find_camera(name)
 
         if self._is_advanced:
-            self._tem_csa.Camera = camera
+            if not camera.IsInserted:
+                camera.Insert()
 
-            if not self._tem_csa.Camera.IsInserted():
-                self._tem_csa.Camera.Insert()
+            self._tem_csa.Camera = camera
 
             settings = self._tem_csa.CameraSettings
             capabilities = settings.Capabilities
@@ -156,9 +162,9 @@ class Acquisition:
                 for i in kwargs['frame_ranges']:
                     dfd.AddRange(i)
 
-            print("Movie of %s frames will be saved to: %s" % (
-                settings.CalculateNumberOfFrames(),
-                settings.PathToImageStorage + settings.SubPathPattern))
+                print("Movie of %s frames will be saved to: %s" % (
+                    settings.CalculateNumberOfFrames(),
+                    settings.PathToImageStorage + settings.SubPathPattern))
 
         else:
             info = camera.Info
@@ -213,6 +219,7 @@ class Acquisition:
 
     def _check_prerequisites(self):
         """ Check if buffer cycle or LN filling is running before acquisition call. """
+        tc = self._tem.TemperatureControl
         counter = 0
         while counter < 10:
             if self._tem.Vacuum.PVPRunning:
@@ -225,7 +232,7 @@ class Acquisition:
 
         counter = 0
         while counter < 40:
-            if self._tem.TemperatureControl.DewarsAreBusyFilling:
+            if tc.TemperatureControlAvailable and tc.DewarsAreBusyFilling:
                 print("Dewars are filling, waiting...\r")
                 time.sleep(30)
                 counter += 1
@@ -251,8 +258,8 @@ class Acquisition:
         """
         self._set_camera_param(cameraName, size, exp_time, binning, **kwargs)
         if self._is_advanced:
-            img = self._tem_csa.Acquire()
             self._check_prerequisites()
+            img = self._tem_csa.Acquire()
             self._tem_csa.Wait()
             return Image(img, isAdvanced=True)
 
@@ -306,7 +313,7 @@ class Acquisition:
         :param exp_time: Exposure time in seconds
         :type exp_time: float
         """
-        if self._tem_cam.Stock > 0:
+        if self._has_film and self._tem_cam.Stock > 0:
             self._tem_cam.PlateLabelDataType = PlateLabelDateFormat.DDMMYY
             exp_num = self._tem_cam.ExposureNumber
             self._tem_cam.ExposureNumber = exp_num + 1
@@ -316,7 +323,7 @@ class Acquisition:
             self._set_film_param(film_text, exp_time, **kwargs)
             self._tem_cam.TakeExposure()
         else:
-            raise Exception("Plate stock is empty!")
+            raise Exception("Plate is not available or stock is empty!")
 
 
 class Detectors:
@@ -325,6 +332,11 @@ class Detectors:
         self._tem_acq = microscope._tem.Acquisition
         self._tem_cam = microscope._tem.Camera
         self._has_advanced = microscope._tem_adv is not None
+
+        try:
+            _ = self._tem_cam.Stock
+        except:
+            logging.info("No film/plate device detected.")
 
         if self._has_advanced:
             self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
@@ -394,17 +406,14 @@ class Detectors:
     @property
     def film_settings(self):
         """ Returns a dict with film settings. """
-        if not hasattr(self._tem_cam, 'Stock'):
-            raise Exception("No plate / film device detected. ")
-        else:
-            return {
-                "stock": self._tem_cam.Stock,
-                "exposure_time": self._tem_cam.ManualExposureTime,
-                "film_text": self._tem_cam.FilmText,
-                "exposure_number": self._tem_cam.ExposureNumber,
-                "user_code": self._tem_cam.Usercode,
-                "screen_current": self._tem_cam.ScreenCurrent
-            }
+        return {
+            "stock": self._tem_cam.Stock,
+            "exposure_time": self._tem_cam.ManualExposureTime,
+            "film_text": self._tem_cam.FilmText,
+            "exposure_number": self._tem_cam.ExposureNumber,
+            "user_code": self._tem_cam.Usercode,
+            "screen_current": self._tem_cam.ScreenCurrent
+        }
 
 
 class Temperature:
@@ -593,10 +602,10 @@ class Stage:
 class PiezoStage:
     """ Piezo stage functions. """
     def __init__(self, microscope):
-        if hasattr(microscope._tem_adv, "PiezoStage"):
-            self._tem_pstage = microscope._tem_adv.PiezoStage
+        self._tem_pstage = microscope._tem_adv.PiezoStage
+        try:
             self.high_resolution = self._tem_pstage.HighResolution
-        else:
+        except:
             logging.info("PiezoStage interface is not available.")
 
     @property
@@ -1168,9 +1177,9 @@ class Apertures:
         self._tem_vpp = microscope._tem_adv.PhasePlate
         self._tem_apertures = None
 
-        if hasattr(microscope._tem, "ApertureMechanismCollection"):
+        try:
             self._tem_apertures = microscope._tem.ApertureMechanismCollection
-        else:
+        except:
             logging.info("Apertures interface is not available. Requires a separate license")
 
     def _find_aperture(self, name):
@@ -1184,9 +1193,9 @@ class Apertures:
 
     @property
     def vpp_position(self):
-        """ Returns the zero-based index of the current VPP preset position. """
+        """ Returns the index of the current VPP preset position. """
         try:
-            return self._tem_vpp.GetCurrentPresetPosition
+            return self._tem_vpp.GetCurrentPresetPosition + 1
         except:
             raise Exception("Either no VPP found or it's not enabled and inserted.")
 
@@ -1255,9 +1264,10 @@ class Gun:
         else:
             logging.info("Gun1 interface is not available. Requires TEM Server 7.10+")
 
-        if hasattr(microscope._tem_adv, "Source"):
+        try:
             self._tem_feg = microscope._tem_adv.Source
-        else:
+            _ = self._tem_feg.State
+        except:
             logging.info("Source/FEG interface is not available.")
 
     @property
@@ -1306,15 +1316,11 @@ class Gun:
         the high tension, this function cannot check if and
         when the set value is actually reached. (read/write)
         """
-        if self._tem_feg is None:
-            raise Exception("Source/FEG interface is not available.")
-        return HighTensionState(self._tem_feg.HTState).name
+        return HighTensionState(self._tem_gun.HTState).name
 
     @ht_state.setter
     def ht_state(self, value):
-        if self._tem_feg is None:
-            raise Exception("Source/FEG interface is not available.")
-        self._tem_feg.State = value
+        self._tem_gun.State = value
 
     @property
     def voltage(self):
