@@ -26,10 +26,10 @@ The documentation can be found at https://pytemscript.readthedocs.io/ (tbd)
 
 Requirements:
 * python >= 3.4
-* mrcfile
-* numpy
-* sphinx-rtd-theme (only for building documentation)
-* matplotlib (only for running tests)
+* comtypes
+* mrcfile and numpy (optional, only to save images in mrc format)
+* sphinx-rtd-theme (optional, only for building documentation)
+* matplotlib (optional, only for running tests)
 
 ### Installation from PyPI on Windows (using pip)
 
@@ -42,13 +42,13 @@ Execute from the command line (assuming you have your Python interpreter in the 
 
 ### Offline-Installation from wheels file on Windows (using pip)
 
-This assumes you have downloaded the wheels file <downloaded-wheels-file>.whl for temscript, numpy and comtypes into the current folder.
+This assumes you have downloaded the wheels file <downloaded-wheels-file>.whl for temscript and comtypes into the current folder.
 
 Execute from the command line (assuming you have your Python interpreter in the path:
     
     py -m pip install numpy comtypes pytemscript --no-index --find-links .
 
-If you want to install pytemscript from sources (you still need to download numpy and comtypes *.whl):
+If you want to install pytemscript from sources (you still need to download comtypes *.whl):
     
     py -m pip install numpy comtypes --no-index --find-links .
     py -m pip install -e <source_directory>

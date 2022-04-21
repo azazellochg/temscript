@@ -1,7 +1,6 @@
 import logging
 import os.path
 import platform
-import mrcfile
 from comtypes.safearray import safearray_as_ndarray
 
 from .utils.constants import *
@@ -97,6 +96,7 @@ class Image:
         """
         fmt = os.path.splitext(filename)[1].upper()
         if fmt == "MRC":
+            import mrcfile
             with mrcfile.new(filename) as mrc:
                 if self.metadata is not None:
                     mrc.voxel_size = float(self.metadata['PixelSize.Width']) * 1e10

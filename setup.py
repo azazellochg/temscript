@@ -35,7 +35,7 @@ setup(name='pytemscript',
           'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
           'Operating System :: OS Independent'
       ],
-      install_requires=['numpy', 'comtypes', 'mrcfile'],
+      install_requires=['comtypes'],
       entry_points={'console_scripts': ['pytemscript-server = pytemscript.server:run_server']},
       url="https://github.com/azazellochg/pytemscript",
       project_urls={
