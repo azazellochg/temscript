@@ -1,7 +1,6 @@
 import logging
 import os.path
 import platform
-from comtypes.safearray import safearray_as_ndarray
 
 from .utils.constants import *
 from .utils.enums import AcqImageFileFormat
@@ -77,6 +76,7 @@ class Image:
     @property
     def data(self):
         """ Returns actual image object as numpy array. """
+        from comtypes.safearray import safearray_as_ndarray
         with safearray_as_ndarray:
             data = self._img.AsSafeArray
         return data

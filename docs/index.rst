@@ -1,5 +1,5 @@
 pytemscript documentation
-=======================
+=========================
 
 .. toctree::
    :maxdepth: 1
