@@ -1,12 +1,6 @@
 from enum import IntEnum
 
 
-class DetectorType(IntEnum):
-    """ Not defined by FEI, but used in server/client. """
-    CAMERA = 1
-    STEM_DETECTOR = 2
-
-
 class TEMScriptingError(IntEnum):
     """ Scripting error codes. """
     E_NOT_OK = -2147155969              # 0x8004ffff
@@ -58,7 +52,6 @@ class StageStatus(IntEnum):
     GOING = 3
     MOVING = 4
     WOBBLING = 5
-    DISABLE = 1         # Misnaming in pytemscript 1.X
 
 
 class MeasurementUnitType(IntEnum):

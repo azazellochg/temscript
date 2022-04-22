@@ -100,7 +100,7 @@ class Image:
 
         :param filename: File path
         :type filename: str
-        :param normalize: Normalize image
+        :param normalize: Normalize image, only for non-MRC format
         :type normalize: bool
         """
         fmt = os.path.splitext(filename)[1].upper()

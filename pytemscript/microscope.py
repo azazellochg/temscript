@@ -649,10 +649,9 @@ class PiezoStage:
 
     @property
     def position(self):
-        """ The current position of the piezo stage. """
+        """ The current position of the piezo stage (x,y,z in um). """
         pos = self._tem_pstage.CurrentPosition
-        axes = 'xyz'
-        return {key: getattr(pos, key.upper()) for key in axes}
+        return {key: getattr(pos, key.upper()) * 1e6 for key in 'xyz'}
 
     @property
     def position_range(self):
@@ -663,8 +662,7 @@ class PiezoStage:
     def velocity(self):
         """ Returns a dict with stage velocities. """
         pos = self._tem_pstage.CurrentJogVelocity
-        axes = 'xyz'
-        return {key: getattr(pos, key.upper()) for key in axes}
+        return {key: getattr(pos, key.upper()) for key in 'xyz'}
 
 
 class Vacuum:
@@ -697,7 +695,7 @@ class Vacuum:
         """
         gauges = {}
         for g in self._tem_vacuum.Gauges:
-            #g.Read()
+            # g.Read()
             if g.Status == GaugeStatus.UNDEFINED:
                 # set manually if undefined, otherwise fails
                 pressure_level = GaugePressureLevel.UNDEFINED
@@ -825,16 +823,16 @@ class Stem:
 
     @property
     def rotation(self):
-        """ The STEM rotation angle (in radians). (read/write)"""
+        """ The STEM rotation angle (in mrad). (read/write)"""
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            return self._tem_illumination.StemRotation
+            return self._tem_illumination.StemRotation * 1e3
         else:
             raise Exception("Microscope not in STEM mode.")
 
     @rotation.setter
     def rotation(self, rot):
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            self._tem_illumination.StemRotation = float(rot)
+            self._tem_illumination.StemRotation = float(rot) * 1e-3
         else:
             raise Exception("Microscope not in STEM mode.")
 
@@ -1201,9 +1199,9 @@ class Projection:
     @property
     def image_rotation(self):
         """ The rotation of the image or diffraction pattern on the
-        fluorescent screen with respect to the specimen. Units: radians.
+        fluorescent screen with respect to the specimen. Units: mrad.
         """
-        return self._tem_projection.ImageRotation
+        return self._tem_projection.ImageRotation * 1e3
 
     @property
     def is_eftem_on(self):
