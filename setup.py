@@ -10,7 +10,7 @@ from pytemscript import __version__
 here = path.abspath(path.dirname(__file__))
 
 # Long description
-with open(path.join(here, "README.md"), "r", encoding="utf-8") as fp:
+with open(path.join(here, "README.rst"), "r", encoding="utf-8") as fp:
     long_description = fp.read()
 
 setup(name='pytemscript',

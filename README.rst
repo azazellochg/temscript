@@ -1,5 +1,3 @@
-# About
-
 The ``pytemscript`` package provides a Python wrapper for both standard and advanced scripting
 interfaces of Thermo Fisher Scientific and FEI microscopes. The functionality is
 limited to the functionality of the original scripting interfaces. For detailed information
@@ -18,71 +16,86 @@ This is a GPL fork of the original BSD-licensed project: https://github.com/nier
 New changes and this whole product is distributed under either version 3 of the GPL License, or
 (at your option) any later version.
 
-# Documentation
+Documentation
+-------------
 
-The documentation can be found at https://pytemscript.readthedocs.io/ (tbd)
+The documentation can be found at https://pytemscript.readthedocs.io
 
-# Installation
+Installation
+------------
+
+.. warning:: The project is still in development phase, no beta version has been released yet. Installing from sources is recommended.
 
 Requirements:
-* python >= 3.4
-* comtypes
-* mrcfile and numpy (optional, only to save images in mrc format)
-* sphinx-rtd-theme (optional, only for building documentation)
-* matplotlib (optional, only for running tests)
 
-### Installation from PyPI on Windows (using pip)
+    * python >= 3.4
+    * comtypes
+    * mrcfile and numpy (optional, only to save images in mrc format)
+    * sphinx-rtd-theme (optional, only for building documentation)
+    * matplotlib (optional, only for running tests)
 
-This assumes you have connection to the internet. 
+Installation from PyPI on Windows
+#################################
+
+This assumes you have connection to the internet.
 
 Execute from the command line (assuming you have your Python interpreter in the path):
-    
+
+.. code-block:: python
+
     py -m pip install --upgrade pip
     py -m pip install pytemscript
 
-### Offline-Installation from wheels file on Windows (using pip)
+Offline-Installation from wheels file on Windows
+################################################
 
 This assumes you have downloaded the wheels file <downloaded-wheels-file>.whl for temscript and comtypes into the current folder.
 
 Execute from the command line (assuming you have your Python interpreter in the path:
-    
+
+.. code-block:: python
+
     py -m pip install numpy comtypes pytemscript --no-index --find-links .
 
 If you want to install pytemscript from sources (you still need to download comtypes *.whl):
-    
+
+.. code-block:: python
+
     py -m pip install numpy comtypes --no-index --find-links .
     py -m pip install -e <source_directory>
 
-
-# Supported functions of the COM interface
+Supported functions of the COM interface
+----------------------------------------
 
 Relative to Titan V1.9 standard scripting adapter:
 
-* Acquisition: complete
-* ApertureMechanismCollection: complete, untested (requires a separate license)
-* AutoLoader: complete
-* BlankerShutter: complete
-* Camera: complete
-* Configuration: complete
-* Gun: complete
-* Gun1: incomplete, untested (requires TEM Server 7.10)
-* Illumination: complete
-* InstrumentModeControl: complete
-* Projection: complete
-* Stage: complete
-* TemperatureControl: complete
-* UserButton(s): complete, no events handling
-* Vacuum: complete
+    * Acquisition: complete
+    * ApertureMechanismCollection: complete, untested (requires a separate license)
+    * AutoLoader: complete
+    * BlankerShutter: complete
+    * Camera: complete
+    * Configuration: complete
+    * Gun: complete
+    * Gun1: incomplete, untested (requires TEM Server 7.10)
+    * Illumination: complete
+    * InstrumentModeControl: complete
+    * Projection: complete
+    * Stage: complete
+    * TemperatureControl: complete
+    * UserButton(s): complete, no events handling
+    * Vacuum: complete
 
 Relative to Titan V1.2 advanced scripting adapter:
 
-* Acquisitions: complete
-* Phaseplate: complete
-* PiezoStage: complete (untested)
-* Source: complete (untested)
-* UserDoorHatch: complete (untested)
+    * Acquisitions: complete
+    * Phaseplate: complete
+    * PiezoStage: complete (untested)
+    * Source: complete (untested)
+    * UserDoorHatch: complete (untested)
 
-# Disclaimer
+
+Disclaimer
+----------
 
 Copyright (c) 2012-2021 by Tore Niermann
 Contact: tore.niermann (at) tu-berlin.de
@@ -90,7 +103,7 @@ Contact: tore.niermann (at) tu-berlin.de
 Copyleft 2022 by Grigory Sharov
 Contact: gsharov (at) mrc-lmb.cam.ac.uk
 
-All product and company names are trademarks or registered trademarks 
+All product and company names are trademarks or registered trademarks
 of their respective holders. Use of them does not imply any affiliation
 with or endorsement by them.
 

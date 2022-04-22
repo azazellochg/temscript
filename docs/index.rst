@@ -18,10 +18,95 @@ interfaces of Thermo Fisher Scientific and FEI microscopes. The functionality is
 limited to the functionality of the original scripting interfaces. For detailed information
 about TEM scripting see the documentation accompanying your microscope.
 
-.. For remote operation of the microscope the pytemscript server must run on the microscope PC. See section :ref:`server` for details.
+The ``pytemscript`` package provides two interfaces to the microscope. The first one
+corresponds directly to the COM interface. The other interface is a more high level interface.
+Within the ``pytemscript`` package three implementation for the high level interface are provided,
+one for running scripts directly on the microscope PC, one to run scripts remotely over network, and
+finally a dummy implementation for offline development & testing exists.
 
-The section :ref:`restrictions` describes some known issues with the scripting interface itself. These are restrictions
-of the original scripting interface and not issues related to the ``pytemscript`` package itself.
+Currently the ``pytemscript`` package requires Python 3.4 or higher. The current plan is to keep the minimum
+supported Python version at 3.4, since this is the latest Python version supporting Windows XP.
+
+This is a GPL fork of the original BSD-licensed project: https://github.com/niermann/temscript
+New changes and this whole product is distributed under either version 3 of the GPL License, or
+(at your option) any later version.
+
+Documentation
+-------------
+
+The documentation can be found at https://pytemscript.readthedocs.io
+
+Installation
+------------
+
+.. warning:: The project is still in development phase, no beta version has been released yet. Installing from sources is recommended.
+
+Requirements:
+
+    * python >= 3.4
+    * comtypes
+    * mrcfile and numpy (optional, only to save images in mrc format)
+    * sphinx-rtd-theme (optional, only for building documentation)
+    * matplotlib (optional, only for running tests)
+
+Installation from PyPI on Windows
+#################################
+
+This assumes you have connection to the internet.
+
+Execute from the command line (assuming you have your Python interpreter in the path):
+
+.. code-block:: python
+
+    py -m pip install --upgrade pip
+    py -m pip install pytemscript
+
+Offline-Installation from wheels file on Windows
+################################################
+
+This assumes you have downloaded the wheels file <downloaded-wheels-file>.whl for temscript and comtypes into the current folder.
+
+Execute from the command line (assuming you have your Python interpreter in the path:
+
+.. code-block:: python
+
+    py -m pip install numpy comtypes pytemscript --no-index --find-links .
+
+If you want to install pytemscript from sources (you still need to download comtypes *.whl):
+
+.. code-block:: python
+
+    py -m pip install numpy comtypes --no-index --find-links .
+    py -m pip install -e <source_directory>
+
+Supported functions of the COM interface
+----------------------------------------
+
+Relative to Titan V1.9 standard scripting adapter:
+
+    * Acquisition: complete
+    * ApertureMechanismCollection: complete, untested (requires a separate license)
+    * AutoLoader: complete
+    * BlankerShutter: complete
+    * Camera: complete
+    * Configuration: complete
+    * Gun: complete
+    * Gun1: incomplete, untested (requires TEM Server 7.10)
+    * Illumination: complete
+    * InstrumentModeControl: complete
+    * Projection: complete
+    * Stage: complete
+    * TemperatureControl: complete
+    * UserButton(s): complete, no events handling
+    * Vacuum: complete
+
+Relative to Titan V1.2 advanced scripting adapter:
+
+    * Acquisitions: complete
+    * Phaseplate: complete
+    * PiezoStage: complete (untested)
+    * Source: complete (untested)
+    * UserDoorHatch: complete (untested)
 
 Quick example
 -------------
