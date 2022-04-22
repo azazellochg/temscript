@@ -103,8 +103,8 @@ class Image:
         :param normalize: Normalize image, only for non-MRC format
         :type normalize: bool
         """
-        fmt = os.path.splitext(filename)[1].upper()
-        if fmt == ".MRC":
+        fmt = os.path.splitext(filename)[1].upper().replace(".", "")
+        if fmt == "MRC":
             print("Convert to int16 since MRC does not support int32")
             import mrcfile
             with mrcfile.new(filename) as mrc:

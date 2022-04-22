@@ -29,7 +29,7 @@ Image object
 
 Two acquisition functions: :meth:`~pytemscript.microscope.Acquisition.acquire_tem_image` and
 :meth:`~pytemscript.microscope.Acquisition.acquire_stem_image` return an :class:`Image` object
-that has the following methods:
+that has the following methods and properties:
 
 .. autoclass:: pytemscript.base_microscope.Image
     :members:
@@ -43,11 +43,12 @@ Example usage
     microscope = Microscope()
     curr_pos = microscope.stage.position
     print(curr_pos['Y'])
-    1.1e-6
-    microscope.stage.move_to(x=-1e-6)
+    24.05
+    microscope.stage.move_to(x=-30, y=25.5)
 
     beam_shift = microscope.optics.illumination.beam_shift
-
+    defocus = microscope.optics.projection.defocus
+    microscope.optics.normalize_all()
 
 Documentation
 -------------

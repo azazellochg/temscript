@@ -40,5 +40,5 @@ attributes return ``(x, y)`` tuples and expect iterable objects (``tuple``,
     beam_pos = microscope.optics.illumination.beam_shift
     print(beam_pos)
     (0.0, 0.0)
-    new_beam_pos = beam_pos[0], beam_pos[1] + 1e-6
+    new_beam_pos = beam_pos[0], beam_pos[1] + 1.02
     microscope.optics.illumination.beam_shift(new_beam_pos)

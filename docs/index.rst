@@ -121,7 +121,7 @@ Move beam:
     beam_pos = microscope.optics.illumination.beam_shift
     print(beam_pos)
     (0.0, 0.0)
-    new_beam_pos = beam_pos[0], beam_pos[1] + 1
+    new_beam_pos = beam_pos[0], beam_pos[1] + 1.02
     microscope.optics.illumination.beam_shift(new_beam_pos)
 
 Take an image:

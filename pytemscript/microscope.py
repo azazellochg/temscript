@@ -243,7 +243,7 @@ class Acquisition:
             old_value = self._prev_shutter_mode[1]
             obj.ShutterMode = old_value
 
-        return Image(img[0])
+        return Image(img[0], name=cameraName)
 
     def _check_prerequisites(self):
         """ Check if buffer cycle or LN filling is running before acquisition call. """
@@ -283,6 +283,14 @@ class Acquisition:
         :keyword bool eer: Use EER mode. Advanced cameras only.
         :keyword list frame_ranges: List of tuple frame ranges that define the intermediate images, e.g. [(1,2), (2,3)]. Advanced cameras only.
         :returns: Image object
+
+        Usage:
+            >>> microscope = Microscope()
+            >>> acq = microscope.acquisition
+            >>> img = acq.acquire_tem_image("BM-Falcon", AcqImageSize.FULL, exp_time=5.0, binning=1, electron_counting=True, align_image=True)
+            >>> img.save("aligned_sum.mrc")
+            >>> print(img.width)
+            4096
         """
         self._set_camera_param(cameraName, size, exp_time, binning, **kwargs)
         if self._is_advanced:
