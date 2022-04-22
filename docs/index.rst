@@ -1,15 +1,3 @@
-pytemscript documentation
-=========================
-
-.. toctree::
-   :maxdepth: 1
-
-   about
-   microscope
-   enumerations
-   changelog
-   restrictions
-
 Introduction
 ------------
 
@@ -133,7 +121,7 @@ Move beam:
     beam_pos = microscope.optics.illumination.beam_shift
     print(beam_pos)
     (0.0, 0.0)
-    new_beam_pos = beam_pos[0], beam_pos[1] + 1e-6
+    new_beam_pos = beam_pos[0], beam_pos[1] + 1
     microscope.optics.illumination.beam_shift(new_beam_pos)
 
 Take an image:
@@ -144,6 +132,7 @@ Take an image:
                                                      size=AcqImageSize.FULL,  # <-- see enumerations
                                                      exp_time=0.5,
                                                      binning=2)
+    image.save("img.mrc")
 
 Disclaimer
 ----------
