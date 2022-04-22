@@ -3,7 +3,7 @@ import os.path
 import platform
 
 from .utils.constants import *
-from .utils.enums import AcqImageFileFormat
+from .utils.enums import AcqImageFileFormat, ImagePixelType
 
 
 class BaseMicroscope:
@@ -75,8 +75,16 @@ class Image:
         return self._img.BitDepth if self._isAdvanced else self._img.Depth
 
     @property
+    def pixel_type(self):
+        """ Image pixels type: uint, int or float. """
+        if self._isAdvanced:
+            return ImagePixelType(self._img.PixelType).name
+        else:
+            return ImagePixelType.SIGNED_INT.name
+
+    @property
     def data(self):
-        """ Returns actual image object as numpy array. """
+        """ Returns actual image object as numpy int32 array. """
         from comtypes.safearray import safearray_as_ndarray
         with safearray_as_ndarray:
             data = self._img.AsSafeArray
@@ -96,16 +104,17 @@ class Image:
         :type normalize: bool
         """
         fmt = os.path.splitext(filename)[1].upper()
-        if fmt == "MRC":
+        if fmt == ".MRC":
+            print("Convert to int16 since MRC does not support int32")
             import mrcfile
             with mrcfile.new(filename) as mrc:
                 if self.metadata is not None:
                     mrc.voxel_size = float(self.metadata['PixelSize.Width']) * 1e10
-                mrc.set_data(self.data)
+                mrc.set_data(self.data.astype("int16"))
         else:
             # use scripting method to save in other formats
             if self._isAdvanced:
-                self._img.SaveToFile(filename, normalize=normalize)
+                self._img.SaveToFile(filename)
             else:
                 try:
                     fmt = AcqImageFileFormat[fmt].value

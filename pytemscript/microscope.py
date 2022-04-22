@@ -1,6 +1,7 @@
 import logging
 import math
 import time
+from datetime import datetime
 from .base_microscope import BaseMicroscope, Image, Vector
 from .utils.enums import *
 
@@ -77,6 +78,7 @@ class Acquisition:
         self._is_advanced = False
         self._has_advanced = microscope._tem_adv is not None
         self._prev_shutter_mode = None
+        self._eer = False
 
         try:
             _ = self._tem_cam.Stock
@@ -150,21 +152,47 @@ class Acquisition:
             # Set exposure after binning, since it adjusted automatically when binning is set
             settings.ExposureTime = exp_time
 
-            if 'align_image' in kwargs and capabilities.SupportsDriftCorrection:
-                settings.AlignImage = kwargs['align_image']
-            if 'electron_counting' in kwargs and capabilities.SupportsElectronCounting:
-                settings.ElectronCounting = kwargs['electron_counting']
+            if 'align_image' in kwargs:
+                if capabilities.SupportsDriftCorrection:
+                    settings.AlignImage = kwargs['align_image']
+                else:
+                    raise Exception("This camera does not support drift correction")
+
+            if 'electron_counting' in kwargs:
+                if capabilities.SupportsElectronCounting:
+                    settings.ElectronCounting = kwargs['electron_counting']
+                else:
+                    raise Exception("This camera does not support electron counting")
+
             if 'eer' in kwargs and hasattr(capabilities, 'SupportsEER'):
-                self.EER = kwargs['eer']
+                if capabilities.SupportsEER:
+                    self._eer = kwargs['eer']
+                    settings.EER = self._eer
+
+                    if self._eer and not settings.ElectronCounting:
+                        raise Exception("Electron counting should be enabled when using EER")
+                    if self._eer and 'frame_ranges' in kwargs:
+                        raise Exception("No frame ranges allowed when using EER")
+                else:
+                    raise Exception("This camera does not support EER")
+
             if 'frame_ranges' in kwargs:  # a list of tuples
                 dfd = settings.DoseFractionsDefinition
                 dfd.Clear()
                 for i in kwargs['frame_ranges']:
-                    dfd.AddRange(i)
+                    dfd.AddRange(i[0], i[1])
 
-                print("Movie of %s frames will be saved to: %s" % (
-                    settings.CalculateNumberOfFrames(),
-                    settings.PathToImageStorage + settings.SubPathPattern))
+                now = datetime.now()
+                settings.SubPathPattern = name + "_" + now.strftime("%d%m%Y_%H%M%S")
+                output = settings.PathToImageStorage + settings.SubPathPattern
+
+                print("Movie of %s frames will be saved to: %s.mrc" % (
+                    settings.CalculateNumberOfFrames(), output))
+                if not self._eer:
+                    print("MRC format can only contain images of up to "
+                          "16-bits per pixel, to get true CameraCounts "
+                          "multiply pixels by PixelToValueCameraCounts "
+                          "factor found in the metadata")
 
         else:
             info = camera.Info
@@ -429,7 +457,7 @@ class Temperature:
             raise Exception("TemperatureControl is not available")
 
     def dewar_level(self, dewar):
-        """ Returns the LN level in a dewar.
+        """ Returns the LN level (%) in a dewar.
 
         :param dewar: Dewar name (RefrigerantDewar enum)
         :type dewar: IntEnum
@@ -542,13 +570,16 @@ class Stage:
 
     def _change_position(self, direct=False, **kwargs):
         if self._tem_stage.Status == StageStatus.READY:
+            # convert units first
+            new_pos = {key: kwargs[key] * 1e6 for key in 'xyz'}
+            new_pos.update({key: math.radians(kwargs[key]) for key in 'ab'})
             speed = kwargs.pop("speed", None)
 
-            if 'b' in kwargs and not self._beta_available():
+            if 'b' in new_pos and not self._beta_available():
                 raise Exception("B-axis is not available")
 
             current_pos = self._tem_stage.Position
-            new_pos, axes = self._from_dict(current_pos, **kwargs)
+            new_pos, axes = self._from_dict(current_pos, **new_pos)
             if not direct:
                 self._tem_stage.MoveTo(new_pos, axes)
                 return
@@ -571,10 +602,12 @@ class Stage:
 
     @property
     def position(self):
-        """ The current position of the stage. """
+        """ The current position of the stage (x,y,z in um and a,b in degrees). """
         pos = self._tem_stage.Position
-        axes = 'xyzab'
-        return {key: getattr(pos, key.upper()) for key in axes}
+        result = {key: getattr(pos, key.upper()) * 1e6 for key in 'xyz'}
+        result.update({key: math.degrees(getattr(pos, key.upper())) for key in 'ab'})
+
+        return result
 
     def go_to(self, **kwargs):
         """ Makes the holder directly go to the new position by moving all axes
@@ -674,7 +707,7 @@ class Vacuum:
             gauges[g.Name] = {
                 "status": GaugeStatus(g.Status).name,
                 "pressure": g.Pressure,
-                "level": pressure_level
+                "trip_level": pressure_level
             }
         return gauges
 
@@ -706,8 +739,8 @@ class Optics:
 
     @property
     def screen_current(self):
-        """ The current measured on the fluorescent screen (units: Amperes). """
-        return self._tem_cam.ScreenCurrent
+        """ The current measured on the fluorescent screen (units: nanoAmperes). """
+        return self._tem_cam.ScreenCurrent * 1e9
 
     @property
     def is_beam_blanked(self):
@@ -866,22 +899,26 @@ class Illumination:
 
     @property
     def beam_shift(self):
-        """ Beam shift X and Y. (read/write)"""
-        return (self._tem_illumination.Shift.X,
-                self._tem_illumination.Shift.Y)
+        """ Beam shift X and Y in um. (read/write)"""
+        return (self._tem_illumination.Shift.X * 1e6,
+                self._tem_illumination.Shift.Y * 1e6)
 
     @beam_shift.setter
     def beam_shift(self, value):
+        value[0] *= 1e-6
+        value[1] *= 1e-6
         Vector.set(self._tem_illumination, "Shift", value)
 
     @property
     def rotation_center(self):
-        """ Rotation center X and Y. (read/write)"""
-        return (self._tem_illumination.RotationCenter.X,
-                self._tem_illumination.RotationCenter.Y)
+        """ Rotation center X and Y in mrad. (read/write)"""
+        return (self._tem_illumination.RotationCenter.X * 1e3,
+                self._tem_illumination.RotationCenter.Y * 1e3)
 
     @rotation_center.setter
     def rotation_center(self, value):
+        value[0] *= 1e-3
+        value[1] *= 1e-3
         Vector.set(self._tem_illumination, "RotationCenter", value)
 
     @property
@@ -991,22 +1028,24 @@ class Illumination:
     def beam_tilt(self):
         """ Dark field beam tilt relative to the origin stored at
         alignment time. Only operational if dark field mode is active.
-        Units: radians, either in Cartesian (x,y) or polar (conical)
+        Units: mrad, either in Cartesian (x,y) or polar (conical)
         tilt angles. The accuracy of the beam tilt physical units
         depends on a calibration of the tilt angles. (read/write)
         """
         mode = self._tem_illumination.DFMode
         tilt = self._tem_illumination.Tilt
         if mode == DarkFieldMode.CONICAL:
-            return tilt[0] * math.cos(tilt[1]), tilt[0] * math.sin(tilt[1])
+            return tilt[0] * 1e3 * math.cos(tilt[1]), tilt[0] * 1e3 * math.sin(tilt[1])
         elif mode == DarkFieldMode.CARTESIAN:
-            return tilt
+            return tilt * 1e3
         else:
             return 0.0, 0.0  # Microscope might return nonsense if DFMode is OFF
 
     @beam_tilt.setter
     def beam_tilt(self, tilt):
         mode = self._tem_illumination.DFMode
+        tilt[0] *= 1e-3
+        tilt[1] *= 1e-3
         if tilt[0] == 0.0 and tilt[1] == 0.0:
             self._tem_illumination.Tilt = 0.0, 0.0
             self._tem_illumination.DFMode = DarkFieldMode.OFF
@@ -1042,7 +1081,7 @@ class Projection:
 
     @property
     def camera_length(self):
-        """ The reference camera length (screen up setting). """
+        """ The reference camera length in m (screen up setting). """
         if self._tem_projection.Mode == ProjectionMode.DIFFRACTION:
             return self._tem_projection.CameraLength
         else:
@@ -1050,42 +1089,50 @@ class Projection:
 
     @property
     def image_shift(self):
-        """ Image shift. (read/write)"""
-        return (self._tem_projection.ImageShift.X,
-                self._tem_projection.ImageShift.Y)
+        """ Image shift in um. (read/write)"""
+        return (self._tem_projection.ImageShift.X * 1e6,
+                self._tem_projection.ImageShift.Y * 1e6)
 
     @image_shift.setter
     def image_shift(self, value):
+        value[0] *= 1e-6
+        value[1] *= 1e-6
         Vector.set(self._tem_projection, "ImageShift", value)
 
     @property
     def image_beam_shift(self):
-        """ Image shift with beam shift compensation. (read/write)"""
-        return (self._tem_projection.ImageBeamShift.X,
-                self._tem_projection.ImageBeamShift.Y)
+        """ Image shift with beam shift compensation in um. (read/write)"""
+        return (self._tem_projection.ImageBeamShift.X * 1e6,
+                self._tem_projection.ImageBeamShift.Y * 1e6)
 
     @image_beam_shift.setter
     def image_beam_shift(self, value):
+        value[0] *= 1e-6
+        value[1] *= 1e-6
         Vector.set(self._tem_projection, "ImageBeamShift", value)
 
     @property
     def image_beam_tilt(self):
-        """ Beam tilt with diffraction shift compensation. (read/write)"""
-        return (self._tem_projection.ImageBeamTilt.X,
-                self._tem_projection.ImageBeamTilt.Y)
+        """ Beam tilt with diffraction shift compensation in mrad. (read/write)"""
+        return (self._tem_projection.ImageBeamTilt.X * 1e3,
+                self._tem_projection.ImageBeamTilt.Y * 1e3)
 
     @image_beam_tilt.setter
     def image_beam_tilt(self, value):
+        value[0] *= 1e-3
+        value[1] *= 1e-3
         Vector.set(self._tem_projection, "ImageBeamTilt", value)
 
     @property
     def diffraction_shift(self):
-        """ Diffraction shift. (read/write)"""
-        return (self._tem_projection.DiffractionShift.X,
-                self._tem_projection.DiffractionShift.Y)
+        """ Diffraction shift in mrad. (read/write)"""
+        return (self._tem_projection.DiffractionShift.X * 1e3,
+                self._tem_projection.DiffractionShift.Y * 1e3)
 
     @diffraction_shift.setter
     def diffraction_shift(self, value):
+        value[0] *= 1e-3
+        value[1] *= 1e-3
         Vector.set(self._tem_projection, "DiffractionShift", value)
 
     @property
@@ -1110,12 +1157,12 @@ class Projection:
 
     @property
     def defocus(self):
-        """ Defocus value. (read/write)"""
-        return self._tem_projection.Defocus
+        """ Defocus value in um. (read/write)"""
+        return self._tem_projection.Defocus * 1e6
 
     @defocus.setter
     def defocus(self, value):
-        self._tem_projection.Defocus = float(value)
+        self._tem_projection.Defocus = float(value) * 1e-6
 
     @property
     def mode(self):
