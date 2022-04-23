@@ -2,7 +2,9 @@ import logging
 import math
 import time
 from datetime import datetime
+
 from .base_microscope import BaseMicroscope, Image, Vector
+from .fei_gatan_remoting import FEIGatanRemoting
 from .utils.enums import *
 
 
@@ -24,6 +26,7 @@ class Microscope(BaseMicroscope):
         self.autoloader = Autoloader(self)
         self.stage = Stage(self)
         self.piezo_stage = PiezoStage(self)
+        self.dev = FEIGatanRemoting(self)
 
         if self._tem_adv is not None:
             self.user_door = UserDoor(self)
@@ -1453,40 +1456,42 @@ class LowDose:
         except:
             logging.info("LowDose server is not available.")
 
+    def _is_available(self):
+        return self._tem_ld.LowDoseAvailable and self._tem_ld.IsInitialized
+
     @property
     def is_active(self):
         """ Check if the Low Dose is ON. """
-        if self._tem_ld.LowDoseAvailable:
-            return (self._tem_ld.IsInitialized and
-                    LDStatus(self._tem_ld.LowDoseActive) == LDStatus.IS_ON)
+        if self._is_available():
+            return LDStatus(self._tem_ld.LowDoseActive) == LDStatus.IS_ON
         else:
             raise Exception("Low Dose is not available")
 
     @property
     def state(self):
         """ Low Dose state (LDState enum). (read/write) """
-        if self._tem_ld.LowDoseAvailable and self._tem_ld.IsInitialized:
+        if self._is_available():
             return LDState(self._tem_ld.LowDoseState).name
         else:
             raise Exception("Low Dose is not available")
 
     @state.setter
     def state(self, state):
-        if self._tem_ld.LowDoseAvailable and self._tem_ld.IsInitialized:
+        if self._is_available():
             self._tem_ld.LowDoseState = state
         else:
             raise Exception("Low Dose is not available")
 
     def on(self):
         """ Switch ON Low Dose."""
-        if self._tem_ld.LowDoseAvailable and self._tem_ld.IsInitialized:
+        if self._is_available():
             self._tem_ld.LowDoseActive = LDStatus.IS_ON
         else:
             raise Exception("Low Dose is not available")
 
     def off(self):
         """ Switch OFF Low Dose."""
-        if self._tem_ld.LowDoseAvailable and self._tem_ld.IsInitialized:
+        if self._is_available():
             self._tem_ld.LowDoseActive = LDStatus.IS_OFF
         else:
             raise Exception("Low Dose is not available")

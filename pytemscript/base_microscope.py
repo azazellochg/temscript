@@ -18,6 +18,8 @@ class BaseMicroscope:
         self._tem = None
         self._tem_adv = None
         self._lowdose = None
+        self._semccd = None
+        self._fei_gatan = None
         self._address = address
 
         logging.basicConfig(level=logLevel,
@@ -51,12 +53,22 @@ class BaseMicroscope:
             logging.info("Connected to %s" % SCRIPTING_STD)
         except:
             self._tem = comtypes.client.CreateObject(SCRIPTING_TECNAI)
-            logging.info("Could not connect to %s" % SCRIPTING_TECNAI)
+            logging.info("Connected to %s" % SCRIPTING_TECNAI)
         try:
             self._lowdose = comtypes.client.CreateObject(SCRIPTING_LOWDOSE)
             logging.info("Connected to %s" % SCRIPTING_LOWDOSE)
         except:
             logging.info("Could not connect to %s" % SCRIPTING_LOWDOSE)
+        try:
+            self._semccd = comtypes.client.CreateObject(SCRIPTING_SEM_CCD)
+            logging.info("Connected to %s" % SCRIPTING_SEM_CCD)
+        except:
+            logging.info("Could not connect to %s" % SCRIPTING_SEM_CCD)
+        try:
+            self._fei_gatan = comtypes.client.CreateObject(SCRIPTING_FEI_GATAN_REMOTING)
+            logging.info("Connected to %s" % SCRIPTING_FEI_GATAN_REMOTING)
+        except:
+            logging.info("Could not connect to %s" % SCRIPTING_FEI_GATAN_REMOTING)
 
     def __del__(self):
         if self._address is None:
