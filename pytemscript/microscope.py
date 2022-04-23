@@ -16,6 +16,7 @@ class Microscope(BaseMicroscope):
         self.acquisition = Acquisition(self)
         self.detectors = Detectors(self)
         self.gun = Gun(self)
+        self.lowdose = LowDose(self)
         self.optics = Optics(self)
         self.stem = Stem(self)
         self.temperature = Temperature(self)
@@ -1442,3 +1443,50 @@ class Gun:
             self._tem_feg.Flashing.PerformFlashing(flash_type)
         else:
             raise Exception("Flashing type %s is not advised" % flash_type)
+
+
+class LowDose:
+    """ Low Dose functions. """
+    def __init__(self, microscope):
+        try:
+            self._tem_ld = microscope._lowdose
+        except:
+            logging.info("LowDose server is not available.")
+
+    @property
+    def is_active(self):
+        """ Check if the Low Dose is ON. """
+        if self._tem_ld.LowDoseAvailable:
+            return (self._tem_ld.IsInitialized and
+                    LDStatus(self._tem_ld.LowDoseActive) == LDStatus.IS_ON)
+        else:
+            raise Exception("Low Dose is not available")
+
+    @property
+    def state(self):
+        """ Low Dose state (LDState enum). (read/write) """
+        if self._tem_ld.LowDoseAvailable and self._tem_ld.IsInitialized:
+            return LDState(self._tem_ld.LowDoseState).name
+        else:
+            raise Exception("Low Dose is not available")
+
+    @state.setter
+    def state(self, state):
+        if self._tem_ld.LowDoseAvailable and self._tem_ld.IsInitialized:
+            self._tem_ld.LowDoseState = state
+        else:
+            raise Exception("Low Dose is not available")
+
+    def on(self):
+        """ Switch ON Low Dose."""
+        if self._tem_ld.LowDoseAvailable and self._tem_ld.IsInitialized:
+            self._tem_ld.LowDoseActive = LDStatus.IS_ON
+        else:
+            raise Exception("Low Dose is not available")
+
+    def off(self):
+        """ Switch OFF Low Dose."""
+        if self._tem_ld.LowDoseAvailable and self._tem_ld.IsInitialized:
+            self._tem_ld.LowDoseActive = LDStatus.IS_OFF
+        else:
+            raise Exception("Low Dose is not available")

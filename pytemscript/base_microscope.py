@@ -1,6 +1,12 @@
 import logging
 import os.path
 import platform
+import warnings
+
+try:
+    import comtypes.client
+except ImportError:
+    warnings.warn("Importing comtypes failed. Non-Windows platform?", ImportWarning)
 
 from .utils.constants import *
 from .utils.enums import AcqImageFileFormat, ImagePixelType
@@ -11,6 +17,8 @@ class BaseMicroscope:
     def __init__(self, address=None, timeout=None, simulate=False, logLevel=logging.INFO):
         self._tem = None
         self._tem_adv = None
+        self._lowdose = None
+        self._address = address
 
         logging.basicConfig(level=logLevel,
                             handlers=[
@@ -19,29 +27,40 @@ class BaseMicroscope:
 
         if simulate:
             raise NotImplementedError()
-        elif address is None:
-            # local connection
+        elif self._address is None:
             if platform.system() == "Windows":
-                self._createInstrument()
+                self._createLocalInstrument()
             else:
                 raise NotImplementedError("Running locally is only supported for Windows platform")
         else:
             raise NotImplementedError()
 
-    def _createInstrument(self):
+    def _createLocalInstrument(self):
         """ Try to use both std and advanced scripting. """
-        from comtypes.client import CreateObject
         try:
-            self._tem_adv = CreateObject(SCRIPTING_ADV)
+            comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
+        except WindowsError:
+            comtypes.CoInitialize()
+        try:
+            self._tem_adv = comtypes.client.CreateObject(SCRIPTING_ADV)
             logging.info("Connected to %s" % SCRIPTING_ADV)
         except:
             logging.info("Could not connect to %s" % SCRIPTING_ADV)
         try:
-            self._tem = CreateObject(SCRIPTING_STD)
+            self._tem = comtypes.client.CreateObject(SCRIPTING_STD)
             logging.info("Connected to %s" % SCRIPTING_STD)
         except:
-            self._tem = CreateObject(SCRIPTING_TECNAI)
-            logging.info("Connected to %s" % SCRIPTING_TECNAI)
+            self._tem = comtypes.client.CreateObject(SCRIPTING_TECNAI)
+            logging.info("Could not connect to %s" % SCRIPTING_TECNAI)
+        try:
+            self._lowdose = comtypes.client.CreateObject(SCRIPTING_LOWDOSE)
+            logging.info("Connected to %s" % SCRIPTING_LOWDOSE)
+        except:
+            logging.info("Could not connect to %s" % SCRIPTING_LOWDOSE)
+
+    def __del__(self):
+        if self._address is None:
+            comtypes.CoUninitialize()
 
 
 class Image:

@@ -308,3 +308,17 @@ class FegFlashingType(IntEnum):
     """ Cold FEG flashing type. """
     LOW_T = 0
     HIGH_T = 1
+
+
+class LDStatus(IntEnum):
+    """ Low Dose status: on or off. """
+    IS_OFF = 0
+    IS_ON = 1
+
+
+class LDState(IntEnum):
+    """ Low Dose state. """
+    SEARCH = 0
+    FOCUS1 = 1
+    FOCUS2 = 2
+    EXPOSURE = 3

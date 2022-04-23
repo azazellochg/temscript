@@ -57,7 +57,7 @@ Execute from the command line (assuming you have your Python interpreter in the 
 
     py -m pip install numpy comtypes pytemscript --no-index --find-links .
 
-If you want to install pytemscript from sources (you still need to download comtypes *.whl):
+If you want to install pytemscript from sources (you still need to download comtypes \*.whl):
 
 .. code-block:: python
 

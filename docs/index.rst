@@ -60,7 +60,7 @@ Execute from the command line (assuming you have your Python interpreter in the 
 
     py -m pip install numpy comtypes pytemscript --no-index --find-links .
 
-If you want to install pytemscript from sources (you still need to download comtypes *.whl):
+If you want to install pytemscript from sources (you still need to download comtypes \*.whl):
 
 .. code-block:: python
 
@@ -158,7 +158,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
