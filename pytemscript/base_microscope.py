@@ -88,7 +88,7 @@ class BaseImage:
         self._kwargs = kwargs
 
     def _get_metadata(self, obj):
-        raise NotImplemented
+        raise NotImplementedError
 
     @property
     def name(self):
@@ -133,7 +133,7 @@ class BaseImage:
         :param normalize: Normalize image, only for non-MRC format
         :type normalize: bool
         """
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class Vector:

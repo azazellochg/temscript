@@ -32,31 +32,21 @@ class TecnaiCCDCamera:
             #img = self._plugin.AcquireDarkSubtractedImage() # variant
 
             return Image(img, name=cameraName, **self._camera_params)
-
         else:
             raise Exception("Camera is busy acquiring...")
 
     def _set_camera_param(self, name, size, exp_time, binning, **kwargs):
         """ Find the TEM camera and set its params. """
         camera_index = self._find_camera(name)
-        print(f"Found camera {name} as #{camera_index}")
-        print(f"Type: ", self._plugin.Type(camera_index))
-        print("Location: ", self._plugin.Location(camera_index))
-        print("Pixel sizes:", self._plugin.GetCCDPixelSize(camera_index),
-              self._plugin.PixelSize(camera_index))
-        print("Depth: ", self._plugin.PixelDepth(camera_index))
+        print("Type: ", self._plugin.Type(camera_index))
+        print("Pixel size: ", self._plugin.PixelSize(camera_index))
         self._camera_params['bit_depth'] = self._plugin.PixelDepth(camera_index)
-        # hasfeature = self._plugin.HasFeature(feature)
 
         self._plugin.CurrentCamera = camera_index
-        print("Selected camera #", camera_index)
 
         if self._plugin.IsRetractable:
-            self._plugin.Retract()
-            print("Retracted")
-            self._plugin.Insert()
-            if self._plugin.IsInserted:
-                print("Inserted")
+            if not self._plugin.IsInserted:
+                self._plugin.Insert()
 
         mode = kwargs.get("mode", AcqMode.RECORD)
         self._plugin.SelectCameraParameters(mode)
@@ -66,26 +56,51 @@ class TecnaiCCDCamera:
         speed = kwargs.get("speed", AcqSpeed.SINGLEFRAME)
         self._plugin.Speed = speed
 
-        if 'left' in kwargs:
-            self._plugin.CameraLeft = int(kwargs['left'])
-        if 'top' in kwargs:
-            self._plugin.CameraTop = int(kwargs['top'])
-        if 'right' in kwargs:
-            self._plugin.CameraRight = int(kwargs['right'])
-        if 'bottom' in kwargs:
-            self._plugin.CameraBottom = int(kwargs['bottom'])
+        max_width = self._plugin.CameraRight // binning
+        max_height = self._plugin.CameraBottom // binning
 
+        if 'left' in kwargs:  # custom size
+            try:
+                self._check_size(kwargs['left'], kwargs['top'], max_width, max_height)
+                self._check_size(kwargs['right'], kwargs['bottom'], max_width, max_height)
+
+                self._plugin.CameraLeft = kwargs['left']
+                self._plugin.CameraTop = kwargs['top']
+                self._plugin.CameraRight = kwargs['right']
+                self._plugin.CameraBottom = kwargs['bottom']
+            except KeyError:
+                raise Exception("You must specify all params: left, right, top, bottom")
+        else:  # account for binning
+            self._plugin.CameraLeft = 0
+            self._plugin.CameraTop = 0
+            self._plugin.CameraRight = max_width // 2
+            self._plugin.CameraBottom = max_height // 2
+
+        # Left top is 0,0
         self._camera_params['width'] = self._plugin.CameraRight - self._plugin.CameraLeft
         self._camera_params['height'] = self._plugin.CameraBottom - self._plugin.CameraTop
 
-    def _run_script(self, script):
-        ret = self._plugin.ExecuteScript(script)
-        #ret = self._plugin.ExecuteScriptFile(script)
+    def _check_size(self, x, y, max_width, max_height):
+        if not (0 <= x <= max_width) or not (0 <= y <= max_height):
+            raise Exception("Input image sizes are outside of (0-%d, 0-%d)",
+                            max_width, max_height)
 
-        self._plugin.OpenShutter(True) #rw
+    def _run_command(self, command, *args):
+        #check = 'if(DoesFunctionExist("%s")) Exit(0) else Exit(1)'
+        #exists = self._plugin.ExecuteScript(check % command)
+        exists = self._plugin.ExecuteScript('DoesFunctionExist("%s")' % command)
+
+        if exists:
+            cmd = command % args
+            ret = self._plugin.ExecuteScriptFile(cmd)
+            if ret:
+                raise Exception("Command %s failed" % cmd)
+
+    def _etc(self):
+        self._plugin.OpenShutter(True)  # rw
         self._plugin.LaunchAcquisition(AcqMode.SEARCH)
         self._plugin.StopAcquisition()
-        self._plugin.SaveImageInDMFormat(filename="fgerg")
+        self._plugin.SaveImageInDMFormat(filename="test.dm3")
 
 
 class Image(BaseImage):
@@ -116,7 +131,10 @@ class Image(BaseImage):
     @property
     def data(self):
         """ Returns actual image object as numpy int16 array. """
-        return self._img.astype("int16")
+        from comtypes.safearray import safearray_as_ndarray
+        with safearray_as_ndarray:
+            data = self._img
+        return data
 
     def save(self, filename):
         """ Save acquired image to a file.
