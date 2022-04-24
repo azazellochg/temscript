@@ -395,3 +395,17 @@ class AcquisitionEventIds(IntEnum):
     ExposureFinished = 2
     AcquisitionFinished = 3
     StorageFinished = 4
+
+# ---------------- FEI Tecnai CCD enums -----------------------------------
+
+
+class AcqSpeed(IntEnum):
+    TURBO = 0
+    CONTINUOUS = 1
+    SINGLEFRAME = 2
+
+
+class AcqMode(IntEnum):
+    SEARCH = 0
+    FOCUS = 1
+    RECORD = 2

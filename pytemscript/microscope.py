@@ -1,10 +1,13 @@
 import logging
 import math
 import time
+import os
 from datetime import datetime
 
-from .base_microscope import BaseMicroscope, Image, Vector
+from .base_microscope import BaseMicroscope, BaseImage, Vector
 from .fei_gatan_remoting import FEIGatanRemoting
+from .serialem_ccd import SerialEMCCDCamera
+from .tecnai_ccd import TecnaiCCDCamera
 from .utils.enums import *
 
 
@@ -27,6 +30,8 @@ class Microscope(BaseMicroscope):
         self.stage = Stage(self)
         self.piezo_stage = PiezoStage(self)
         self.dev = FEIGatanRemoting(self)
+        self.dev2 = SerialEMCCDCamera(self)
+        self.dev3 = TecnaiCCDCamera(self)
 
         if self._tem_adv is not None:
             self.user_door = UserDoor(self)
@@ -1495,3 +1500,70 @@ class LowDose:
             self._tem_ld.LowDoseActive = LDStatus.IS_OFF
         else:
             raise Exception("Low Dose is not available")
+
+
+class Image(BaseImage):
+    """ Acquired image object. """
+    def __init__(self, obj, name=None, isAdvanced=False, **kwargs):
+        super().__init__(obj, name, isAdvanced, **kwargs)
+
+    def _get_metadata(self, obj):
+        return {item.Key: item.ValueAsString for item in obj.Metadata}
+
+    @property
+    def width(self):
+        """ Image width in pixels. """
+        return self._img.Width
+
+    @property
+    def height(self):
+        """ Image height in pixels. """
+        return self._img.Height
+
+    @property
+    def bit_depth(self):
+        """ Bit depth. """
+        return self._img.BitDepth if self._isAdvanced else self._img.Depth
+
+    @property
+    def pixel_type(self):
+        """ Image pixels type: uint, int or float. """
+        if self._isAdvanced:
+            return ImagePixelType(self._img.PixelType).name
+        else:
+            return ImagePixelType.SIGNED_INT.name
+
+    @property
+    def data(self):
+        """ Returns actual image object as numpy int32 array. """
+        from comtypes.safearray import safearray_as_ndarray
+        with safearray_as_ndarray:
+            data = self._img.AsSafeArray
+        return data
+
+    def save(self, filename, normalize=False):
+        """ Save acquired image to a file.
+
+        :param filename: File path
+        :type filename: str
+        :param normalize: Normalize image, only for non-MRC format
+        :type normalize: bool
+        """
+        fmt = os.path.splitext(filename)[1].upper().replace(".", "")
+        if fmt == "MRC":
+            print("Convert to int16 since MRC does not support int32")
+            import mrcfile
+            with mrcfile.new(filename) as mrc:
+                if self.metadata is not None:
+                    mrc.voxel_size = float(self.metadata['PixelSize.Width']) * 1e10
+                mrc.set_data(self.data.astype("int16"))
+        else:
+            # use scripting method to save in other formats
+            if self._isAdvanced:
+                self._img.SaveToFile(filename)
+            else:
+                try:
+                    fmt = AcqImageFileFormat[fmt].value
+                except KeyError:
+                    raise NotImplementedError("Format %s is not supported" % fmt)
+                self._img.AsFile(filename, fmt, normalize)
