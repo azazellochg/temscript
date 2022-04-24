@@ -8,7 +8,7 @@ class TecnaiCCDCamera:
     """ Main class that uses FEI Tecnai CCD plugin on microscope PC. """
     def __init__(self, microscope):
         self._plugin = microscope._tecnai_ccd
-        self._camera_params = dict()
+        self._img_params = dict()
 
     def _find_camera(self, name):
         """Find camera index by name. """
@@ -26,12 +26,14 @@ class TecnaiCCDCamera:
             #img = self._plugin.AcquireFrontImage()  # safe array
             #img = self._plugin.FrontImage  # variant
             #img = self._plugin.AcquireImageShown()
-            #self._plugin.ShowAcquiredImage()
+            # img = self._plugin.AcquireDarkSubtractedImage() # variant
 
             img = self._plugin.AcquireRawImage() # variant
-            #img = self._plugin.AcquireDarkSubtractedImage() # variant
 
-            return Image(img, name=cameraName, **self._camera_params)
+            if kwargs.get('show', False):
+                self._plugin.ShowAcquiredImage()
+
+            return Image(img, name=cameraName, **self._img_params)
         else:
             raise Exception("Camera is busy acquiring...")
 
@@ -40,7 +42,7 @@ class TecnaiCCDCamera:
         camera_index = self._find_camera(name)
         print("Type: ", self._plugin.Type(camera_index))
         print("Pixel size: ", self._plugin.PixelSize(camera_index))
-        self._camera_params['bit_depth'] = self._plugin.PixelDepth(camera_index)
+        self._img_params['bit_depth'] = self._plugin.PixelDepth(camera_index)
 
         self._plugin.CurrentCamera = camera_index
 
@@ -59,31 +61,24 @@ class TecnaiCCDCamera:
         max_width = self._plugin.CameraRight // binning
         max_height = self._plugin.CameraBottom // binning
 
-        if 'left' in kwargs:  # custom size
-            try:
-                self._check_size(kwargs['left'], kwargs['top'], max_width, max_height)
-                self._check_size(kwargs['right'], kwargs['bottom'], max_width, max_height)
-
-                self._plugin.CameraLeft = kwargs['left']
-                self._plugin.CameraTop = kwargs['top']
-                self._plugin.CameraRight = kwargs['right']
-                self._plugin.CameraBottom = kwargs['bottom']
-            except KeyError:
-                raise Exception("You must specify all params: left, right, top, bottom")
-        else:  # account for binning
+        if size == AcqImageSize.FULL:
             self._plugin.CameraLeft = 0
             self._plugin.CameraTop = 0
-            self._plugin.CameraRight = max_width // 2
-            self._plugin.CameraBottom = max_height // 2
+            self._plugin.CameraRight = max_width
+            self._plugin.CameraBottom = max_height
+        elif size == AcqImageSize.HALF:
+            self._plugin.CameraLeft = int(max_width/4)
+            self._plugin.CameraTop = int(max_height/4)
+            self._plugin.CameraRight = int(max_width*3/4)
+            self._plugin.CameraBottom = int(max_height*3/4)
+        elif size == AcqImageSize.QUARTER:
+            self._plugin.CameraLeft = int(max_width*3/8)
+            self._plugin.CameraTop = int(max_height*3/8)
+            self._plugin.CameraRight = int(max_width*3/8 + max_width/4)
+            self._plugin.CameraBottom = int(max_height*3/8 + max_height/4)
 
-        # Left top is 0,0
-        self._camera_params['width'] = self._plugin.CameraRight - self._plugin.CameraLeft
-        self._camera_params['height'] = self._plugin.CameraBottom - self._plugin.CameraTop
-
-    def _check_size(self, x, y, max_width, max_height):
-        if not (0 <= x <= max_width) or not (0 <= y <= max_height):
-            raise Exception("Input image sizes are outside of (0-%d, 0-%d)",
-                            max_width, max_height)
+        self._img_params['width'] = self._plugin.CameraRight - self._plugin.CameraLeft
+        self._img_params['height'] = self._plugin.CameraBottom - self._plugin.CameraTop
 
     def _run_command(self, command, *args):
         #check = 'if(DoesFunctionExist("%s")) Exit(0) else Exit(1)'
@@ -130,7 +125,7 @@ class Image(BaseImage):
 
     @property
     def data(self):
-        """ Returns actual image object as numpy int16 array. """
+        """ Returns actual image object as numpy int16? array. """
         from comtypes.safearray import safearray_as_ndarray
         with safearray_as_ndarray:
             data = self._img
