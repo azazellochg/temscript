@@ -47,11 +47,10 @@ class BaseMicroscope:
 
     def _initialize(self, useLD, useTecnaiCCD, useSEMCCD, useFEIGatanRemote):
         """ Wrapper to create interfaces as requested. """
-        #try:
-        #    comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
-        #    print("mutli thread ok")
-        #except WindowsError:
-        #    comtypes.CoInitialize()
+        try:
+            comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
+        except OSError:
+            comtypes.CoInitialize()
 
         self._createCOMObject(self._tem_adv, SCRIPTING_ADV)
         self._createCOMObject(self._tem, SCRIPTING_STD)
