@@ -4,19 +4,35 @@ import time
 import os
 from datetime import datetime
 
+from .utils.enums import *
 from .base_microscope import BaseMicroscope, BaseImage, Vector
 from .fei_gatan_remoting import FEIGatanRemoting
-from .serialem_ccd import SerialEMCCDCamera
-from .tecnai_ccd import TecnaiCCDCamera
-from .utils.enums import *
+#from .serialem_ccd import SerialEMCCDCamera
+from .tecnai_ccd import TecnaiCCDPlugin
 
 
 class Microscope(BaseMicroscope):
     """ High level interface to the local microscope.
-    Creating an instance of this class already queries the COM interface for the instrument.
+    Creating an instance of this class already queries COM interfaces for the instrument.
+
+    :param address: IP address of the microscope PC, localhost if not specified
+    :param timeout: Timeout for remote connection
+    :param simulate: NA
+    :param useLD: Connect to LowDose server on microscope PC (limited control only)
+    :type useLD: bool
+    :param useTecnaiCCD: Connect to TecnaiCCD plugin on microscope PC that controls Digital Micrograph (may be faster than via TIA / std scripting)
+    :type useTecnaiCCD: bool
+    :param useSEMCCD: Connect to SerialEMCCD plugin on Gatan PC that controls Digital Micrograph (may be faster than via TIA / std scripting)
+    :type useSEMCCD: bool
+    :param useFEIGatanRemote: Connect to FEI Gatan Remoting plugin on Gatan PC that controls Digital Micrograph
+    :type useFEIGatanRemote: bool
+    :
     """
-    def __init__(self, address=None, timeout=None, simulate=False):
-        super().__init__(address, timeout, simulate)
+    def __init__(self, address=None, timeout=None, simulate=False, useLD=True,
+                 useTecnaiCCD=False, useSEMCCD=False, useFEIGatanRemote=False):
+
+        super().__init__(address, timeout, simulate, useLD, useTecnaiCCD,
+                         useSEMCCD, useFEIGatanRemote)
 
         self.acquisition = Acquisition(self)
         self.detectors = Detectors(self)
@@ -29,13 +45,25 @@ class Microscope(BaseMicroscope):
         self.autoloader = Autoloader(self)
         self.stage = Stage(self)
         self.piezo_stage = PiezoStage(self)
-        self.dev = FEIGatanRemoting(self)
-        self.dev2 = SerialEMCCDCamera(self)
-        self.dev3 = TecnaiCCDCamera(self)
 
         if self._tem_adv is not None:
             self.user_door = UserDoor(self)
             self.apertures = Apertures(self)
+
+        if useLD:
+            self.lowdose = LowDose(self)
+
+        if useTecnaiCCD:
+            self._tecnaiccd = TecnaiCCDPlugin(self)
+        else:
+            self._tecnaiccd = None
+
+        if useSEMCCD:
+            pass
+            #self.dev2 = SerialEMCCDCamera(self)
+
+        if useFEIGatanRemote:
+            self.dev = FEIGatanRemoting(self)
 
     @property
     def family(self):
@@ -88,6 +116,7 @@ class Acquisition:
         self._has_advanced = microscope._tem_adv is not None
         self._prev_shutter_mode = None
         self._eer = False
+        self._ccdplugin = None
 
         try:
             _ = self._tem_cam.Stock
@@ -97,6 +126,9 @@ class Acquisition:
 
         if self._has_advanced:
             self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
+
+        if microscope._tecnaiccd is not None:
+            self._ccdplugin = microscope._tecnaiccd
 
     def _find_camera(self, name):
         """Find camera object by name. Check adv scripting first. """
@@ -138,7 +170,7 @@ class Acquisition:
                 if int(b) == int(binning):
                     return b
 
-        return False
+        raise Exception("Unsupported binning value: %d" % binning)
 
     def _set_camera_param(self, name, size, exp_time, binning, **kwargs):
         """ Find the TEM camera and set its params. """
@@ -209,8 +241,7 @@ class Acquisition:
             settings.ImageSize = size
 
             binning = self._check_binning(binning, camera)
-            if binning:
-                settings.Binning = binning
+            settings.Binning = binning
 
             if 'correction' in kwargs:
                 settings.ImageCorrection = kwargs['correction']
@@ -277,6 +308,15 @@ class Acquisition:
                 print("Checking dewars levels...")
                 break
 
+    def _acquire_with_tecnaiccd(self, cameraName, size, exp_time, binning, **kwargs):
+        if self._ccdplugin is None:
+            raise Exception("Tecnai CCD plugin not found, did you pass useTecnaiCCD=True to Microscope() ?")
+        else:
+            logging.info("Using TecnaiCCD plugin for Gatan camera")
+            plugin = self._ccdplugin  # Get camera size from std scripting
+            camerasize = self._find_camera(cameraName).Info.Width
+            plugin.acquire_image(cameraName, size, exp_time, binning, camerasize=camerasize, **kwargs)
+
     def acquire_tem_image(self, cameraName, size, exp_time=1, binning=1, **kwargs):
         """ Acquire a TEM image.
 
@@ -291,6 +331,7 @@ class Acquisition:
         :keyword bool electron_counting: Use counting mode. Advanced cameras only.
         :keyword bool eer: Use EER mode. Advanced cameras only.
         :keyword list frame_ranges: List of tuple frame ranges that define the intermediate images, e.g. [(1,2), (2,3)]. Advanced cameras only.
+        :keyword bool use_tecnaiccd: Use Tecnai CCD plugin to acquire image via Digital Micrograph, only for Gatan cameras
         :returns: Image object
 
         Usage:
@@ -301,6 +342,10 @@ class Acquisition:
             >>> print(img.width)
             4096
         """
+        if kwargs.get("use_tecnaiccd", False):
+            self._acquire_with_tecnaiccd(cameraName, size, exp_time, binning, **kwargs)
+            return
+
         self._set_camera_param(cameraName, size, exp_time, binning, **kwargs)
         if self._is_advanced:
             self._check_prerequisites()
@@ -658,8 +703,8 @@ class Stage:
 class PiezoStage:
     """ Piezo stage functions. """
     def __init__(self, microscope):
-        self._tem_pstage = microscope._tem_adv.PiezoStage
         try:
+            self._tem_pstage = microscope._tem_adv.PiezoStage
             self.high_resolution = self._tem_pstage.HighResolution
         except:
             logging.info("PiezoStage interface is not available.")
@@ -1456,9 +1501,9 @@ class Gun:
 class LowDose:
     """ Low Dose functions. """
     def __init__(self, microscope):
-        try:
+        if microscope._lowdose is not None:
             self._tem_ld = microscope._lowdose
-        except:
+        else:
             logging.info("LowDose server is not available.")
 
     def _is_available(self):
@@ -1475,7 +1520,7 @@ class LowDose:
     @property
     def state(self):
         """ Low Dose state (LDState enum). (read/write) """
-        if self._is_available():
+        if self._is_available() and self.is_active:
             return LDState(self._tem_ld.LowDoseState).name
         else:
             raise Exception("Low Dose is not available")

@@ -5,8 +5,9 @@ class FEIGatanRemoting:
     """ Main class that uses FEI Gatan Remoting from TFS on Gatan PC. """
     def __init__(self, microscope):
         self._plugin = microscope._fei_gatan
-        self._plugin_acq = self._plugin.Acquisition
-        self._plugin_diag = self._plugin.Diagnostics
+        if self._plugin is not None:
+            self._plugin_acq = self._plugin.Acquisition
+            self._plugin_diag = self._plugin.Diagnostics
 
     def _find_camera(self, name):
         """Find camera index by name. """
@@ -29,7 +30,7 @@ class FEIGatanRemoting:
     def _set_camera_param(self, name, size, exp_time, binning, **kwargs):
         """ Find the TEM camera and set its params. """
         camera_index = self._find_camera(name)
-        print(f"Found camera {name} as #{camera_index}")
+        print("Found camera ", name, "as #", camera_index)
         print("Location: ", self._plugin_acq.GetCameraLocation(camera_index))  # str
         print("Pixel size:", self._plugin_acq.GetCameraPixelSizeX(camera_index),
               self._plugin_acq.GetCameraPixelSizeY(camera_index))

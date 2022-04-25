@@ -4,11 +4,12 @@ from .utils.enums import *
 from .base_microscope import BaseImage
 
 
-class TecnaiCCDCamera:
+class TecnaiCCDPlugin:
     """ Main class that uses FEI Tecnai CCD plugin on microscope PC. """
     def __init__(self, microscope):
-        self._plugin = microscope._tecnai_ccd
-        self._img_params = dict()
+        if microscope._tecnai_ccd is not None:
+            self._plugin = microscope._tecnai_ccd
+            self._img_params = dict()
 
     def _find_camera(self, name):
         """Find camera index by name. """
@@ -17,8 +18,8 @@ class TecnaiCCDCamera:
                 return i
         raise KeyError("No camera with name %s" % name)
 
-    def acquire_image(self, cameraName, size, exp_time=1, binning=1, **kwargs):
-        self._set_camera_param(cameraName, size, exp_time, binning, **kwargs)
+    def acquire_image(self, cameraName, size, exp_time=1, binning=1, camerasize=1024, **kwargs):
+        self._set_camera_param(cameraName, size, exp_time, binning, camerasize, **kwargs)
         if not self._plugin.IsAcquiring:
             #img = self._plugin.AcquireImageNotShown(id=1)
             #self._plugin.AcquireAndShowImage(mode)
@@ -37,11 +38,9 @@ class TecnaiCCDCamera:
         else:
             raise Exception("Camera is busy acquiring...")
 
-    def _set_camera_param(self, name, size, exp_time, binning, **kwargs):
+    def _set_camera_param(self, name, size, exp_time, binning, camerasize, **kwargs):
         """ Find the TEM camera and set its params. """
         camera_index = self._find_camera(name)
-        print("Type: ", self._plugin.Type(camera_index))
-        print("Pixel size: ", self._plugin.PixelSize(camera_index))
         self._img_params['bit_depth'] = self._plugin.PixelDepth(camera_index)
 
         self._plugin.CurrentCamera = camera_index
@@ -58,8 +57,8 @@ class TecnaiCCDCamera:
         speed = kwargs.get("speed", AcqSpeed.SINGLEFRAME)
         self._plugin.Speed = speed
 
-        max_width = self._plugin.CameraRight // binning
-        max_height = self._plugin.CameraBottom // binning
+        max_width = camerasize // binning
+        max_height = camerasize // binning
 
         if size == AcqImageSize.FULL:
             self._plugin.CameraLeft = 0
@@ -90,12 +89,6 @@ class TecnaiCCDCamera:
             ret = self._plugin.ExecuteScriptFile(cmd)
             if ret:
                 raise Exception("Command %s failed" % cmd)
-
-    def _etc(self):
-        self._plugin.OpenShutter(True)  # rw
-        self._plugin.LaunchAcquisition(AcqMode.SEARCH)
-        self._plugin.StopAcquisition()
-        self._plugin.SaveImageInDMFormat(filename="test.dm3")
 
 
 class Image(BaseImage):

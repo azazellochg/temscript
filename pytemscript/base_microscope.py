@@ -11,8 +11,9 @@ from .utils.constants import *
 
 
 class BaseMicroscope:
-
-    def __init__(self, address=None, timeout=None, simulate=False, logLevel=logging.INFO):
+    """ Base class that handles COM interface connections. """
+    def __init__(self, address, timeout, simulate, useLD, useTecnaiCCD,
+                 useSEMCCD, useFEIGatanRemote, logLevel=logging.INFO):
         self._tem = None
         self._tem_adv = None
         self._lowdose = None
@@ -27,56 +28,50 @@ class BaseMicroscope:
                                 logging.StreamHandler()])
 
         if simulate:
-            raise NotImplementedError()
+            raise NotImplementedError
         elif self._address is None:
             if platform.system() == "Windows":
-                self._createLocalInstrument()
+                self._initialize(useLD, useTecnaiCCD, useSEMCCD, useFEIGatanRemote)
             else:
                 raise NotImplementedError("Running locally is only supported for Windows platform")
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
-    def _createLocalInstrument(self):
-        """ Try to use both std and advanced scripting. """
+    def _createCOMObject(self, obj, progId):
+        """ Connect to a COM interface. """
         try:
-            comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
-        except WindowsError:
-            comtypes.CoInitialize()
-        try:
-            self._tem_adv = comtypes.client.CreateObject(SCRIPTING_ADV)
-            logging.info("Connected to %s" % SCRIPTING_ADV)
+            obj = comtypes.client.CreateObject(progId)
+            logging.info("Connected to %s" % progId)
         except:
-            logging.info("Could not connect to %s" % SCRIPTING_ADV)
-        try:
-            self._tem = comtypes.client.CreateObject(SCRIPTING_STD)
-            logging.info("Connected to %s" % SCRIPTING_STD)
-        except:
-            self._tem = comtypes.client.CreateObject(SCRIPTING_TECNAI)
-            logging.info("Connected to %s" % SCRIPTING_TECNAI)
-        try:
-            self._lowdose = comtypes.client.CreateObject(SCRIPTING_LOWDOSE)
-            logging.info("Connected to %s" % SCRIPTING_LOWDOSE)
-        except:
-            logging.info("Could not connect to %s" % SCRIPTING_LOWDOSE)
-        try:
-            self._sem_ccd = comtypes.client.CreateObject(SCRIPTING_SEM_CCD)
-            logging.info("Connected to %s" % SCRIPTING_SEM_CCD)
-        except:
-            logging.info("Could not connect to %s" % SCRIPTING_SEM_CCD)
-        try:
-            self._tecnai_ccd = comtypes.client.CreateObject(SCRIPTING_TECNAI_CCD)
-            logging.info("Connected to %s" % SCRIPTING_TECNAI_CCD)
-        except:
-            logging.info("Could not connect to %s" % SCRIPTING_TECNAI_CCD)
-        try:
-            self._fei_gatan = comtypes.client.CreateObject(SCRIPTING_FEI_GATAN_REMOTING)
-            logging.info("Connected to %s" % SCRIPTING_FEI_GATAN_REMOTING)
-        except:
-            logging.info("Could not connect to %s" % SCRIPTING_FEI_GATAN_REMOTING)
+            logging.info("Could not connect to %s" % progId)
 
-    def __del__(self):
-        if self._address is None:
-            comtypes.CoUninitialize()
+    def _initialize(self, useLD, useTecnaiCCD, useSEMCCD, useFEIGatanRemote):
+        """ Wrapper to create interfaces as requested. """
+        #try:
+        #    comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
+        #    print("mutli thread ok")
+        #except WindowsError:
+        #    comtypes.CoInitialize()
+
+        self._createCOMObject(self._tem_adv, SCRIPTING_ADV)
+        self._createCOMObject(self._tem, SCRIPTING_STD)
+
+        if self._tem is None:  # try Tecnai instead
+            self._createCOMObject(self._tem, SCRIPTING_TECNAI)
+
+        if useLD:
+            self._createCOMObject(self._lowdose, SCRIPTING_LOWDOSE)
+        if useTecnaiCCD:
+            self._createCOMObject(self._tecnai_ccd, SCRIPTING_TECNAI_CCD)
+        if useSEMCCD:
+            self._createCOMObject(self._sem_ccd, SCRIPTING_SEM_CCD)
+        if useFEIGatanRemote:
+            self._createCOMObject(self._fei_gatan, SCRIPTING_FEI_GATAN_REMOTING)
+
+    #def __del__(self):
+        #pass
+        #if self._address is None:
+        #    comtypes.CoUninitialize()
 
 
 class BaseImage:
