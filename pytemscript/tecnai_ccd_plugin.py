@@ -1,4 +1,6 @@
+import logging
 import os
+import time
 
 from .utils.enums import *
 from .base_microscope import BaseImage
@@ -18,7 +20,7 @@ class TecnaiCCDPlugin:
                 return i
         raise KeyError("No camera with name %s" % name)
 
-    def acquire_image(self, cameraName, size, exp_time=1, binning=1, camerasize=1024, **kwargs):
+    def acquire_image(self, cameraName, size=AcqImageSize.FULL, exp_time=1, binning=1, camerasize=1024, **kwargs):
         self._set_camera_param(cameraName, size, exp_time, binning, camerasize, **kwargs)
         if not self._plugin.IsAcquiring:
             #img = self._plugin.AcquireImageNotShown(id=1)
@@ -47,7 +49,11 @@ class TecnaiCCDPlugin:
 
         if self._plugin.IsRetractable:
             if not self._plugin.IsInserted:
+                logging.info("Inserting camera %s" % name)
                 self._plugin.Insert()
+                time.sleep(5)
+                if not self._plugin.IsInserted:
+                    raise Exception("Could not insert camera!")
 
         mode = kwargs.get("mode", AcqMode.RECORD)
         self._plugin.SelectCameraParameters(mode)
@@ -118,10 +124,14 @@ class Image(BaseImage):
 
     @property
     def data(self):
-        """ Returns actual image object as numpy int16? array. """
-        from comtypes.safearray import safearray_as_ndarray
-        with safearray_as_ndarray:
-            data = self._img
+        """ Returns actual image object as numpy uint16 array. """
+        #from comtypes.safearray import safearray_as_ndarray
+        #with safearray_as_ndarray:
+        #    data = self._img
+        #import numpy as np
+        data = self._img.astype("uint16")
+        data.shape = self.width, self.height
+
         return data
 
     def save(self, filename):

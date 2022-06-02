@@ -6,9 +6,6 @@ from datetime import datetime
 
 from .utils.enums import *
 from .base_microscope import BaseMicroscope, BaseImage, Vector
-from .fei_gatan_remoting import FEIGatanRemoting
-#from .serialem_ccd import SerialEMCCDCamera
-from .tecnai_ccd import TecnaiCCDPlugin
 
 
 class Microscope(BaseMicroscope):
@@ -24,15 +21,26 @@ class Microscope(BaseMicroscope):
     :type useTecnaiCCD: bool
     :param useSEMCCD: Connect to SerialEMCCD plugin on Gatan PC that controls Digital Micrograph (may be faster than via TIA / std scripting)
     :type useSEMCCD: bool
-    :param useFEIGatanRemote: Connect to FEI Gatan Remoting plugin on Gatan PC that controls Digital Micrograph
-    :type useFEIGatanRemote: bool
-    :
     """
     def __init__(self, address=None, timeout=None, simulate=False, useLD=True,
-                 useTecnaiCCD=False, useSEMCCD=False, useFEIGatanRemote=False):
+                 useTecnaiCCD=False, useSEMCCD=False):
 
         super().__init__(address, timeout, simulate, useLD, useTecnaiCCD,
-                         useSEMCCD, useFEIGatanRemote)
+                         useSEMCCD)
+
+        if useTecnaiCCD:
+            if self._tecnai_ccd is None:
+                raise Exception("Could not use Tecnai CCD plugin, please set useTecnaiCCD=False")
+            else:
+                from .tecnai_ccd_plugin import TecnaiCCDPlugin
+                self._tecnai_ccd_plugin = TecnaiCCDPlugin(self)
+
+        if useSEMCCD:
+            if self._sem_ccd is None:
+                raise Exception("Could not use SerialEM CCD plugin, please set useSEMCCD=False")
+            else:
+                from .serialem_ccd_plugin import SerialEMCCDPlugin
+                self._sem_ccd_plugin = SerialEMCCDPlugin(self)
 
         self.acquisition = Acquisition(self)
         self.detectors = Detectors(self)
@@ -52,18 +60,6 @@ class Microscope(BaseMicroscope):
 
         if useLD:
             self.lowdose = LowDose(self)
-
-        if useTecnaiCCD:
-            self._tecnaiccd = TecnaiCCDPlugin(self)
-        else:
-            self._tecnaiccd = None
-
-        if useSEMCCD:
-            pass
-            #self.dev2 = SerialEMCCDCamera(self)
-
-        if useFEIGatanRemote:
-            self.dev = FEIGatanRemoting(self)
 
     @property
     def family(self):
@@ -116,7 +112,6 @@ class Acquisition:
         self._has_advanced = microscope._tem_adv is not None
         self._prev_shutter_mode = None
         self._eer = False
-        self._ccdplugin = None
 
         try:
             _ = self._tem_cam.Stock
@@ -127,8 +122,8 @@ class Acquisition:
         if self._has_advanced:
             self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
 
-        if microscope._tecnaiccd is not None:
-            self._ccdplugin = microscope._tecnaiccd
+        if getattr(microscope, "_tecnai_ccd_plugin", None):
+            self._ccdplugin = microscope._tecnai_ccd_plugin
 
     def _find_camera(self, name):
         """Find camera object by name. Check adv scripting first. """
@@ -140,7 +135,8 @@ class Acquisition:
         for cam in self._tem_acq.Cameras:
             if cam.Info.Name == name:
                 return cam
-        raise KeyError("No camera with name %s" % name)
+        raise KeyError("No camera with name %s. If using standard scripting the "
+                       "camera must be selected in the microscope user interface" % name)
 
     def _find_stem_detector(self, name):
         """Find STEM detector object by name"""
@@ -309,15 +305,14 @@ class Acquisition:
                 break
 
     def _acquire_with_tecnaiccd(self, cameraName, size, exp_time, binning, **kwargs):
-        if self._ccdplugin is None:
+        if not hasattr(self, "_ccdplugin"):
             raise Exception("Tecnai CCD plugin not found, did you pass useTecnaiCCD=True to Microscope() ?")
         else:
             logging.info("Using TecnaiCCD plugin for Gatan camera")
-            plugin = self._ccdplugin  # Get camera size from std scripting
-            camerasize = self._find_camera(cameraName).Info.Width
-            plugin.acquire_image(cameraName, size, exp_time, binning, camerasize=camerasize, **kwargs)
+            camerasize = self._find_camera(cameraName).Info.Width  # Get camera size from std scripting
+            return self._ccdplugin.acquire_image(cameraName, size, exp_time, binning, camerasize=camerasize, **kwargs)
 
-    def acquire_tem_image(self, cameraName, size, exp_time=1, binning=1, **kwargs):
+    def acquire_tem_image(self, cameraName, size=AcqImageSize.FULL, exp_time=1, binning=1, **kwargs):
         """ Acquire a TEM image.
 
         :param cameraName: Camera name
@@ -331,7 +326,7 @@ class Acquisition:
         :keyword bool electron_counting: Use counting mode. Advanced cameras only.
         :keyword bool eer: Use EER mode. Advanced cameras only.
         :keyword list frame_ranges: List of tuple frame ranges that define the intermediate images, e.g. [(1,2), (2,3)]. Advanced cameras only.
-        :keyword bool use_tecnaiccd: Use Tecnai CCD plugin to acquire image via Digital Micrograph, only for Gatan cameras
+        :keyword bool use_tecnaiccd: Use Tecnai CCD plugin to acquire image via Digital Micrograph, only for Gatan cameras. Requires Microscope() initialized with useTecnaiCCD=True
         :returns: Image object
 
         Usage:
@@ -343,8 +338,7 @@ class Acquisition:
             4096
         """
         if kwargs.get("use_tecnaiccd", False):
-            self._acquire_with_tecnaiccd(cameraName, size, exp_time, binning, **kwargs)
-            return
+            return self._acquire_with_tecnaiccd(cameraName, size, exp_time, binning, **kwargs)
 
         self._set_camera_param(cameraName, size, exp_time, binning, **kwargs)
         if self._is_advanced:

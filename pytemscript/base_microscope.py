@@ -13,13 +13,12 @@ from .utils.constants import *
 class BaseMicroscope:
     """ Base class that handles COM interface connections. """
     def __init__(self, address, timeout, simulate, useLD, useTecnaiCCD,
-                 useSEMCCD, useFEIGatanRemote, logLevel=logging.INFO):
+                 useSEMCCD, logLevel=logging.INFO):
         self._tem = None
         self._tem_adv = None
         self._lowdose = None
         self._tecnai_ccd = None
         self._sem_ccd = None
-        self._fei_gatan = None
         self._address = address
 
         logging.basicConfig(level=logLevel,
@@ -31,41 +30,46 @@ class BaseMicroscope:
             raise NotImplementedError
         elif self._address is None:
             if platform.system() == "Windows":
-                self._initialize(useLD, useTecnaiCCD, useSEMCCD, useFEIGatanRemote)
+                self._initialize(useLD, useTecnaiCCD, useSEMCCD)
             else:
                 raise NotImplementedError("Running locally is only supported for Windows platform")
         else:
             raise NotImplementedError
 
-    def _createCOMObject(self, obj, progId):
+    def _createCOMObject(self, progId):
         """ Connect to a COM interface. """
         try:
             obj = comtypes.client.CreateObject(progId)
             logging.info("Connected to %s" % progId)
+            return obj
         except:
             logging.info("Could not connect to %s" % progId)
+            return None
 
-    def _initialize(self, useLD, useTecnaiCCD, useSEMCCD, useFEIGatanRemote):
+    def _initialize(self, useLD, useTecnaiCCD, useSEMCCD):
         """ Wrapper to create interfaces as requested. """
+        import comtypes
         try:
             comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
         except OSError:
             comtypes.CoInitialize()
 
-        self._createCOMObject(self._tem_adv, SCRIPTING_ADV)
-        self._createCOMObject(self._tem, SCRIPTING_STD)
+        self._tem_adv = self._createCOMObject(SCRIPTING_ADV)
+        self._tem = self._createCOMObject(SCRIPTING_STD)
 
         if self._tem is None:  # try Tecnai instead
-            self._createCOMObject(self._tem, SCRIPTING_TECNAI)
+            self._tem = self._createCOMObject(SCRIPTING_TECNAI)
 
         if useLD:
-            self._createCOMObject(self._lowdose, SCRIPTING_LOWDOSE)
+            self._lowdose = self._createCOMObject(SCRIPTING_LOWDOSE)
         if useTecnaiCCD:
-            self._createCOMObject(self._tecnai_ccd, SCRIPTING_TECNAI_CCD)
+            self._tecnai_ccd = self._createCOMObject(SCRIPTING_TECNAI_CCD)
+            if self._tecnai_ccd is None:
+                self._tecnai_ccd = self._createCOMObject(SCRIPTING_TECNAI_CCD2)
+            import comtypes.gen.TECNAICCDLib
         if useSEMCCD:
-            self._createCOMObject(self._sem_ccd, SCRIPTING_SEM_CCD)
-        if useFEIGatanRemote:
-            self._createCOMObject(self._fei_gatan, SCRIPTING_FEI_GATAN_REMOTING)
+            from .utils.gatan_socket import GatanSocket
+            self._sem_ccd = GatanSocket()
 
     #def __del__(self):
         #pass
