@@ -625,6 +625,7 @@ class Stage:
         return self.limits['b']['unit'] != MeasurementUnitType.UNKNOWN
 
     def _change_position(self, direct=False, **kwargs):
+        # TODO: check limits beforehand
         if self._tem_stage.Status == StageStatus.READY:
             # convert units first
             new_pos = {key: kwargs[key] * 1e6 for key in 'xyz'}

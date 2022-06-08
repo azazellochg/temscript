@@ -68,8 +68,8 @@ class BaseMicroscope:
                 self._tecnai_ccd = self._createCOMObject(SCRIPTING_TECNAI_CCD2)
             import comtypes.gen.TECNAICCDLib
         if useSEMCCD:
-            from .utils.gatan_socket import GatanSocket
-            self._sem_ccd = GatanSocket()
+            from .utils.gatan_socket import SocketFuncs
+            self._sem_ccd = SocketFuncs()
 
     #def __del__(self):
         #pass

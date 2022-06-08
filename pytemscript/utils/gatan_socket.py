@@ -180,7 +180,7 @@ def logwrap(func):
 
 
 class GatanSocket:
-    def __init__(self, host='127.0.0.1', port=48890):
+    def __init__(self, host, port):
         self.host = host
         self.port = os.environ.get('SERIALEMCCD_PORT', port)
         self.debug = os.environ.get('SERIALEMCCD_DEBUG', 0)
@@ -272,291 +272,20 @@ class GatanSocket:
         recvargs = message_recv.array['longargs']
         logging.debug(f'Func: {sendargs[0]}, Code: {recvargs[0]}')
 
-    def GetLong(self, funcName):
-        """Common class of function that gets a single long."""
+    def GetFunction(self, funcName, rlongargs=[], rboolargs=[], rdblargs=[]):
+        """ Common function that only receives data. """
         funcCode = enum_gs[funcName]
         message_send = Message(longargs=(funcCode,))
-        # First recieved message longargs is error code
-        message_recv = Message(longargs=(0, 0))
+        message_recv = Message(rlongargs, rboolargs, rdblargs)
         self.ExchangeMessages(message_send, message_recv)
-        result = message_recv.array['longargs'][1]
-        return result
+        return message_recv
 
-    def SendLong(self, funcName, longarg):
-        """Common class of function with one long arg."""
+    def SetFunction(self, funcName, slongargs=[], sboolargs=[], sdblargs=[]):
+        """ Common function that only sends data. """
         funcCode = enum_gs[funcName]
-        message_send = Message(longargs=(funcCode, longarg))
+        message_send = Message(longargs=(funcCode, slongargs, sboolargs, sdblargs))
         message_recv = Message(longargs=(0,))
         self.ExchangeMessages(message_send, message_recv)
-
-    def SendLongGetLong(self, funcName, longarg):
-        """Common class of function with one long arg that returns a single
-        long."""
-        funcCode = enum_gs[funcName]
-        message_send = Message(longargs=(funcCode, longarg))
-        # First recieved message longargs is error code
-        message_recv = Message(longargs=(0, 0))
-        self.ExchangeMessages(message_send, message_recv)
-        result = message_recv.array['longargs'][1]
-        return result
-
-    def GetDMVersion(self):
-        return self.GetLong('GS_GetDMVersion')
-
-    def GetNumberOfCameras(self):
-        return self.GetLong('GS_GetNumberOfCameras')
-
-    def GetPluginVersion(self):
-        return self.GetLong('GS_GetPluginVersion')
-
-    def SetDebugMode(self, mode):
-        self.SendLong('GS_SetDebugMode', mode)
-
-    def SetCurrentCamera(self, camera):
-        self.SendLong('GS_SetCurrentCamera', camera)
-
-    def IsCameraInserted(self, camera):
-        funcCode = enum_gs['GS_IsCameraInserted']
-        message_send = Message(longargs=(funcCode, camera))
-        message_recv = Message(longargs=(0,), boolargs=(0,))
-        self.ExchangeMessages(message_send, message_recv)
-        result = bool(message_recv.array['boolargs'][0])
-        return result
-
-    def InsertCamera(self, camera, state):
-        funcCode = enum_gs['GS_InsertCamera']
-        message_send = Message(longargs=(funcCode, camera), boolargs=(state,))
-        message_recv = Message(longargs=(0,))
-        self.ExchangeMessages(message_send, message_recv)
-
-    def SetReadMode(self, mode, scaling=1.0):
-        funcCode = enum_gs['GS_SetReadMode']
-        message_send = Message(longargs=(funcCode, mode), dblargs=(scaling,))
-        message_recv = Message(longargs=(0,))
-        self.ExchangeMessages(message_send, message_recv)
-
-    def SetShutterNormallyClosed(self, camera, shutter):
-        funcCode = enum_gs['GS_SetShutterNormallyClosed']
-        message_send = Message(longargs=(funcCode, camera, shutter))
-        message_recv = Message(longargs=(0,))
-        self.ExchangeMessages(message_send, message_recv)
-
-    @logwrap
-    def SetK2Parameters(self, readMode, scaling, hardwareProc, doseFrac,
-                        frameTime, alignFrames, saveFrames, filt=''):
-        funcCode = enum_gs['GS_SetK2Parameters']
-
-        self.save_frames = saveFrames
-
-        # filter name
-        filt_str = filt + '\0'
-        extra = len(filt_str) % 4
-        if extra:
-            npad = 4 - extra
-            filt_str = filt_str + npad * '\0'
-        longarray = np.frombuffer(filt_str.encode(), dtype=np.int_)
-
-        longs = [
-            funcCode,
-            readMode,
-            hardwareProc,
-        ]
-        bools = [
-            doseFrac,
-            alignFrames,
-            saveFrames,
-        ]
-        doubles = [
-            scaling,
-            frameTime,
-        ]
-
-        message_send = Message(longargs=longs, boolargs=bools, dblargs=doubles, longarray=longarray)
-        message_recv = Message(longargs=(0,))  # just return code
-        self.ExchangeMessages(message_send, message_recv)
-
-    def setNumGrabSum(self, earlyReturnFrameCount, earlyReturnRamGrabs):
-        # pack RamGrabs and earlyReturnFrameCount in one double
-        self.num_grab_sum = (2**16) * earlyReturnRamGrabs + earlyReturnFrameCount
-
-    def getNumGrabSum(self):
-        return self.num_grab_sum
-
-    @logwrap
-    def SetupFileSaving(self, rotationFlip, dirname, rootname, filePerImage,
-                        doEarlyReturn, earlyReturnFrameCount=0, earlyReturnRamGrabs=0,
-                        lzwtiff=False):
-        pixelSize = 1.0
-        self.setNumGrabSum(earlyReturnFrameCount, earlyReturnRamGrabs)
-        if self.save_frames and (doEarlyReturn or lzwtiff):
-            # early return flag
-            flag = 128 * int(doEarlyReturn) + 8 * int(lzwtiff)
-            numGrabSum = self.getNumGrabSum()
-            # set values to pass
-            longs = [enum_gs['GS_SetupFileSaving2'], rotationFlip, flag]
-            dbls = [pixelSize, numGrabSum, 0., 0., 0.]
-        else:
-            longs = [enum_gs['GS_SetupFileSaving'], rotationFlip]
-            dbls = [pixelSize]
-        bools = [filePerImage]
-        names_str = dirname + '\0' + rootname + '\0'
-        extra = len(names_str) % 4
-        if extra:
-            npad = 4 - extra
-            names_str = names_str + npad * '\0'
-        longarray = np.frombuffer(names_str.encode(), dtype=np.int_)
-        message_send = Message(longargs=longs, boolargs=bools, dblargs=dbls, longarray=longarray)
-        message_recv = Message(longargs=(0, 0))
-        self.ExchangeMessages(message_send, message_recv)
-
-    # This function is broken, many undefined variables...
-    # def GetFileSaveResult(self):
-    #     longs = [enum_gs['GS_GetFileSaveResult'], rotationFlip]
-    #     message_send = Message(longargs=longs, boolargs=bools, dblargs=dbls, longarray=longarray)
-    #     message_recv = Message(longargs=(0, 0, 0))
-    #     self.ExchangeMessages(message_send, message_recv)
-    #     args = message_recv.array['longargs']
-    #     numsaved = args[1]
-    #     error = args[2]
-
-    def SelectCamera(self, cameraid):
-        self.SendLong('GS_SelectCamera', cameraid)
-
-    def UpdateK2HardwareDarkReference(self, cameraid):
-        function_name = 'K2_updateHardwareDarkReference'
-        return self.ExecuteSendCameraObjectionFunction(function_name, cameraid)
-
-    def GetEnergyFilter(self):
-        if 'GetEnergyFilter' not in self.filter_functions.keys():
-            return -1.0
-        func = self.filter_functions['GetEnergyFilter']
-        script = f'if ( {func}() ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}'
-        return self.ExecuteGetDoubleScript(script)
-
-    def SetEnergyFilter(self, value):
-        if 'SetEnergyFilter' not in self.filter_functions.keys():
-            return -1.0
-        if value:
-            i = 1
-        else:
-            i = 0
-        func = self.filter_functions['SetEnergyFilter']
-        wait = self.wait_for_filter
-        script = f'{func}({i}); {wait}'
-        return self.ExecuteSendScript(script)
-
-    def GetEnergyFilterWidth(self):
-        if 'GetEnergyFilterWidth' not in self.filter_functions.keys():
-            return -1.0
-        func = self.filter_functions['GetEnergyFilterWidth']
-        script = f'Exit({func}())'
-        return self.ExecuteGetDoubleScript(script)
-
-    def SetEnergyFilterWidth(self, value):
-        if 'SetEnergyFilterWidth' not in self.filter_functions.keys():
-            return -1.0
-        func = self.filter_functions['SetEnergyFilterWidth']
-        script = f'if ( {func}({value:f}) ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}'
-        return self.ExecuteSendScript(script)
-
-    def GetEnergyFilterOffset(self):
-        if 'GetEnergyFilterOffset' not in self.filter_functions.keys():
-            return 0.0
-        func = self.filter_functions['GetEnergyFilterOffset']
-        script = f'Exit({func}())'
-        return self.ExecuteGetDoubleScript(script)
-
-    def SetEnergyFilterOffset(self, value):
-        if 'SetEnergyFilterOffset' not in self.filter_functions.keys():
-            return -1.0
-        func = self.filter_functions['SetEnergyFilterOffset']
-        script = f'if ( {func}({value:f}) ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}'
-        return self.ExecuteSendScript(script)
-
-    def AlignEnergyFilterZeroLossPeak(self):
-        func = self.filter_functions['AlignEnergyFilterZeroLossPeak']
-        wait = self.wait_for_filter
-        script = f' if ( {func}() ) {{ {wait} Exit(1.0); }} else {{ Exit(-1.0); }}'
-        return self.ExecuteGetDoubleScript(script)
-
-    @logwrap
-    def GetImage(self, processing, height, width, binning, top,
-                 left, bottom, right, exposure, shutterDelay=0):
-        """
-        :param processing: dark, unprocessed, dark subtracted or gain normalized
-        :param exposure: seconds
-        :param shutterDelay: milliseconds
-        """
-
-        arrSize = width * height
-
-        # TODO: need to figure out what these should be
-        shutter = 0
-        divideBy2 = 0
-        corrections = 0
-        settling = 0.0
-
-        # prepare args for message
-        if processing == 'dark':
-            longargs = [enum_gs['GS_GetDarkReference']]
-        else:
-            longargs = [enum_gs['GS_GetAcquiredImage']]
-        longargs.extend([
-            arrSize,  # pixels in the image
-            width, height
-        ])
-        if processing == 'unprocessed':
-            longargs.append(0)
-        elif processing == 'dark subtracted':
-            longargs.append(1)
-        elif processing == 'gain normalized':
-            longargs.append(2)
-
-        longargs.extend([binning, top, left, bottom, right, shutter])
-        if processing != 'dark':
-            longargs.append(shutterDelay)
-        longargs.extend([divideBy2, corrections])
-        dblargs = [exposure, settling]
-
-        message_send = Message(longargs=longargs, dblargs=dblargs)
-        message_recv = Message(longargs=(0, 0, 0, 0, 0))
-
-        # attempt to solve UCLA problem by reconnecting
-        # if self.save_frames:
-        # self.reconnect()
-
-        self.ExchangeMessages(message_send, message_recv)
-
-        longargs = message_recv.array['longargs']
-        if longargs[0] < 0:
-            return 1
-        arrSize = longargs[1]
-        width = longargs[2]
-        height = longargs[3]
-        numChunks = longargs[4]
-        bytesPerPixel = 2
-        numBytes = arrSize * bytesPerPixel
-        chunkSize = (numBytes + numChunks - 1) / numChunks
-        imArray = np.zeros((height, width), np.ushort)
-        received = 0
-        remain = numBytes
-        for chunk in range(numChunks):
-            # send chunk handshake for all but the first chunk
-            if chunk:
-                message_send = Message(longargs=(enum_gs['GS_ChunkHandshake'],))
-                self.ExchangeMessages(message_send)
-            thisChunkSize = min(remain, chunkSize)
-            chunkReceived = 0
-            chunkRemain = thisChunkSize
-            while chunkRemain:
-                new_recv = self.recv_data(chunkRemain)
-                len_recv = len(new_recv)
-                imArray.data[received: received + len_recv] = new_recv
-                chunkReceived += len_recv
-                chunkRemain -= len_recv
-                remain -= len_recv
-                received += len_recv
-        return imArray
 
     def ExecuteSendCameraObjectionFunction(self, function_name, camera_id=0):
         # first longargs is error code. Error if > 0
@@ -649,3 +378,351 @@ class GatanSocket:
             cmd_str = bkg + cmd_str
 
         return self.ExecuteScript(cmd_str)
+
+
+class SocketFuncs(GatanSocket):
+    def __init__(self, host='127.0.0.1', port=48890):
+        super().__init__(host, port)
+
+# ---------- DM functions -----------------------------------------------------
+
+    def GetDMVersion(self):
+        message_recv = self.GetFunction('GS_GetDMVersion',
+                                        rlongargs=(0, 0))
+        result = message_recv.array['longargs'][1]
+        return result
+
+    def GetDMVersionAndBuild(self):
+        message_recv = self.GetFunction('GS_GetDMVersionAndBuild',
+                                        rlongargs=(0, 0, 0))
+        result = message_recv.array['longargs']
+        return result[0], result[1]
+
+    def GetDMCapabilities(self):
+        message_recv = self.GetFunction('GS_GetDMCapabilities',
+                                        rlongargs=(0,),
+                                        rboolargs=(0, 0, 0))
+        result = message_recv.array['boolargs']
+        # canSelectShutter, canSetSettling, openShutterWorks
+        return list(map(bool, result))
+
+    def GetPluginVersion(self):
+        message_recv = self.GetFunction('GS_GetPluginVersion',
+                                        rlongargs=(0, 0))
+        result = message_recv.array['longargs'][1]
+        return result
+
+    def GetLastError(self):
+        message_recv = self.GetFunction('GS_GetLastError',
+                                        rlongargs=(0, 0))
+        result = message_recv.array['longargs'][1]
+        return result
+
+    def SetDebugMode(self, mode):
+        self.SetFunction('GS_SetDebugMode', slongargs=(mode,))
+
+# ---------- Camera functions -------------------------------------------------
+
+    def GetNumberOfCameras(self):
+        message_recv = self.GetFunction('GS_GetNumberOfCameras',
+                                        rlongargs=(0, 0))
+        result = message_recv.array['longargs'][1]
+        return result
+
+    def SetCurrentCamera(self, camera):
+        self.SetFunction('GS_SetCurrentCamera', slongargs=(camera,))
+
+    def SelectCamera(self, camera):
+        self.SetFunction('GS_SelectCamera',
+                         slongargs=(camera,))
+
+    def IsCameraInserted(self, camera):
+        funcCode = enum_gs['GS_IsCameraInserted']
+        message_send = Message(longargs=(funcCode, camera))
+        message_recv = Message(longargs=(0,), boolargs=(0,))
+        self.ExchangeMessages(message_send, message_recv)
+        result = bool(message_recv.array['boolargs'][0])
+        return result
+
+    def InsertCamera(self, camera, state):
+        self.SetFunction('GS_InsertCamera',
+                         slongargs=(camera,),
+                         sboolargs=(state,))
+
+    def SetReadMode(self, mode=-1, scaling=1.0):
+        """
+        Set the read mode and the scaling factor
+        For K2, pass 0, 1, or 2 for linear, counting, super-res
+        For K3, pass 3 or 4 for linear or super-res: this is THE signal that it is a K3
+        For camera not needing read mode, pass -1
+        For OneView, pass -3 for regular imaging or -2 for diffraction
+        For K3, the offset to be subtracted for linear mode must be supplied with the scaling.
+        The offset is supposed to be 8192 per frame
+        The offset per ms is thus nominally (8192 per frame) / (1.502 frames per ms)
+        pass scaling = trueScaling + 10 * nearestInt(offsetPerMs)
+        """
+        self.SetFunction('GS_SetReadMode',
+                         slongargs=(mode,),
+                         sdblargs=(scaling,))
+
+    def SetShutterNormallyClosed(self, camera, shutter):
+        self.SetFunction('GS_SetShutterNormallyClosed',
+                         slongargs=(camera, shutter,))
+
+    def GetLastDoseRate(self):
+        message_recv = self.GetFunction('GS_GetLastDoseRate',
+                                        rlongargs=(0,),
+                                        rdblargs=(0,))
+        result = float(message_recv.array['dblargs'])
+        return result
+
+    @logwrap
+    def SetK2Parameters(self, readMode, scaling, hardwareProc, doseFrac,
+                        frameTime, alignFrames, saveFrames, filt='', useCds=False):
+        funcCode = enum_gs['GS_SetK2Parameters']
+
+        # rotation and flip for non-frame saving image. It is the same definition
+        # as in SetFileSaving2
+        # if set to 0, it takes what GMS has.self.save_frames = saveFrames
+        rotationFlip = 0
+
+        # flags
+        flags = 0
+        flags += int(useCds) * 2 ** 6
+        reducedSizes = 0
+        fullSizes = 0
+
+        # filter name
+        filt_str = filt + '\0'
+        extra = len(filt_str) % 4
+        if extra:
+            npad = 4 - extra
+            filt_str = filt_str + npad * '\0'
+        longarray = np.frombuffer(filt_str.encode(), dtype=np.int_)
+
+        longs = [
+            funcCode,
+            readMode,
+            hardwareProc,
+            rotationFlip,
+            flags
+        ]
+        bools = [
+            doseFrac,
+            alignFrames,
+            saveFrames,
+        ]
+        doubles = [
+            scaling,
+            frameTime,
+            reducedSizes,
+            fullSizes,
+            0.0,  # dummy3
+            0.0,  # dummy4
+        ]
+
+        message_send = Message(longargs=longs, boolargs=bools,
+                               dblargs=doubles, longarray=longarray)
+        message_recv = Message(longargs=(0,))  # just return code
+        self.ExchangeMessages(message_send, message_recv)
+
+    def setNumGrabSum(self, earlyReturnFrameCount, earlyReturnRamGrabs):
+        # pack RamGrabs and earlyReturnFrameCount in one double
+        self.num_grab_sum = (2**16) * earlyReturnRamGrabs + earlyReturnFrameCount
+
+    def getNumGrabSum(self):
+        return self.num_grab_sum
+
+    @logwrap
+    def SetupFileSaving(self, rotationFlip, dirname, rootname, filePerImage,
+                        doEarlyReturn, earlyReturnFrameCount=0, earlyReturnRamGrabs=0,
+                        lzwtiff=False):
+        pixelSize = 1.0
+        self.setNumGrabSum(earlyReturnFrameCount, earlyReturnRamGrabs)
+        if self.save_frames and (doEarlyReturn or lzwtiff):
+            # early return flag
+            flag = 128 * int(doEarlyReturn) + 8 * int(lzwtiff)
+            numGrabSum = self.getNumGrabSum()
+            # set values to pass
+            longs = [enum_gs['GS_SetupFileSaving2'], rotationFlip, flag]
+            dbls = [pixelSize, numGrabSum, 0., 0., 0.]
+        else:
+            longs = [enum_gs['GS_SetupFileSaving'], rotationFlip]
+            dbls = [pixelSize]
+        bools = [filePerImage]
+        names_str = dirname + '\0' + rootname + '\0'
+        extra = len(names_str) % 4
+        if extra:
+            npad = 4 - extra
+            names_str = names_str + npad * '\0'
+        longarray = np.frombuffer(names_str.encode(), dtype=np.int_)
+        message_send = Message(longargs=longs, boolargs=bools,
+                               dblargs=dbls, longarray=longarray)
+        message_recv = Message(longargs=(0, 0))
+        self.ExchangeMessages(message_send, message_recv)
+
+    def StopDSAcquisition(self):
+        message_recv = self.GetFunction('GS_StopDSAcquisition',
+                                        rlongargs=(0, ))
+
+    def StopContinuousCamera(self):
+        message_recv = self.GetFunction('GS_StopContinuousCamera',
+                                        rlongargs=(0, ))
+
+    def GetFileSaveResult(self):
+        message_recv = self.GetFunction('GS_GetFileSaveResult',
+                                        rlongargs=(0, 0, 0))
+        result = message_recv.array['longargs']
+        # result = numSaved, error
+        return result[1]
+
+    def SetNoDMSettling(self, value):
+        self.SetFunction('GS_SetNoDMSettling',
+                         slongargs=(value,))
+
+    def WaitUntilReady(self, value):
+        self.SetFunction('GS_WaitUntilReady',
+                         slongargs=(value,))
+
+    @logwrap
+    def GetImage(self, processing, height, width, binning, top,
+                 left, bottom, right, exposure, corrections,
+                 shutter=0, shutterDelay=0.):
+        """
+        :param processing: dark, unprocessed, dark subtracted or gain normalized
+        :param exposure: seconds
+        :param shutterDelay: milliseconds
+        """
+
+        arrSize = width * height
+
+        # TODO: need to figure out what these should be
+        divideBy2 = 0
+        settling = 0.0
+
+        if processing == 'dark':
+            longargs = [enum_gs['GS_GetDarkReference']]
+        else:
+            longargs = [enum_gs['GS_GetAcquiredImage']]
+        longargs.extend([
+            arrSize,  # pixels in the image
+            width, height
+        ])
+        if processing == 'unprocessed':
+            longargs.append(0)
+        elif processing == 'dark subtracted':
+            longargs.append(1)
+        elif processing == 'gain normalized':
+            longargs.append(2)
+
+        longargs.extend([binning, top, left, bottom, right, shutter])
+        if processing != 'dark':
+            longargs.append(shutterDelay)
+        longargs.extend([divideBy2, corrections])
+        dblargs = [exposure, settling]
+
+        message_send = Message(longargs=longargs, dblargs=dblargs)
+        message_recv = Message(longargs=(0, 0, 0, 0, 0))
+
+        # attempt to solve UCLA problem by reconnecting
+        # if self.save_frames:
+        # self.reconnect()
+
+        self.ExchangeMessages(message_send, message_recv)
+
+        longargs = message_recv.array['longargs']
+        if longargs[0] < 0:
+            return 1
+        arrSize = longargs[1]
+        width = longargs[2]
+        height = longargs[3]
+        numChunks = longargs[4]
+        bytesPerPixel = 2
+        numBytes = arrSize * bytesPerPixel
+        chunkSize = (numBytes + numChunks - 1) / numChunks
+        imArray = np.zeros((height, width), np.ushort)
+        received = 0
+        remain = numBytes
+        for chunk in range(numChunks):
+            # send chunk handshake for all but the first chunk
+            if chunk:
+                message_send = Message(longargs=(enum_gs['GS_ChunkHandshake'],))
+                self.ExchangeMessages(message_send)
+            thisChunkSize = min(remain, chunkSize)
+            chunkReceived = 0
+            chunkRemain = thisChunkSize
+            while chunkRemain:
+                new_recv = self.recv_data(chunkRemain)
+                len_recv = len(new_recv)
+                imArray.data[received: received + len_recv] = new_recv
+                chunkReceived += len_recv
+                chunkRemain -= len_recv
+                remain -= len_recv
+                received += len_recv
+        return imArray
+
+    def UpdateK2HardwareDarkReference(self, camera):
+        function_name = 'K2_updateHardwareDarkReference'
+        return self.ExecuteSendCameraObjectionFunction(function_name, camera)
+
+    def FreeK2GainReference(self, value):
+        self.SetFunction('GS_FreeK2GainReference', slongargs=(value,))
+
+    def PrepareDarkReference(self, camera):
+        function_name = 'CM_PrepareDarkReference'
+        return self.ExecuteSendCameraObjectionFunction(function_name, camera)
+
+# ---------- Energy filter functions ------------------------------------------
+
+    def GetEnergyFilter(self):
+        if 'GetEnergyFilter' not in self.filter_functions.keys():
+            return -1.0
+        func = self.filter_functions['GetEnergyFilter']
+        script = f'if ( {func}() ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}'
+        return self.ExecuteGetDoubleScript(script)
+
+    def SetEnergyFilter(self, value):
+        if 'SetEnergyFilter' not in self.filter_functions.keys():
+            return -1.0
+        if value:
+            i = 1
+        else:
+            i = 0
+        func = self.filter_functions['SetEnergyFilter']
+        wait = self.wait_for_filter
+        script = f'{func}({i}); {wait}'
+        return self.ExecuteSendScript(script)
+
+    def GetEnergyFilterWidth(self):
+        if 'GetEnergyFilterWidth' not in self.filter_functions.keys():
+            return -1.0
+        func = self.filter_functions['GetEnergyFilterWidth']
+        script = f'Exit({func}())'
+        return self.ExecuteGetDoubleScript(script)
+
+    def SetEnergyFilterWidth(self, value):
+        if 'SetEnergyFilterWidth' not in self.filter_functions.keys():
+            return -1.0
+        func = self.filter_functions['SetEnergyFilterWidth']
+        script = f'if ( {func}({value:f}) ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}'
+        return self.ExecuteSendScript(script)
+
+    def GetEnergyFilterOffset(self):
+        if 'GetEnergyFilterOffset' not in self.filter_functions.keys():
+            return 0.0
+        func = self.filter_functions['GetEnergyFilterOffset']
+        script = f'Exit({func}())'
+        return self.ExecuteGetDoubleScript(script)
+
+    def SetEnergyFilterOffset(self, value):
+        if 'SetEnergyFilterOffset' not in self.filter_functions.keys():
+            return -1.0
+        func = self.filter_functions['SetEnergyFilterOffset']
+        script = f'if ( {func}({value:f}) ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}'
+        return self.ExecuteSendScript(script)
+
+    def AlignEnergyFilterZeroLossPeak(self):
+        func = self.filter_functions['AlignEnergyFilterZeroLossPeak']
+        wait = self.wait_for_filter
+        script = f' if ( {func}() ) {{ {wait} Exit(1.0); }} else {{ Exit(-1.0); }}'
+        return self.ExecuteGetDoubleScript(script)
