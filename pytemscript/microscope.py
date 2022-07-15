@@ -213,6 +213,10 @@ class Acquisition:
                 else:
                     raise Exception("This camera does not support EER")
 
+            if 'recording' in kwargs and hasattr(capabilities, 'SupportsRecording'):
+                if capabilities.SupportsRecording:
+                    settings.RecordingDuration = kwargs['recording']
+
             if 'frame_ranges' in kwargs:  # a list of tuples
                 dfd = settings.DoseFractionsDefinition
                 dfd.Clear()
@@ -423,7 +427,13 @@ class Detectors:
             logging.info("No film/plate device detected.")
 
         if self._has_advanced:
+            # CSA is supported by Ceta 1, Ceta 2, Falcon 3, Falcon 4
             self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
+            if hasattr(microscope._tem_adv.Acquisitions, 'CameraContinuousAcquisition'):
+                # CCA is supported by Ceta 2
+                self._tem_cca = microscope._tem_adv.Acquisitions.CameraContinuousAcquisition
+            else:
+                logging.info("Continuous acquisition not supported.")
 
     @property
     def cameras(self):
@@ -460,7 +470,8 @@ class Detectors:
                 "max_number_of_fractions": param.MaximumNumberOfDoseFractions,
                 "supports_drift_correction": param.SupportsDriftCorrection,
                 "supports_electron_counting": param.SupportsElectronCounting,
-                "supports_eer": getattr(param, 'SupportsEER', False)
+                "supports_eer": getattr(param, 'SupportsEER', False),
+                "supports_recording": getattr(param, 'SupportsRecording', False)
             }
 
         return self._cameras
@@ -504,6 +515,10 @@ class Temperature:
     """ LN dewars and temperature controls. """
     def __init__(self, microscope):
         self._tem_temp_control = microscope._tem.TemperatureControl
+        self._has_advanced = microscope._tem_adv is not None
+
+        if self._has_advanced:
+            self._tem_temp_control_adv = microscope._tem_adv.TemperatureControl
 
     def force_refill(self):
         """ Forces LN refill if the level is below 70%, otherwise does nothing. """
@@ -542,11 +557,47 @@ class Temperature:
         else:
             raise Exception("TemperatureControl is not available")
 
+    @property
+    def temp_docker(self):
+        """ Returns Docker temperature in Kelvins. """
+        if self._has_advanced:
+            return self._tem_temp_control_adv.AutoloaderCompartment.DockerTemperature
+        else:
+            raise NotImplementedError("This function requires Advanced Scripting")
+
+    @property
+    def temp_cassette(self):
+        """ Returns Cassette gripper temperature in Kelvins. """
+        if self._has_advanced:
+            return self._tem_temp_control_adv.AutoloaderCompartment.CassetteTemperature
+        else:
+            raise NotImplementedError("This function requires Advanced Scripting")
+
+    @property
+    def temp_cartridge(self):
+        """ Returns Cartridge gripper temperature in Kelvins. """
+        if self._has_advanced:
+            return self._tem_temp_control_adv.AutoloaderCompartment.CartridgeTemperature
+        else:
+            raise NotImplementedError("This function requires Advanced Scripting")
+
+    @property
+    def temp_holder(self):
+        """ Returns Holder temperature in Kelvins. """
+        if self._has_advanced:
+            return self._tem_temp_control_adv.ColumnCompartment.HolderTemperature
+        else:
+            raise NotImplementedError("This function requires Advanced Scripting")
+
 
 class Autoloader:
     """ Sample loading functions. """
     def __init__(self, microscope):
         self._tem_autoloader = microscope._tem.AutoLoader
+        self._has_advanced = microscope._tem_adv is not None
+
+        if self._has_advanced:
+            self._tem_autoloader_adv = microscope._tem_adv.AutoLoader
 
     @property
     def number_of_slots(self):
@@ -604,6 +655,46 @@ class Autoloader:
             return CassetteSlotStatus(status).name
         else:
             raise Exception("Autoloader is not available")
+
+    def undock_cassette(self):
+        """ Moves the cassette from the docker to the capsule. """
+        if self._has_advanced:
+            if self._tem_autoloader.AutoLoaderAvailable:
+                self._tem_autoloader_adv.UndockCassette()
+            else:
+                raise Exception("Autoloader is not available")
+        else:
+            raise NotImplementedError("This function requires Advanced Scripting")
+
+    def dock_cassette(self):
+        """ Moves the cassette from the capsule to the docker. """
+        if self._has_advanced:
+            if self._tem_autoloader.AutoLoaderAvailable:
+                self._tem_autoloader_adv.DockCassette()
+            else:
+                raise Exception("Autoloader is not available")
+        else:
+            raise NotImplementedError("This function requires Advanced Scripting")
+
+    def initialize(self):
+        """ Initializes / Recovers the Autoloader for further use. """
+        if self._has_advanced:
+            if self._tem_autoloader.AutoLoaderAvailable:
+                self._tem_autoloader_adv.Initialize()
+            else:
+                raise Exception("Autoloader is not available")
+        else:
+            raise NotImplementedError("This function requires Advanced Scripting")
+
+    def buffer_cycle(self):
+        """ Synchronously runs the Autoloader buffer cycle. """
+        if self._has_advanced:
+            if self._tem_autoloader.AutoLoaderAvailable:
+                self._tem_autoloader_adv.BufferCycle()
+            else:
+                raise Exception("Autoloader is not available")
+        else:
+            raise NotImplementedError("This function requires Advanced Scripting")
 
 
 class Stage:

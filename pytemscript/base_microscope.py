@@ -1,6 +1,7 @@
 import logging
 import platform
 import warnings
+import sys
 
 try:
     import comtypes.client
@@ -8,6 +9,7 @@ except ImportError:
     warnings.warn("Importing comtypes failed. Non-Windows platform?", ImportWarning)
 
 from .utils.constants import *
+from .utils.enums import TEMScriptingError
 
 
 class BaseMicroscope:
@@ -70,6 +72,13 @@ class BaseMicroscope:
         if useSEMCCD:
             from .utils.gatan_socket import SocketFuncs
             self._sem_ccd = SocketFuncs()
+
+    def handle_com_error(self, com_error, context):
+        if int(getattr(com_error, 'hresult') == TEMScriptingError.E_NOT_OK):
+            logging.info(f'{context} already performed or is not allowed')
+        else:
+            logging.info(f'Error in {context}')
+            logging.info(f'Exception : {sys.exc_info()[1]}')
 
     #def __del__(self):
         #pass
