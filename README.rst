@@ -73,7 +73,7 @@ Relative to Titan V1.9 standard scripting adapter:
     * Camera: complete
     * Configuration: complete
     * Gun: complete
-    * Gun1: incomplete, untested (requires TEM Server 7.10)
+    * Gun1: complete (untested)
     * Illumination: complete
     * InstrumentModeControl: complete
     * Projection: complete
@@ -85,9 +85,12 @@ Relative to Titan V1.9 standard scripting adapter:
 Relative to Titan V1.2 advanced scripting adapter:
 
     * Acquisitions: complete
+    * Autoloader: complete (untested
+    * EnergyFilter: complete (untested)
     * Phaseplate: complete
     * PiezoStage: complete (untested)
     * Source: complete (untested)
+    * TemperatureControl (untested)
     * UserDoorHatch: complete (untested)
 
 
