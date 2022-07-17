@@ -21,6 +21,16 @@ Documentation
 
 The documentation can be found at https://pytemscript.readthedocs.io
 
+.. toctree::
+   :maxdepth: 1
+
+   self
+   about
+   microscope
+   enumerations
+   restrictions
+   changelog
+
 Installation
 ------------
 

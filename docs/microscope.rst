@@ -32,7 +32,7 @@ Two acquisition functions: :meth:`~pytemscript.microscope.Acquisition.acquire_te
 :meth:`~pytemscript.microscope.Acquisition.acquire_stem_image` return an :class:`Image` object
 that has the following methods and properties:
 
-.. autoclass:: pytemscript.base_microscope.Image
+.. autoclass:: pytemscript.microscope.Image
     :members:
 
 
@@ -56,4 +56,4 @@ Documentation
 
 .. automodule:: pytemscript.microscope
     :members:
-
+    :exclude-members: Image
