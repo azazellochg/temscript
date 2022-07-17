@@ -73,11 +73,14 @@ class BaseMicroscope:
             from .utils.gatan_socket import SocketFuncs
             self._sem_ccd = SocketFuncs()
 
-    def handle_com_error(self, com_error, context):
-        if int(getattr(com_error, 'hresult') == TEMScriptingError.E_NOT_OK):
-            logging.info(f'{context} already performed or is not allowed')
-        else:
-            logging.info(f'Error in {context}')
+    @staticmethod
+    def handle_com_error(com_error):
+        """ Try catching COM error. """
+        try:
+            default = TEMScriptingError.E_NOT_OK.value
+            err = TEMScriptingError(int(getattr(com_error, 'hresult', default))).name
+            logging.info(f'COM error: {err}')
+        except ValueError:
             logging.info(f'Exception : {sys.exc_info()[1]}')
 
     #def __del__(self):

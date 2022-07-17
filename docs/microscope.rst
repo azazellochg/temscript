@@ -10,6 +10,7 @@ Below are the main class properties, each represented by a separate class:
     * apertures = :meth:`~pytemscript.microscope.Apertures`
     * autoloader = :meth:`~pytemscript.microscope.Autoloader`
     * detectors = :meth:`~pytemscript.microscope.Detectors`
+    * energy_filter = :meth:`~pytemscript.microscope.EnergyFilter`
     * gun = :meth:`~pytemscript.microscope.Gun`
     * optics = :meth:`~pytemscript.microscope.Optics`
 

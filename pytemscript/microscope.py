@@ -30,14 +30,16 @@ class Microscope(BaseMicroscope):
 
         if useTecnaiCCD:
             if self._tecnai_ccd is None:
-                raise Exception("Could not use Tecnai CCD plugin, please set useTecnaiCCD=False")
+                raise Exception("Could not use Tecnai CCD plugin, "
+                                "please set useTecnaiCCD=False")
             else:
                 from .tecnai_ccd_plugin import TecnaiCCDPlugin
                 self._tecnai_ccd_plugin = TecnaiCCDPlugin(self)
 
         if useSEMCCD:
             if self._sem_ccd is None:
-                raise Exception("Could not use SerialEM CCD plugin, please set useSEMCCD=False")
+                raise Exception("Could not use SerialEM CCD plugin, "
+                                "please set useSEMCCD=False")
             else:
                 from .serialem_ccd_plugin import SerialEMCCDPlugin
                 self._sem_ccd_plugin = SerialEMCCDPlugin(self)
@@ -57,6 +59,7 @@ class Microscope(BaseMicroscope):
         if self._tem_adv is not None:
             self.user_door = UserDoor(self)
             self.apertures = Apertures(self)
+            self.energy_filter = EnergyFilter(self)
 
         if useLD:
             self.lowdose = LowDose(self)
@@ -122,12 +125,23 @@ class Acquisition:
         if self._has_advanced:
             self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
 
+            if hasattr(microscope._tem_adv.Acquisitions, 'CameraContinuousAcquisition'):
+                # CCA is supported by Ceta 2
+                self._tem_cca = microscope._tem_adv.Acquisitions.CameraContinuousAcquisition
+            else:
+                self._tem_cca = None
+
         if getattr(microscope, "_tecnai_ccd_plugin", None):
             self._ccdplugin = microscope._tecnai_ccd_plugin
 
-    def _find_camera(self, name):
+    def _find_camera(self, name, recording=False):
         """Find camera object by name. Check adv scripting first. """
         if self._has_advanced:
+            if recording:
+                for cam in self._tem_cca.SupportedCameras:
+                    if cam.Name == name:
+                        self._is_advanced = True
+                        return cam
             for cam in self._tem_csa.SupportedCameras:
                 if cam.Name == name:
                     self._is_advanced = True
@@ -145,7 +159,7 @@ class Acquisition:
                 return stem
         raise KeyError("No STEM detector with name %s" % name)
 
-    def _check_binning(self, binning, camera, is_advanced=False):
+    def _check_binning(self, binning, camera, is_advanced=False, recording=False):
         """ Check if input binning is in SupportedBinnings.
 
         :param binning: Input binning
@@ -156,7 +170,10 @@ class Acquisition:
         :returns: Binning object
         """
         if is_advanced:
-            param = self._tem_csa.CameraSettings.Capabilities
+            if recording:
+                param = self._tem_cca.CameraSettings.Capabilities
+            else:
+                param = self._tem_csa.CameraSettings.Capabilities
             for b in param.SupportedBinnings:
                 if int(b.Width) == int(binning):
                     return b
@@ -170,23 +187,35 @@ class Acquisition:
 
     def _set_camera_param(self, name, size, exp_time, binning, **kwargs):
         """ Find the TEM camera and set its params. """
-        camera = self._find_camera(name)
+        camera = self._find_camera(name, kwargs.get("recording", False))
 
         if self._is_advanced:
             if not camera.IsInserted:
                 camera.Insert()
 
-            self._tem_csa.Camera = camera
+            if 'recording' in kwargs:
+                self._tem_cca.Camera = camera
+                settings = self._tem_cca.CameraSettings
+                capabilities = settings.Capabilities
+                binning = self._check_binning(binning, camera, is_advanced=True, recording=True)
+                if hasattr(capabilities, 'SupportsRecording') and capabilities.SupportsRecording:
+                    settings.RecordingDuration = kwargs['recording']
+                else:
+                    raise Exception("This camera does not support continuous acquisition")
 
-            settings = self._tem_csa.CameraSettings
-            capabilities = settings.Capabilities
-            settings.ReadoutArea = size
+            else:
+                self._tem_csa.Camera = camera
+                settings = self._tem_csa.CameraSettings
+                capabilities = settings.Capabilities
+                binning = self._check_binning(binning, camera, is_advanced=True)
 
-            binning = self._check_binning(binning, camera, is_advanced=True)
             if binning:
                 settings.Binning = binning
 
-            # Set exposure after binning, since it adjusted automatically when binning is set
+            settings.ReadoutArea = size
+
+            # Set exposure after binning, since it adjusted
+            # automatically when binning is set
             settings.ExposureTime = exp_time
 
             if 'align_image' in kwargs:
@@ -212,10 +241,6 @@ class Acquisition:
                         raise Exception("No frame ranges allowed when using EER")
                 else:
                     raise Exception("This camera does not support EER")
-
-            if 'recording' in kwargs and hasattr(capabilities, 'SupportsRecording'):
-                if capabilities.SupportsRecording:
-                    settings.RecordingDuration = kwargs['recording']
 
             if 'frame_ranges' in kwargs:  # a list of tuples
                 dfd = settings.DoseFractionsDefinition
@@ -253,14 +278,17 @@ class Acquisition:
                 info.ShutterMode = kwargs['shutter_mode']
             if 'pre_exp_time' in kwargs:
                 if kwargs['shutter_mode'] != AcqShutterMode.BOTH:
-                    raise Exception("Pre-exposures can only be be done when the shutter mode is set to BOTH")
+                    raise Exception("Pre-exposures can only be be done "
+                                    "when the shutter mode is set to BOTH")
                 settings.PreExposureTime = kwargs['pre_exp_time']
             if 'pre_exp_pause_time' in kwargs:
                 if kwargs['shutter_mode'] != AcqShutterMode.BOTH:
-                    raise Exception("Pre-exposures can only be be done when the shutter mode is set to BOTH")
+                    raise Exception("Pre-exposures can only be be done when "
+                                    "the shutter mode is set to BOTH")
                 settings.PreExposurePauseTime = kwargs['pre_exp_pause_time']
 
-            # Set exposure after binning, since it adjusted automatically when binning is set
+            # Set exposure after binning, since it adjusted
+            # automatically when binning is set
             settings.ExposureTime = exp_time
 
     def _set_film_param(self, film_text, exp_time, **kwargs):
@@ -286,7 +314,8 @@ class Acquisition:
         return Image(img[0], name=cameraName)
 
     def _check_prerequisites(self):
-        """ Check if buffer cycle or LN filling is running before acquisition call. """
+        """ Check if buffer cycle or LN filling is
+        running before acquisition call. """
         tc = self._tem.TemperatureControl
         counter = 0
         while counter < 10:
@@ -308,15 +337,19 @@ class Acquisition:
                 print("Checking dewars levels...")
                 break
 
-    def _acquire_with_tecnaiccd(self, cameraName, size, exp_time, binning, **kwargs):
+    def _acquire_with_tecnaiccd(self, cameraName, size, exp_time,
+                                binning, **kwargs):
         if not hasattr(self, "_ccdplugin"):
-            raise Exception("Tecnai CCD plugin not found, did you pass useTecnaiCCD=True to Microscope() ?")
+            raise Exception("Tecnai CCD plugin not found, did you "
+                            "pass useTecnaiCCD=True to Microscope() ?")
         else:
             logging.info("Using TecnaiCCD plugin for Gatan camera")
             camerasize = self._find_camera(cameraName).Info.Width  # Get camera size from std scripting
-            return self._ccdplugin.acquire_image(cameraName, size, exp_time, binning, camerasize=camerasize, **kwargs)
+            return self._ccdplugin.acquire_image(cameraName, size, exp_time, binning,
+                                                 camerasize=camerasize, **kwargs)
 
-    def acquire_tem_image(self, cameraName, size=AcqImageSize.FULL, exp_time=1, binning=1, **kwargs):
+    def acquire_tem_image(self, cameraName, size=AcqImageSize.FULL,
+                          exp_time=1, binning=1, **kwargs):
         """ Acquire a TEM image.
 
         :param cameraName: Camera name
@@ -342,19 +375,31 @@ class Acquisition:
             4096
         """
         if kwargs.get("use_tecnaiccd", False):
-            return self._acquire_with_tecnaiccd(cameraName, size, exp_time, binning, **kwargs)
+            return self._acquire_with_tecnaiccd(cameraName, size, exp_time,
+                                                binning, **kwargs)
+
+        if kwargs.get("recording", False) and self._tem_cca is None:
+            raise Exception("Recording / continuous acquisition is not available")
 
         self._set_camera_param(cameraName, size, exp_time, binning, **kwargs)
         if self._is_advanced:
             self._check_prerequisites()
-            img = self._tem_csa.Acquire()
-            self._tem_csa.Wait()
-            return Image(img, name=cameraName, isAdvanced=True)
+
+            if "recording" in kwargs:
+                self._tem_cca.Start()
+                self._tem_cca.Wait()
+                logging.info("Continuous acquisition and offloading job are completed.")
+                return None
+            else:
+                img = self._tem_csa.Acquire()
+                self._tem_csa.Wait()
+                return Image(img, name=cameraName, isAdvanced=True)
 
         self._check_prerequisites()
         self._acquire(cameraName)
 
-    def acquire_stem_image(self, cameraName, size, dwell_time=1E-5, binning=1, **kwargs):
+    def acquire_stem_image(self, cameraName, size, dwell_time=1E-5,
+                           binning=1, **kwargs):
         """ Acquire a STEM image.
 
         :param cameraName: Camera name
@@ -433,6 +478,7 @@ class Detectors:
                 # CCA is supported by Ceta 2
                 self._tem_cca = microscope._tem_adv.Acquisitions.CameraContinuousAcquisition
             else:
+                self._tem_cca = None
                 logging.info("Continuous acquisition not supported.")
 
     @property
@@ -451,7 +497,8 @@ class Detectors:
                 "binnings": [int(b) for b in info.Binnings],
                 "shutter_modes": [AcqShutterMode(x).name for x in info.ShutterModes],
                 "pre_exposure_limits(s)": (param.MinPreExposureTime, param.MaxPreExposureTime),
-                "pre_exposure_pause_limits(s)": (param.MinPreExposurePauseTime, param.MaxPreExposurePauseTime)
+                "pre_exposure_pause_limits(s)": (param.MinPreExposurePauseTime,
+                                                 param.MaxPreExposurePauseTime)
             }
         if not self._has_advanced:
             return self._cameras
@@ -465,14 +512,21 @@ class Detectors:
                 "width": cam.Width,
                 "pixel_size(um)": (cam.PixelSize.Width / 1e-6, cam.PixelSize.Height / 1e-6),
                 "binnings": [int(b.Width) for b in param.SupportedBinnings],
-                "exposure_time_range(s)": (param.ExposureTimeRange.Begin, param.ExposureTimeRange.End),
+                "exposure_time_range(s)": (param.ExposureTimeRange.Begin,
+                                           param.ExposureTimeRange.End),
                 "supports_dose_fractions": param.SupportsDoseFractions,
                 "max_number_of_fractions": param.MaximumNumberOfDoseFractions,
                 "supports_drift_correction": param.SupportsDriftCorrection,
                 "supports_electron_counting": param.SupportsElectronCounting,
-                "supports_eer": getattr(param, 'SupportsEER', False),
-                "supports_recording": getattr(param, 'SupportsRecording', False)
+                "supports_eer": getattr(param, 'SupportsEER', False)
             }
+
+            if self._tem_cca is not None:
+                self._tem_cca.Camera = cam
+                param = self._tem_cca.CameraSettings.Capabilities
+                self._cameras[cam.Name].update({
+                    "supports_recording": getattr(param, 'SupportsRecording', False)
+                })
 
         return self._cameras
 
@@ -515,10 +569,11 @@ class Temperature:
     """ LN dewars and temperature controls. """
     def __init__(self, microscope):
         self._tem_temp_control = microscope._tem.TemperatureControl
-        self._has_advanced = microscope._tem_adv is not None
 
-        if self._has_advanced:
+        if microscope._tem_adv is not None and hasattr(microscope._tem_adv, "TemperatureControl"):
             self._tem_temp_control_adv = microscope._tem_adv.TemperatureControl
+        else:
+            self._tem_temp_control_adv = None
 
     def force_refill(self):
         """ Forces LN refill if the level is below 70%, otherwise does nothing. """
@@ -560,44 +615,49 @@ class Temperature:
     @property
     def temp_docker(self):
         """ Returns Docker temperature in Kelvins. """
-        if self._has_advanced:
+        if self._tem_temp_control_adv is not None:
             return self._tem_temp_control_adv.AutoloaderCompartment.DockerTemperature
         else:
-            raise NotImplementedError("This function requires Advanced Scripting")
+            raise NotImplementedError("This function is not available "
+                                      "in your adv. scripting interface.")
 
     @property
     def temp_cassette(self):
         """ Returns Cassette gripper temperature in Kelvins. """
-        if self._has_advanced:
+        if self._tem_temp_control_adv is not None:
             return self._tem_temp_control_adv.AutoloaderCompartment.CassetteTemperature
         else:
-            raise NotImplementedError("This function requires Advanced Scripting")
+            raise NotImplementedError("This function is not available "
+                                      "in your adv. scripting interface.")
 
     @property
     def temp_cartridge(self):
         """ Returns Cartridge gripper temperature in Kelvins. """
-        if self._has_advanced:
+        if self._tem_temp_control_adv is not None:
             return self._tem_temp_control_adv.AutoloaderCompartment.CartridgeTemperature
         else:
-            raise NotImplementedError("This function requires Advanced Scripting")
+            raise NotImplementedError("This function is not available "
+                                      "in your adv. scripting interface.")
 
     @property
     def temp_holder(self):
         """ Returns Holder temperature in Kelvins. """
-        if self._has_advanced:
+        if self._tem_temp_control_adv is not None:
             return self._tem_temp_control_adv.ColumnCompartment.HolderTemperature
         else:
-            raise NotImplementedError("This function requires Advanced Scripting")
+            raise NotImplementedError("This function is not available "
+                                      "in your adv. scripting interface.")
 
 
 class Autoloader:
     """ Sample loading functions. """
     def __init__(self, microscope):
         self._tem_autoloader = microscope._tem.AutoLoader
-        self._has_advanced = microscope._tem_adv is not None
 
-        if self._has_advanced:
+        if microscope._tem_adv is not None and hasattr(microscope._tem_adv, "AutoLoader"):
             self._tem_autoloader_adv = microscope._tem_adv.AutoLoader
+        else:
+            self._tem_autoloader_adv = None
 
     @property
     def number_of_slots(self):
@@ -658,43 +718,47 @@ class Autoloader:
 
     def undock_cassette(self):
         """ Moves the cassette from the docker to the capsule. """
-        if self._has_advanced:
+        if self._tem_autoloader_adv is not None:
             if self._tem_autoloader.AutoLoaderAvailable:
                 self._tem_autoloader_adv.UndockCassette()
             else:
                 raise Exception("Autoloader is not available")
         else:
-            raise NotImplementedError("This function requires Advanced Scripting")
+            raise NotImplementedError("This function is not available "
+                                      "in your adv. scripting interface.")
 
     def dock_cassette(self):
         """ Moves the cassette from the capsule to the docker. """
-        if self._has_advanced:
+        if self._tem_autoloader_adv is not None:
             if self._tem_autoloader.AutoLoaderAvailable:
                 self._tem_autoloader_adv.DockCassette()
             else:
                 raise Exception("Autoloader is not available")
         else:
-            raise NotImplementedError("This function requires Advanced Scripting")
+            raise NotImplementedError("This function is not available "
+                                      "in your adv. scripting interface.")
 
     def initialize(self):
         """ Initializes / Recovers the Autoloader for further use. """
-        if self._has_advanced:
+        if self._tem_autoloader_adv is not None:
             if self._tem_autoloader.AutoLoaderAvailable:
                 self._tem_autoloader_adv.Initialize()
             else:
                 raise Exception("Autoloader is not available")
         else:
-            raise NotImplementedError("This function requires Advanced Scripting")
+            raise NotImplementedError("This function is not available "
+                                      "in your adv. scripting interface.")
 
     def buffer_cycle(self):
         """ Synchronously runs the Autoloader buffer cycle. """
-        if self._has_advanced:
+        if self._tem_autoloader_adv is not None:
             if self._tem_autoloader.AutoLoaderAvailable:
                 self._tem_autoloader_adv.BufferCycle()
             else:
                 raise Exception("Autoloader is not available")
         else:
-            raise NotImplementedError("This function requires Advanced Scripting")
+            raise NotImplementedError("This function is not available "
+                                      "in your adv. scripting interface.")
 
 
 class Stage:
@@ -1289,7 +1353,8 @@ class Projection:
 
     @diffraction_stigmator.setter
     def diffraction_stigmator(self, value):
-        Vector.set(self._tem_projection, "DiffractionStigmator", value, range=(-1.0, 1.0))
+        Vector.set(self._tem_projection, "DiffractionStigmator",
+                   value, range=(-1.0, 1.0))
 
     @property
     def objective_stigmator(self):
@@ -1299,7 +1364,8 @@ class Projection:
 
     @objective_stigmator.setter
     def objective_stigmator(self, value):
-        Vector.set(self._tem_projection, "ObjectiveStigmator", value, range=(-1.0, 1.0))
+        Vector.set(self._tem_projection, "ObjectiveStigmator",
+                   value, range=(-1.0, 1.0))
 
     @property
     def defocus(self):
@@ -1441,7 +1507,8 @@ class Apertures:
     def show_all(self):
         """ Returns a dict with apertures information. """
         if self._tem_apertures is None:
-            raise Exception("Apertures interface is not available. Requires a separate license")
+            raise Exception("Apertures interface is not available. "
+                            "Requires a separate license")
         result = {}
         for ap in self._tem_apertures:
             result[MechanismId(ap.Id).name] = {"retractable": ap.IsRetractable,
@@ -1550,7 +1617,7 @@ class Gun:
 
     @property
     def beam_current(self):
-        """ Returns the beam current. """
+        """ Returns the beam current in Amperes. """
         if self._tem_feg is None:
             raise Exception("Source/FEG interface is not available.")
         return self._tem_feg.BeamCurrent
@@ -1564,7 +1631,7 @@ class Gun:
 
     @property
     def focus_index(self):
-        """ Returns coarse and fine focus index. """
+        """ Returns coarse and fine gun lens index. """
         if self._tem_feg is None:
             raise Exception("Source/FEG interface is not available.")
         focus_index = self._tem_feg.FocusIndex
@@ -1582,6 +1649,66 @@ class Gun:
             self._tem_feg.Flashing.PerformFlashing(flash_type)
         else:
             raise Exception("Flashing type %s is not advised" % flash_type)
+
+
+class EnergyFilter:
+    """ Energy filter controls. """
+    def __init__(self, microscope):
+        if hasattr(microscope._tem_adv, "EnergyFilter"):
+            self._tem_ef = microscope._tem_adv.EnergyFilter
+        else:
+            logging.info("EnergyFilter interface is not available.")
+
+    def _check_range(self, ev_range, value):
+        if not (ev_range.Begin <= value <= ev_range.End):
+            raise Exception("Value is outside of allowed "
+                            "range: %0.0f - %0.0f" % (ev_range.Begin,
+                                                      ev_range.End))
+
+    def insert_slit(self, width):
+        """ Insert energy slit.
+
+        :param width: Slit width in eV
+        :type width: float
+        """
+        self._check_range(self._tem_ef.Slit.WidthRange, width)
+        self._tem_ef.Slit.Width = width
+        if not self._tem_ef.Slit.IsInserted:
+                self._tem_ef.Slit.Insert()
+
+    def retract_slit(self):
+        """ Retract energy slit. """
+        self._tem_ef.Slit.Retract()
+
+    @property
+    def slit_width(self):
+        """ Returns energy slit width in eV. """
+        return self._tem_ef.Slit.Width
+
+    @slit_width.setter
+    def slit_width(self, value):
+        self._check_range(self._tem_ef.Slit.WidthRange, value)
+        self._tem_ef.Slit.Width = value
+
+    @property
+    def ht_shift(self):
+        """ Returns High Tension energy shift in eV. """
+        return self._tem_ef.HighTensionEnergyShift.EnergyShift
+
+    @ht_shift.setter
+    def ht_shift(self, value):
+        self._check_range(self._tem_ef.HighTensionEnergyShift.EnergyShiftRange, value)
+        self._tem_ef.HighTensionEnergyShift.EnergyShift = value
+
+    @property
+    def zlp_shift(self):
+        """ Returns Zero-Loss Peak (ZLP) energy shift in eV. """
+        return self._tem_ef.ZeroLossPeakAdjustment.EnergyShift
+
+    @zlp_shift.setter
+    def zlp_shift(self, value):
+        self._check_range(self._tem_ef.ZeroLossPeakAdjustment.EnergyShiftRange, value)
+        self._tem_ef.ZeroLossPeakAdjustment.EnergyShift = value
 
 
 class LowDose:

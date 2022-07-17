@@ -3,6 +3,8 @@
 The pytemscript server
 ======================
 
+.. important:: The server is in development and not ready to use!
+
 If remote scripting of the microscope is required as provided via the :class:`RemoteMicroscope` class, the pytemscript
 server must run on the microscope PC. The pytemscript server provides a Web-API to the interface.
 

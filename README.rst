@@ -3,11 +3,8 @@ interfaces of Thermo Fisher Scientific and FEI microscopes. The functionality is
 limited to the functionality of the original scripting interfaces. For detailed information
 about TEM scripting see the documentation accompanying your microscope.
 
-The ``pytemscript`` package provides two interfaces to the microscope. The first one
-corresponds directly to the COM interface. The other interface is a more high level interface.
-Within the ``pytemscript`` package three implementation for the high level interface are provided,
-one for running scripts directly on the microscope PC, one to run scripts remotely over network, and
-finally a dummy implementation for offline development & testing exists.
+Within the ``pytemscript`` package two implementations for the high level microscope interface are provided:
+one for running scripts directly on the microscope PC and one to run scripts remotely over network (not yet available).
 
 Currently the ``pytemscript`` package requires Python 3.4 or higher. The current plan is to keep the minimum
 supported Python version at 3.4, since this is the latest Python version supporting Windows XP.
