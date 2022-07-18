@@ -31,7 +31,7 @@ class TecnaiCCDPlugin:
             #img = self._plugin.AcquireImageShown()
             # img = self._plugin.AcquireDarkSubtractedImage() # variant
 
-            img = self._plugin.AcquireRawImage() # variant
+            img = self._plugin.AcquireRawImage()  # variant
 
             if kwargs.get('show', False):
                 self._plugin.ShowAcquiredImage()

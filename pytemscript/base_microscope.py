@@ -79,9 +79,9 @@ class BaseMicroscope:
         try:
             default = TEMScriptingError.E_NOT_OK.value
             err = TEMScriptingError(int(getattr(com_error, 'hresult', default))).name
-            logging.info(f'COM error: {err}')
+            logging.info('COM error: %s' % err)
         except ValueError:
-            logging.info(f'Exception : {sys.exc_info()[1]}')
+            logging.info('Exception : %s' % sys.exc_info()[1])
 
     #def __del__(self):
         #pass

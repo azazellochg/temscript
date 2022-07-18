@@ -158,7 +158,8 @@ class Message:
         """Serialize the data."""
         data_size = self.array.data.itemsize
         if self.array.data.itemsize > ARGS_BUFFER_SIZE:
-            raise RuntimeError(f'Message packet size {data_size} is larger than maximum {ARGS_BUFFER_SIZE}')
+            raise RuntimeError('Message packet size %d is larger than maximum %d' % (
+                data_size, ARGS_BUFFER_SIZE))
         return self.array.data
 
     def unpack(self, buf):
@@ -169,11 +170,11 @@ class Message:
 def logwrap(func):
     """Decorator for socket send and recv calls, so they can make log."""
     def newfunc(*args, **kwargs):
-        logging.debug(f'{func}\t{args}\t{kwargs}')
+        logging.debug('%s\t%s\t%s' % (func, args, kwargs))
         try:
             result = func(*args, **kwargs)
         except Exception as ex:
-            logging.debug(f'EXCEPTION: {ex}')
+            logging.debug('EXCEPTION: %s' % ex)
             raise
         return result
     return newfunc
@@ -226,7 +227,7 @@ class GatanSocket:
             self.wait_for_filter = ''
 
     def hasScriptFunction(self, name):
-        script = f'if ( DoesFunctionExist("{name}") ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}'
+        script = 'if ( DoesFunctionExist("%s") ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}' % name
         result = self.ExecuteGetDoubleScript(script)
         return result > 0.0
 
@@ -270,7 +271,7 @@ class GatanSocket:
         # log the error code from received message
         sendargs = message_send.array['longargs']
         recvargs = message_recv.array['longargs']
-        logging.debug(f'Func: {sendargs[0]}, Code: {recvargs[0]}')
+        logging.debug('Func: %s, Code: %s' % (sendargs[0], recvargs[0]))
 
     def GetFunction(self, funcName, rlongargs=[], rboolargs=[], rdblargs=[]):
         """ Common function that only receives data. """
@@ -317,10 +318,10 @@ class GatanSocket:
         if not self.hasScriptFunction(function_name):
             # unsuccessful
             return False
-        fullcommand = (f'Object manager = CM_GetCameraManager();\n'
-                       f'Object cameraList = CM_GetCameras(manager);\n'
-                       f'Object camera = ObjectAt(cameraList,{camera_id});\n'
-                       f'{function_name}(camera);\n')
+        fullcommand = ('Object manager = CM_GetCameraManager();\n'
+                       'Object cameraList = CM_GetCameras(manager);\n'
+                       'Object camera = ObjectAt(cameraList,%d);\n'
+                       '%s(camera);\n' % (camera_id, function_name))
         result = self.ExecuteScript(fullcommand, camera_id, recv_longargs_init,
                                     recv_dblargs_init, recv_longarray_init)
         return result
@@ -678,7 +679,7 @@ class SocketFuncs(GatanSocket):
         if 'GetEnergyFilter' not in self.filter_functions.keys():
             return -1.0
         func = self.filter_functions['GetEnergyFilter']
-        script = f'if ( {func}() ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}'
+        script = 'if ( %s() ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}' % func
         return self.ExecuteGetDoubleScript(script)
 
     def SetEnergyFilter(self, value):
@@ -690,39 +691,39 @@ class SocketFuncs(GatanSocket):
             i = 0
         func = self.filter_functions['SetEnergyFilter']
         wait = self.wait_for_filter
-        script = f'{func}({i}); {wait}'
+        script = '%s(%d); %s' % (func, i, wait)
         return self.ExecuteSendScript(script)
 
     def GetEnergyFilterWidth(self):
         if 'GetEnergyFilterWidth' not in self.filter_functions.keys():
             return -1.0
         func = self.filter_functions['GetEnergyFilterWidth']
-        script = f'Exit({func}())'
+        script = 'Exit(%s())' % func
         return self.ExecuteGetDoubleScript(script)
 
     def SetEnergyFilterWidth(self, value):
         if 'SetEnergyFilterWidth' not in self.filter_functions.keys():
             return -1.0
         func = self.filter_functions['SetEnergyFilterWidth']
-        script = f'if ( {func}({value:f}) ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}'
+        script = 'if ( %s(%f) ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}' % (func, value)
         return self.ExecuteSendScript(script)
 
     def GetEnergyFilterOffset(self):
         if 'GetEnergyFilterOffset' not in self.filter_functions.keys():
             return 0.0
         func = self.filter_functions['GetEnergyFilterOffset']
-        script = f'Exit({func}())'
+        script = 'Exit(%s())' % func
         return self.ExecuteGetDoubleScript(script)
 
     def SetEnergyFilterOffset(self, value):
         if 'SetEnergyFilterOffset' not in self.filter_functions.keys():
             return -1.0
         func = self.filter_functions['SetEnergyFilterOffset']
-        script = f'if ( {func}({value:f}) ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}'
+        script = 'if ( %s(%f) ) {{ Exit(1.0); }} else {{ Exit(-1.0); }}' % (func, value)
         return self.ExecuteSendScript(script)
 
     def AlignEnergyFilterZeroLossPeak(self):
         func = self.filter_functions['AlignEnergyFilterZeroLossPeak']
         wait = self.wait_for_filter
-        script = f' if ( {func}() ) {{ {wait} Exit(1.0); }} else {{ Exit(-1.0); }}'
+        script = ' if ( %s() ) {{ %s Exit(1.0); }} else {{ Exit(-1.0); }}' % (func, wait)
         return self.ExecuteGetDoubleScript(script)

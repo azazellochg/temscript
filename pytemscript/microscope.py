@@ -1674,7 +1674,7 @@ class EnergyFilter:
         self._check_range(self._tem_ef.Slit.WidthRange, width)
         self._tem_ef.Slit.Width = width
         if not self._tem_ef.Slit.IsInserted:
-                self._tem_ef.Slit.Insert()
+            self._tem_ef.Slit.Insert()
 
     def retract_slit(self):
         """ Retract energy slit. """
