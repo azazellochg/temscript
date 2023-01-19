@@ -567,7 +567,7 @@ class Detectors:
                 "film_text": self._tem_cam.FilmText,
                 "exposure_number": self._tem_cam.ExposureNumber,
                 "user_code": self._tem_cam.Usercode,
-                "screen_current": self._tem_cam.ScreenCurrent
+                "screen_current": self._tem_cam.ScreenCurrent  # check if works without film
             }
         else:
             logging.info("No film/plate device detected.")
@@ -587,6 +587,8 @@ class Temperature:
         """ Forces LN refill if the level is below 70%, otherwise does nothing. """
         if self._tem_temp_control.TemperatureControlAvailable:
             self._tem_temp_control.ForceRefill()
+        elif self._tem_temp_control_adv is not None:
+            return self._tem_temp_control_adv.RefillAllDewars()
         else:
             raise Exception("TemperatureControl is not available")
 
@@ -606,6 +608,8 @@ class Temperature:
         """ Returns TRUE if any of the dewars is currently busy filling. """
         if self._tem_temp_control.TemperatureControlAvailable:
             return self._tem_temp_control.DewarsAreBusyFilling
+        elif self._tem_temp_control_adv is not None:
+            return self._tem_temp_control_adv.IsAnyDewarFilling
         else:
             raise Exception("TemperatureControl is not available")
 

@@ -23,11 +23,6 @@ Enumerations
 
 Many of the attributes return values from enumerations. The complete list can be found in the :ref:`enumerations` section.
 
-.. versionchanged:: 2.0
-    All methods of the COM interface now directly return the enumeration objects. The constants
-    from pytemscript version 1.x are not defined anymore. The numerical values still can be accessed
-    by querying the corresponding enum, e.g. ``psmSA`` corresponds to ``ProjectionSubMode.SA``.
-
 Vectors
 -------
 

@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'pytemscript'
-copyright = '2012-2021, Tore Niermann; 2022, Grigory Sharov'
+copyright = '2012-2021, Tore Niermann; 2022-2023, Grigory Sharov'
 author = 'Tore Niermann, Grigory Sharov'
 
 # The full version, including alpha/beta/rc tags

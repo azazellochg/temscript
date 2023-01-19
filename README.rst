@@ -27,7 +27,8 @@ Requirements:
 
     * python >= 3.4
     * comtypes
-    * mrcfile and numpy (optional but recommended, to save images in mrc format)
+    * mrcfile
+    * numpy
     * sphinx-rtd-theme (optional, only for building documentation)
     * matplotlib (optional, only for running tests)
 
@@ -64,34 +65,34 @@ If you want to install pytemscript from sources (you still need to download comt
 Supported functions of the COM interface
 ----------------------------------------
 
-Relative to Titan V1.9 standard scripting adapter:
+Relative to TEM V1.9 standard scripting adapter:
 
-    * Acquisition: complete
-    * ApertureMechanismCollection: complete, untested (requires a separate license)
-    * AutoLoader: complete
-    * BlankerShutter: complete
-    * Camera: complete
-    * Configuration: complete
-    * Gun: complete
-    * Gun1: complete (untested)
-    * Illumination: complete
-    * InstrumentModeControl: complete
-    * Projection: complete
-    * Stage: complete
-    * TemperatureControl: complete
-    * UserButton(s): complete, no events handling
-    * Vacuum: complete
+    * Acquisition
+    * ApertureMechanismCollection (untested)
+    * AutoLoader
+    * BlankerShutter
+    * Camera
+    * Configuration
+    * Gun
+    * Gun1 (untested)
+    * Illumination
+    * InstrumentModeControl
+    * Projection
+    * Stage
+    * TemperatureControl
+    * UserButton(s) (no events handling)
+    * Vacuum
 
-Relative to Titan V1.2 advanced scripting adapter:
+Relative to TEM V1.2 advanced scripting adapter:
 
-    * Acquisitions: complete
-    * Autoloader: complete (untested
-    * EnergyFilter: complete (untested)
-    * Phaseplate: complete
-    * PiezoStage: complete (untested)
-    * Source: complete (untested)
-    * TemperatureControl (untested)
-    * UserDoorHatch: complete (untested)
+    * Acquisitions
+    * Autoloader
+    * EnergyFilter (untested)
+    * Phaseplate
+    * PiezoStage (untested)
+    * Source (untested)
+    * TemperatureControl
+    * UserDoorHatch (untested)
 
 
 Disclaimer
@@ -100,7 +101,7 @@ Disclaimer
 Copyright (c) 2012-2021 by Tore Niermann
 Contact: tore.niermann (at) tu-berlin.de
 
-Copyleft 2022 by Grigory Sharov
+Copyleft 2022-2023 by Grigory Sharov
 Contact: gsharov (at) mrc-lmb.cam.ac.uk
 
 All product and company names are trademarks or registered trademarks
