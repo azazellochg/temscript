@@ -21,7 +21,7 @@ copyright = '2012-2021, Tore Niermann; 2022, Grigory Sharov'
 author = 'Tore Niermann, Grigory Sharov'
 
 # The full version, including alpha/beta/rc tags
-release = '3.0a2'
+release = '3.0a3'
 
 # -- General configuration ---------------------------------------------------
 # If your documentation needs a minimal Sphinx version, state it here.

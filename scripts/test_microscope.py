@@ -12,12 +12,16 @@ def test_projection(microscope, eftem=False):
     print("\tDefocus:", projection.defocus)
     print("\tMagnification:", projection.magnification)
     #print("\tMagnificationIndex:", projection.magnificationIndex)
+
+    projection.mode = ProjectionMode.DIFFRACTION
     print("\tCameraLength:", projection.camera_length)
     #print("\tCameraLengthIndex:", projection.camera_length_index)
-    print("\tImageShift:", projection.image_shift)
-    print("\tImageBeamShift:", projection.image_beam_shift)
     print("\tDiffractionShift:", projection.diffraction_shift)
     print("\tDiffractionStigmator:", projection.diffraction_stigmator)
+    projection.mode = ProjectionMode.IMAGING
+
+    print("\tImageShift:", projection.image_shift)
+    print("\tImageBeamShift:", projection.image_beam_shift)
     print("\tObjectiveStigmator:", projection.objective_stigmator)
     print("\tSubMode:", projection.magnification_range)
     print("\tLensProgram:", projection.is_eftem_on)
@@ -30,6 +34,7 @@ def test_projection(microscope, eftem=False):
     projection.reset_defocus()
 
     if eftem:
+        print("\tToggling EFTEM mode...")
         projection.eftem_on()
         projection.eftem_off()
 
@@ -68,7 +73,7 @@ def test_acquisition(microscope):
         image.save(filename=fn, normalize=False)
 
 
-def test_vacuum(microscope, full_test=False):
+def test_vacuum(microscope, buffer_cycle=False):
     print("Testing vacuum...")
     vacuum = microscope.vacuum
     print("\tStatus:", vacuum.status)
@@ -76,39 +81,50 @@ def test_vacuum(microscope, full_test=False):
     print("\tColumnValvesOpen:", vacuum.is_column_open)
     print("\tGauges:", vacuum.gauges)
 
-    if full_test:
+    if buffer_cycle:
+        print("\tToggling col.valves...")
         vacuum.column_open()
         vacuum.column_close()
+        print("\tRunning buffer cycle...")
         vacuum.run_buffer_cycle()
 
 
-def test_temperature(microscope, full_test=False):
+def test_temperature(microscope, force_refill=False):
     print("Testing TemperatureControl...")
     temp = microscope.temperature
     print("\tRefrigerantLevel (autoloader):",
           temp.dewar_level(RefrigerantDewar.AUTOLOADER_DEWAR))
     print("\tRefrigerantLevel (column):",
           temp.dewar_level(RefrigerantDewar.COLUMN_DEWAR))
-    print("\tDewarsRemainingTime:", temp.dewars_remaining_time)
-    print("\tDewarsAreBusyFilling:", temp.is_dewars_filling)
+    print("\tDewarsRemainingTime:", temp.dewars_time)
+    print("\tDewarsAreBusyFilling:", temp.is_dewar_filling)
 
-    if full_test:
-        temp.force_refill()
+    if force_refill:
+        print("\tRunning force LN refill...")
+        try:
+            temp.force_refill()
+        except Exception as e:
+            print(str(e))
 
 
-def test_autoloader(microscope, full_test=False, slot=1):
+def test_autoloader(microscope, check_loading=False, slot=1):
     print("Testing Autoloader...")
     al = microscope.autoloader
     print("\tNumberOfCassetteSlots", al.number_of_slots)
-    print("\tSlotStatus", al.slot_status(3))
+    print("\tSlotStatus for #%d" % slot, al.slot_status(slot))
 
-    if full_test:
-        al.run_inventory()
-        al.load_cartridge(slot)
-        al.unload_cartridge(slot)
+    if check_loading:
+        try:
+            print("\tRunning inventory and trying to load cartridge #%d..." % slot)
+            al.run_inventory()
+            if al.slot_status(slot) == CassetteSlotStatus.OCCUPIED.name:
+                al.load_cartridge(slot)
+                al.unload_cartridge(slot)
+        except Exception as e:
+            print(str(e))
 
 
-def test_stage(microscope, do_move=False):
+def test_stage(microscope, move_stage=False):
     print("Testing stage...")
     stage = microscope.stage
     pos = stage.position
@@ -117,7 +133,7 @@ def test_stage(microscope, do_move=False):
     print("\tHolder:", stage.holder)
     print("\tLimits:", stage.limits)
 
-    if not do_move:
+    if not move_stage:
         return
 
     print("Testing stage movement...")
@@ -165,7 +181,7 @@ def test_illumination(microscope):
     print("\tTilt:", illum.beam_tilt)
     print("\tRotationCenter:", illum.rotation_center)
     print("\tCondenserStigmator:", illum.condenser_stigmator)
-    print("\tDFMode:", illum.dark_field_mode)
+    print("\tDFMode:", illum.dark_field)
 
     if microscope.condenser_system == CondenserLensSystem.THREE_CONDENSER_LENSES:
         print("\tCondenserMode:", illum.condenser_mode)
@@ -242,16 +258,16 @@ if __name__ == '__main__':
 
     full_test = False
     microscope = Microscope()
-    test_projection(microscope, eftem=True)
+    test_projection(microscope, eftem=False)
     test_detectors(microscope)
-    test_vacuum(microscope, full_test=full_test)
-    test_autoloader(microscope, full_test=full_test, slot=1)
-    test_temperature(microscope, full_test=full_test)
-    test_stage(microscope, do_move=full_test)
+    test_vacuum(microscope, buffer_cycle=full_test)
+    test_autoloader(microscope, check_loading=full_test, slot=1)
+    test_temperature(microscope, force_refill=full_test)
+    test_stage(microscope, move_stage=full_test)
     test_optics(microscope)
     test_illumination(microscope)
     test_gun(microscope, has_gun1=False, has_feg=False)
-    test_general(microscope, check_door=full_test)
+    test_general(microscope, check_door=False)
 
     if full_test:
         test_acquisition(microscope)

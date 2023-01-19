@@ -83,7 +83,10 @@ class Microscope(BaseMicroscope):
 class UserDoor:
     """ User door hatch controls. """
     def __init__(self, microscope):
-        self._tem_door = microscope._tem_adv.UserDoorHatch
+        if hasattr(microscope._tem_adv, "UserDoorHatch"):
+            self._tem_door = microscope._tem_adv.UserDoorHatch
+        else:
+            self._tem_door = None
 
     @property
     def state(self):
@@ -469,6 +472,7 @@ class Detectors:
         try:
             _ = self._tem_cam.Stock
         except:
+            self._tem_acq._has_film = False
             logging.info("No film/plate device detected.")
 
         if self._has_advanced:
@@ -477,6 +481,7 @@ class Detectors:
             if hasattr(microscope._tem_adv.Acquisitions, 'CameraContinuousAcquisition'):
                 # CCA is supported by Ceta 2
                 self._tem_cca = microscope._tem_adv.Acquisitions.CameraContinuousAcquisition
+                self._cca_cameras = [c.Name for c in self._tem_cca.SupportedCameras]
             else:
                 self._tem_cca = None
                 logging.info("Continuous acquisition not supported.")
@@ -521,7 +526,7 @@ class Detectors:
                 "supports_eer": getattr(param, 'SupportsEER', False)
             }
 
-            if self._tem_cca is not None:
+            if self._tem_cca is not None and cam.Name in self._cca_cameras:
                 self._tem_cca.Camera = cam
                 param = self._tem_cca.CameraSettings.Capabilities
                 self._cameras[cam.Name].update({
@@ -555,14 +560,17 @@ class Detectors:
     @property
     def film_settings(self):
         """ Returns a dict with film settings. """
-        return {
-            "stock": self._tem_cam.Stock,
-            "exposure_time": self._tem_cam.ManualExposureTime,
-            "film_text": self._tem_cam.FilmText,
-            "exposure_number": self._tem_cam.ExposureNumber,
-            "user_code": self._tem_cam.Usercode,
-            "screen_current": self._tem_cam.ScreenCurrent
-        }
+        if self._tem_acq._has_film:
+            return {
+                "stock": self._tem_cam.Stock,
+                "exposure_time": self._tem_cam.ManualExposureTime,
+                "film_text": self._tem_cam.FilmText,
+                "exposure_number": self._tem_cam.ExposureNumber,
+                "user_code": self._tem_cam.Usercode,
+                "screen_current": self._tem_cam.ScreenCurrent
+            }
+        else:
+            logging.info("No film/plate device detected.")
 
 
 class Temperature:

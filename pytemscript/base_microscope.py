@@ -24,8 +24,10 @@ class BaseMicroscope:
         self._address = address
 
         logging.basicConfig(level=logLevel,
+                            datefmt='%d-%m-%Y %H:%M:%S',
+                            format='%(asctime)s %(message)s',
                             handlers=[
-                                logging.FileHandler("debug.log"),
+                                logging.FileHandler("debug.log", "w", "utf-8"),
                                 logging.StreamHandler()])
 
         if simulate:

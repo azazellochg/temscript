@@ -27,7 +27,7 @@ Requirements:
 
     * python >= 3.4
     * comtypes
-    * mrcfile and numpy (optional, only to save images in mrc format)
+    * mrcfile and numpy (optional but recommended, to save images in mrc format)
     * sphinx-rtd-theme (optional, only for building documentation)
     * matplotlib (optional, only for running tests)
 
