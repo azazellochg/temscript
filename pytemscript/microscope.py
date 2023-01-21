@@ -778,8 +778,9 @@ class Stage:
     def __init__(self, microscope):
         self._tem_stage = microscope._tem.Stage
 
-    def _from_dict(self, position, **values):
+    def _from_dict(self, **values):
         axes = 0
+        position = self._tem_stage.Position
         for key, value in values.items():
             if key not in 'xyzab':
                 raise ValueError("Unexpected axis: %s" % key)
@@ -794,23 +795,30 @@ class Stage:
     def _change_position(self, direct=False, **kwargs):
         # TODO: check limits beforehand
         if self._tem_stage.Status == StageStatus.READY:
-            # convert units first
-            new_pos = {key: kwargs[key] * 1e6 for key in 'xyz'}
-            new_pos.update({key: math.radians(kwargs[key]) for key in 'ab'})
-            speed = kwargs.pop("speed", None)
+            # convert units to meters and radians
+            new_pos = dict()
+            for axis in 'xyz':
+                if axis in kwargs:
+                    new_pos.update({axis: kwargs[axis] * 1e-6})
+            for axis in 'ab':
+                if axis in kwargs:
+                    new_pos.update({axis: math.radians(kwargs[axis])})
+
+            speed = kwargs.get("speed", None)
+            if not (0.0 <= speed <= 1.0):
+                raise Exception("Speed must be within 0.0-1.0 range")
 
             if 'b' in new_pos and not self._beta_available():
                 raise Exception("B-axis is not available")
 
-            current_pos = self._tem_stage.Position
-            new_pos, axes = self._from_dict(current_pos, **new_pos)
+            new_pos, axes = self._from_dict(**new_pos)
             if not direct:
                 self._tem_stage.MoveTo(new_pos, axes)
-                return
-            if speed is not None:
-                self._tem_stage.GoToWithSpeed(new_pos, axes, speed)
             else:
-                self._tem_stage.GoTo(new_pos, axes)
+                if speed is not None:
+                    self._tem_stage.GoToWithSpeed(new_pos, axes, speed)
+                else:
+                    self._tem_stage.GoTo(new_pos, axes)
         else:
             raise Exception("Stage is not ready.")
 
@@ -828,8 +836,8 @@ class Stage:
     def position(self):
         """ The current position of the stage (x,y,z in um and a,b in degrees). """
         pos = self._tem_stage.Position
-        result = {key: getattr(pos, key.upper()) * 1e6 for key in 'xyz'}
-        result.update({key: math.degrees(getattr(pos, key.upper())) for key in 'ab'})
+        result = {key.lower(): getattr(pos, key) * 1e6 for key in 'XYZ'}
+        result.update({key.lower(): math.degrees(getattr(pos, key)) for key in 'AB'})
 
         return result
 

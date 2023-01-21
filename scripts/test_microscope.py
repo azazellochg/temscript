@@ -137,11 +137,11 @@ def test_stage(microscope, move_stage=False):
         return
 
     print("Testing stage movement...")
-    print("\tGoto(x=1e-6, y=-1e-6)")
-    stage.go_to(x=1e-6, y=-1e-6)
+    print("\tGoto(x=1, y=-1)")
+    stage.go_to(x=1, y=-1)
     print("\tPosition:", stage.position)
-    print("\tGoto(x=-1e-6, speed=0.5)")
-    stage.go_to(x=-1e-6, speed=0.5)
+    print("\tGoto(x=-1, speed=0.5)")
+    stage.go_to(x=-1, speed=0.5)
     print("\tPosition:", stage.position)
     print("\tMoveTo() to original position")
     stage.move_to(**pos)
