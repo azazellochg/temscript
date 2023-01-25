@@ -426,7 +426,7 @@ class Acquisition:
         if 'contrast' in kwargs:
             info.Contrast = kwargs['contrast']
 
-        settings = self._tem_acq.StemAcqParams
+        settings = self._tem_acq.Detectors.AcqParams  # self._tem_acq.StemAcqParams
         settings.ImageSize = size
 
         binning = self._check_binning(binning, det)
@@ -440,7 +440,7 @@ class Acquisition:
               settings.MaxResolution.Y)
 
         self._check_prerequisites()
-        self._acquire(cameraName)
+        return self._acquire(cameraName)
 
     def acquire_film(self, film_text, exp_time, **kwargs):
         """ Expose a film.
@@ -459,6 +459,7 @@ class Acquisition:
 
             self._set_film_param(film_text, exp_time, **kwargs)
             self._tem_cam.TakeExposure()
+            logging.info("Film exposure completed")
         else:
             raise Exception("Plate is not available or stock is empty!")
 
