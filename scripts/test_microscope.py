@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from time import sleep
 from pytemscript.microscope import Microscope
 from pytemscript.utils.enums import *
 
@@ -90,43 +91,45 @@ def test_vacuum(microscope, buffer_cycle=False):
 
 
 def test_temperature(microscope, force_refill=False):
-    print("Testing TemperatureControl...")
     temp = microscope.temperature
-    print("\tRefrigerantLevel (autoloader):",
-          temp.dewar_level(RefrigerantDewar.AUTOLOADER_DEWAR))
-    print("\tRefrigerantLevel (column):",
-          temp.dewar_level(RefrigerantDewar.COLUMN_DEWAR))
-    print("\tDewarsRemainingTime:", temp.dewars_time)
-    print("\tDewarsAreBusyFilling:", temp.is_dewar_filling)
+    if temp.is_available:
+        print("Testing TemperatureControl...")
+        print("\tRefrigerantLevel (autoloader):",
+              temp.dewar_level(RefrigerantDewar.AUTOLOADER_DEWAR))
+        print("\tRefrigerantLevel (column):",
+              temp.dewar_level(RefrigerantDewar.COLUMN_DEWAR))
+        print("\tDewarsRemainingTime:", temp.dewars_time)
+        print("\tDewarsAreBusyFilling:", temp.is_dewar_filling)
 
-    if force_refill:
-        print("\tRunning force LN refill...")
-        try:
-            temp.force_refill()
-        except Exception as e:
-            print(str(e))
+        if force_refill:
+            print("\tRunning force LN refill...")
+            try:
+                temp.force_refill()
+            except Exception as e:
+                print(str(e))
 
 
 def test_autoloader(microscope, check_loading=False, slot=1):
-    print("Testing Autoloader...")
     al = microscope.autoloader
-    print("\tNumberOfCassetteSlots", al.number_of_slots)
-    print("\tSlotStatus for #%d" % slot, al.slot_status(slot))
+    if al.is_available:
+        print("Testing Autoloader...")
+        print("\tNumberOfCassetteSlots", al.number_of_slots)
+        print("\tSlotStatus for #%d" % slot, al.slot_status(slot))
 
-    if check_loading:
-        try:
-            print("\tRunning inventory and trying to load cartridge #%d..." % slot)
-            al.run_inventory()
-            if al.slot_status(slot) == CassetteSlotStatus.OCCUPIED.name:
-                al.load_cartridge(slot)
-                al.unload_cartridge(slot)
-        except Exception as e:
-            print(str(e))
+        if check_loading:
+            try:
+                print("\tRunning inventory and trying to load cartridge #%d..." % slot)
+                al.run_inventory()
+                if al.slot_status(slot) == CassetteSlotStatus.OCCUPIED.name:
+                    al.load_cartridge(slot)
+                    al.unload_cartridge(slot)
+            except Exception as e:
+                print(str(e))
 
 
 def test_stage(microscope, move_stage=False):
-    print("Testing stage...")
     stage = microscope.stage
+    print("Testing stage...")
     pos = stage.position
     print("\tStatus:", stage.status)
     print("\tPosition:", pos)
@@ -139,9 +142,11 @@ def test_stage(microscope, move_stage=False):
     print("Testing stage movement...")
     print("\tGoto(x=1, y=-1)")
     stage.go_to(x=1, y=-1)
+    sleep(1)
     print("\tPosition:", stage.position)
     print("\tGoto(x=-1, speed=0.5)")
     stage.go_to(x=-1, speed=0.5)
+    sleep(1)
     print("\tPosition:", stage.position)
     print("\tMoveTo() to original position")
     stage.move_to(**pos)
@@ -181,7 +186,7 @@ def test_illumination(microscope):
     print("\tTilt:", illum.beam_tilt)
     print("\tRotationCenter:", illum.rotation_center)
     print("\tCondenserStigmator:", illum.condenser_stigmator)
-    print("\tDFMode:", illum.dark_field)
+    #print("\tDFMode:", illum.dark_field)
 
     if microscope.condenser_system == CondenserLensSystem.THREE_CONDENSER_LENSES:
         print("\tCondenserMode:", illum.condenser_mode)
@@ -242,7 +247,7 @@ def test_general(microscope, check_door=False):
     print("Testing configuration...")
 
     print("\tConfiguration.ProductFamily:", microscope.family)
-    print("\tUserButtons:", microscope.user_buttons)
+    #print("\tUserButtons:", microscope.user_buttons)
     print("\tBlankerShutter.ShutterOverrideOn:",
           microscope.optics.is_shutter_override_on)
     print("\tCondenser system:", microscope.condenser_system)
@@ -273,3 +278,11 @@ if __name__ == '__main__':
         test_acquisition(microscope)
         test_stem(microscope)
         test_apertures(microscope, hasLicense=False)
+
+
+"""
+Notes for Tecnai F20:
+- DF element was not found?
+- Userbuttons didnt work
+
+"""

@@ -583,9 +583,14 @@ class Temperature:
         else:
             self._tem_temp_control_adv = None
 
+    @property
+    def is_available(self):
+        """ Status of the temperature control. Should be always False on Tecnai instruments. """
+        return self._tem_temp_control.TemperatureControlAvailable
+
     def force_refill(self):
         """ Forces LN refill if the level is below 70%, otherwise does nothing. """
-        if self._tem_temp_control.TemperatureControlAvailable:
+        if self.is_available:
             self._tem_temp_control.ForceRefill()
         elif self._tem_temp_control_adv is not None:
             return self._tem_temp_control_adv.RefillAllDewars()
@@ -598,7 +603,7 @@ class Temperature:
         :param dewar: Dewar name (RefrigerantDewar enum)
         :type dewar: IntEnum
         """
-        if self._tem_temp_control.TemperatureControlAvailable:
+        if self.is_available:
             return self._tem_temp_control.RefrigerantLevel(dewar)
         else:
             raise Exception("TemperatureControl is not available")
@@ -606,7 +611,7 @@ class Temperature:
     @property
     def is_dewar_filling(self):
         """ Returns TRUE if any of the dewars is currently busy filling. """
-        if self._tem_temp_control.TemperatureControlAvailable:
+        if self.is_available:
             return self._tem_temp_control.DewarsAreBusyFilling
         elif self._tem_temp_control_adv is not None:
             return self._tem_temp_control_adv.IsAnyDewarFilling
@@ -619,7 +624,7 @@ class Temperature:
         Returns -1 if no refill is scheduled (e.g. All room temperature, or no
         dewar present).
         """
-        if self._tem_temp_control.TemperatureControlAvailable:
+        if self.is_available:
             return self._tem_temp_control.DewarsRemainingTime
         else:
             raise Exception("TemperatureControl is not available")
@@ -672,9 +677,14 @@ class Autoloader:
             self._tem_autoloader_adv = None
 
     @property
+    def is_available(self):
+        """ Status of the autoloader. Should be always False on Tecnai instruments. """
+        return self._tem_autoloader.AutoLoaderAvailable
+
+    @property
     def number_of_slots(self):
         """ The number of slots in a cassette. """
-        if self._tem_autoloader.AutoLoaderAvailable:
+        if self.is_available:
             return self._tem_autoloader.NumberOfCassetteSlots
         else:
             raise Exception("Autoloader is not available")
@@ -685,7 +695,7 @@ class Autoloader:
         :param slot: Slot number
         :type slot: int
         """
-        if self._tem_autoloader.AutoLoaderAvailable:
+        if self.is_available:
             total = self.number_of_slots
             slot = int(slot)
             if slot > total:
@@ -700,7 +710,7 @@ class Autoloader:
         """ Unloads the cartridge currently in the microscope and puts it back into its
         slot in the cassette.
         """
-        if self._tem_autoloader.AutoLoaderAvailable:
+        if self.is_available:
             self._tem_autoloader.UnloadCartridge()
         else:
             raise Exception("Autoloader is not available")
@@ -708,7 +718,7 @@ class Autoloader:
     def run_inventory(self):
         """ Performs an inventory of the cassette. """
         # TODO: check if cassette is present
-        if self._tem_autoloader.AutoLoaderAvailable:
+        if self.is_available:
             self._tem_autoloader.PerformCassetteInventory()
         else:
             raise Exception("Autoloader is not available")
@@ -719,7 +729,7 @@ class Autoloader:
         :param slot: Slot number
         :type slot: int
         """
-        if self._tem_autoloader.AutoLoaderAvailable:
+        if self.is_available:
             total = self.number_of_slots
             if slot > total:
                 raise Exception("Only %s slots are available" % total)
@@ -731,7 +741,7 @@ class Autoloader:
     def undock_cassette(self):
         """ Moves the cassette from the docker to the capsule. """
         if self._tem_autoloader_adv is not None:
-            if self._tem_autoloader.AutoLoaderAvailable:
+            if self.is_available:
                 self._tem_autoloader_adv.UndockCassette()
             else:
                 raise Exception("Autoloader is not available")
@@ -742,7 +752,7 @@ class Autoloader:
     def dock_cassette(self):
         """ Moves the cassette from the capsule to the docker. """
         if self._tem_autoloader_adv is not None:
-            if self._tem_autoloader.AutoLoaderAvailable:
+            if self.is_available:
                 self._tem_autoloader_adv.DockCassette()
             else:
                 raise Exception("Autoloader is not available")
@@ -753,7 +763,7 @@ class Autoloader:
     def initialize(self):
         """ Initializes / Recovers the Autoloader for further use. """
         if self._tem_autoloader_adv is not None:
-            if self._tem_autoloader.AutoLoaderAvailable:
+            if self.is_available:
                 self._tem_autoloader_adv.Initialize()
             else:
                 raise Exception("Autoloader is not available")
@@ -764,7 +774,7 @@ class Autoloader:
     def buffer_cycle(self):
         """ Synchronously runs the Autoloader buffer cycle. """
         if self._tem_autoloader_adv is not None:
-            if self._tem_autoloader.AutoLoaderAvailable:
+            if self.is_available:
                 self._tem_autoloader_adv.BufferCycle()
             else:
                 raise Exception("Autoloader is not available")
@@ -790,7 +800,7 @@ class Stage:
         return position, axes
 
     def _beta_available(self):
-        return self.limits['b']['unit'] != MeasurementUnitType.UNKNOWN
+        return self.limits['b']['unit'] != MeasurementUnitType.UNKNOWN.name
 
     def _change_position(self, direct=False, **kwargs):
         # TODO: check limits beforehand
@@ -805,7 +815,7 @@ class Stage:
                     new_pos.update({axis: math.radians(kwargs[axis])})
 
             speed = kwargs.get("speed", None)
-            if not (0.0 <= speed <= 1.0):
+            if speed is not None and not (0.0 <= speed <= 1.0):
                 raise Exception("Speed must be within 0.0-1.0 range")
 
             if 'b' in new_pos and not self._beta_available():
@@ -837,7 +847,9 @@ class Stage:
         """ The current position of the stage (x,y,z in um and a,b in degrees). """
         pos = self._tem_stage.Position
         result = {key.lower(): getattr(pos, key) * 1e6 for key in 'XYZ'}
-        result.update({key.lower(): math.degrees(getattr(pos, key)) for key in 'AB'})
+
+        keys = 'AB' if self._beta_available() else 'A'
+        result.update({key.lower(): math.degrees(getattr(pos, key)) for key in keys})
 
         return result
 
@@ -1029,7 +1041,7 @@ class Stem:
 
     def enable(self):
         """ Switch to STEM mode."""
-        if self._tem_control.StemAvailable:
+        if self.is_available:
             self._tem_control.InstrumentMode = InstrumentMode.STEM
         else:
             raise Exception("No STEM mode available")
@@ -1739,13 +1751,15 @@ class LowDose:
         else:
             logging.info("LowDose server is not available.")
 
-    def _is_available(self):
+    @property
+    def is_available(self):
+        """ Return True if Low Dose is available. """
         return self._tem_ld.LowDoseAvailable and self._tem_ld.IsInitialized
 
     @property
     def is_active(self):
         """ Check if the Low Dose is ON. """
-        if self._is_available():
+        if self.is_available:
             return LDStatus(self._tem_ld.LowDoseActive) == LDStatus.IS_ON
         else:
             raise Exception("Low Dose is not available")
@@ -1753,28 +1767,28 @@ class LowDose:
     @property
     def state(self):
         """ Low Dose state (LDState enum). (read/write) """
-        if self._is_available() and self.is_active:
+        if self.is_available and self.is_active:
             return LDState(self._tem_ld.LowDoseState).name
         else:
             raise Exception("Low Dose is not available")
 
     @state.setter
     def state(self, state):
-        if self._is_available():
+        if self.is_available:
             self._tem_ld.LowDoseState = state
         else:
             raise Exception("Low Dose is not available")
 
     def on(self):
         """ Switch ON Low Dose."""
-        if self._is_available():
+        if self.is_available:
             self._tem_ld.LowDoseActive = LDStatus.IS_ON
         else:
             raise Exception("Low Dose is not available")
 
     def off(self):
         """ Switch OFF Low Dose."""
-        if self._is_available():
+        if self.is_available:
             self._tem_ld.LowDoseActive = LDStatus.IS_OFF
         else:
             raise Exception("Low Dose is not available")
