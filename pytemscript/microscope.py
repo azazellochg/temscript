@@ -306,7 +306,8 @@ class Acquisition:
         """
         self._tem_acq.RemoveAllAcqDevices()
         self._tem_acq.AddAcqDeviceByName(cameraName)
-        img = self._tem_acq.AcquireImages()
+        imgs = self._tem_acq.AcquireImages()
+        img = imgs[0]
 
         if self._prev_shutter_mode is not None:
             # restore previous shutter mode
@@ -314,7 +315,7 @@ class Acquisition:
             old_value = self._prev_shutter_mode[1]
             obj.ShutterMode = old_value
 
-        return Image(img[0], name=cameraName)
+        return Image(img, name=cameraName)
 
     def _check_prerequisites(self):
         """ Check if buffer cycle or LN filling is
@@ -399,7 +400,7 @@ class Acquisition:
                 return Image(img, name=cameraName, isAdvanced=True)
 
         self._check_prerequisites()
-        self._acquire(cameraName)
+        return self._acquire(cameraName)
 
     def acquire_stem_image(self, cameraName, size, dwell_time=1E-5,
                            binning=1, **kwargs):

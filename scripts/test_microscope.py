@@ -45,6 +45,7 @@ def test_acquisition(microscope):
     acquisition = microscope.acquisition
     cameras = microscope.detectors.cameras
     detectors = microscope.detectors.stem_detectors
+    stem = microscope.stem
 
     for cam_name in cameras:
         image = acquisition.acquire_tem_image(cam_name,
@@ -64,14 +65,17 @@ def test_acquisition(microscope):
         print("Saving to ", fn)
         image.save(filename=fn, normalize=False)
 
-    for det in detectors:
-        image = acquisition.acquire_stem_image(det,
-                                               size=AcqImageSize.FULL,
-                                               dwell_time=1e-5,
-                                               binning=2)
-        fn = det + ".mrc"
-        print("Saving to ", fn)
-        image.save(filename=fn, normalize=False)
+    if stem.is_available:
+        stem.enable()
+        for det in detectors:
+            image = acquisition.acquire_stem_image(det,
+                                                   size=AcqImageSize.FULL,
+                                                   dwell_time=1e-5,
+                                                   binning=2)
+            fn = det + ".mrc"
+            print("Saving to ", fn)
+            image.save(filename=fn, normalize=False)
+        stem.disable()
 
 
 def test_vacuum(microscope, buffer_cycle=False):
@@ -183,7 +187,7 @@ def test_illumination(microscope):
     print("\tIntensityZoomEnabled:", illum.intensity_zoom)
     print("\tIntensityLimitEnabled:", illum.intensity_limit)
     print("\tShift:", illum.beam_shift)
-    print("\tTilt:", illum.beam_tilt)
+    #print("\tTilt:", illum.beam_tilt)
     print("\tRotationCenter:", illum.rotation_center)
     print("\tCondenserStigmator:", illum.condenser_stigmator)
     #print("\tDFMode:", illum.dark_field)
@@ -201,7 +205,7 @@ def test_stem(microscope):
     stem = microscope.stem
     print("\tStemAvailable:", stem.is_available)
 
-    if stem.is_stem_available:
+    if stem.is_available:
         stem.enable()
         print("\tIllumination.StemMagnification:", stem.magnification)
         print("\tIllumination.StemRotation:", stem.rotation)
