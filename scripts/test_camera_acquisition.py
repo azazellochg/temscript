@@ -7,11 +7,8 @@ from pytemscript.microscope import Microscope
 from pytemscript.utils.enums import *
 
 
-def camera_acquire(cam_name, exp_time, binning, **kwargs):
+def camera_acquire(microscope, cam_name, exp_time, binning, **kwargs):
     """ Acquire a test image and check output metadata. """
-    microscope = Microscope()
-
-    print("Available detectors:\n", microscope.detectors.cameras)
 
     image = microscope.acquisition.acquire_tem_image(cam_name,
                                                      size=AcqImageSize.FULL,
@@ -36,13 +33,19 @@ def camera_acquire(cam_name, exp_time, binning, **kwargs):
     print("\tStdDev: ", np.std(image.data))
     plt.colorbar()
     plt.suptitle(cam_name)
+    plt.ion()
     plt.show()
+    plt.pause(0.1)
 
 
 if __name__ == '__main__':
-    print("Starting Test...")
+    print("Starting acquisition test...")
 
-    camera_acquire("BM-Falcon", exp_time=0.5, binning=2)
-    camera_acquire("BM-Falcon", exp_time=3, binning=1,
+    microscope = Microscope()
+    print("Available detectors:\n", microscope.detectors.cameras)
+
+    camera_acquire(microscope, "BM-Ceta", exp_time=1, binning=2)
+    camera_acquire(microscope, "BM-Falcon", exp_time=0.5, binning=2)
+    camera_acquire(microscope, "BM-Falcon", exp_time=3, binning=1,
                    align_image=True, electron_counting=True,
                    frame_ranges=[(1, 2), (2, 3)])

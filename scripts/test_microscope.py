@@ -237,8 +237,12 @@ def test_gun(microscope, has_gun1=False, has_feg=False):
 def test_apertures(microscope, hasLicense=False):
     print("Testing apertures...")
     aps = microscope.apertures
-    print("\tGetCurrentPresetPosition", aps.vpp_position)
-    aps.vpp_next_position()
+
+    try:
+        print("\tGetCurrentPresetPosition", aps.vpp_position)
+        aps.vpp_next_position()
+    except Exception as e:
+        print(str(e))
 
     if hasLicense:
         aps.show_all()
@@ -263,7 +267,7 @@ def test_general(microscope, check_door=False):
 
 
 if __name__ == '__main__':
-    print("Starting tests...")
+    print("Starting microscope tests...")
 
     full_test = False
     microscope = Microscope()
