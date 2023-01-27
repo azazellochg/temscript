@@ -5,12 +5,18 @@ from pytemscript.microscope import Microscope
 from pytemscript.utils.enums import *
 
 
-def test_projection(microscope, eftem=False):
+def test_projection(microscope, has_eftem=False):
     print("Testing projection...")
     projection = microscope.optics.projection
     print("\tMode:", projection.mode)
     print("\tFocus:", projection.focus)
     print("\tDefocus:", projection.defocus)
+
+    orig_def = projection.defocus
+    projection.defocus = -3.0
+    assert projection.defocus == -3.0
+    projection.defocus = orig_def
+
     print("\tMagnification:", projection.magnification)
     #print("\tMagnificationIndex:", projection.magnificationIndex)
 
@@ -34,7 +40,7 @@ def test_projection(microscope, eftem=False):
 
     projection.reset_defocus()
 
-    if eftem:
+    if has_eftem:
         print("\tToggling EFTEM mode...")
         projection.eftem_on()
         projection.eftem_off()
@@ -89,6 +95,7 @@ def test_vacuum(microscope, buffer_cycle=False):
     if buffer_cycle:
         print("\tToggling col.valves...")
         vacuum.column_open()
+        assert vacuum.is_column_open is True
         vacuum.column_close()
         print("\tRunning buffer cycle...")
         vacuum.run_buffer_cycle()
@@ -126,6 +133,7 @@ def test_autoloader(microscope, check_loading=False, slot=1):
                 al.run_inventory()
                 if al.slot_status(slot) == CassetteSlotStatus.OCCUPIED.name:
                     al.load_cartridge(slot)
+                    assert al.slot_status(slot) == CassetteSlotStatus.EMPTY.name
                     al.unload_cartridge(slot)
             except Exception as e:
                 print(str(e))
@@ -183,14 +191,31 @@ def test_illumination(microscope):
     illum = microscope.optics.illumination
     print("\tMode:", illum.mode)
     print("\tSpotsizeIndex:", illum.spotsize)
+
+    orig_spot = illum.spotsize
+    illum.spotsize = 4
+    assert illum.spotsize == 4
+    illum.spotsize = orig_spot
+
     print("\tIntensity:", illum.intensity)
+
+    orig_int = illum.intensity
+    illum.intensity = 0.44
+    assert illum.intensity == 0.44
+    illum.intensity = orig_int
+
     print("\tIntensityZoomEnabled:", illum.intensity_zoom)
     print("\tIntensityLimitEnabled:", illum.intensity_limit)
     print("\tShift:", illum.beam_shift)
-    #print("\tTilt:", illum.beam_tilt)
+
+    illum.beam_shift = (0.5, 0.5)
+    assert illum.beam_shift == (0.5, 0.5)
+    illum.beam_shift = 0, 0
+
+    print("\tTilt:", illum.beam_tilt)
     print("\tRotationCenter:", illum.rotation_center)
     print("\tCondenserStigmator:", illum.condenser_stigmator)
-    #print("\tDFMode:", illum.dark_field)
+    print("\tDFMode:", illum.dark_field)
 
     if microscope.condenser_system == CondenserLensSystem.THREE_CONDENSER_LENSES:
         print("\tCondenserMode:", illum.condenser_mode)
@@ -198,6 +223,11 @@ def test_illumination(microscope):
         print("\tProbeDefocus:", illum.probe_defocus)
         print("\tConvergenceAngle:", illum.convergence_angle)
         print("\tC3ImageDistanceParallelOffset:", illum.C3ImageDistanceParallelOffset)
+
+        orig_illum = illum.illuminated_area
+        illum.illuminated_area = 1.0
+        assert illum.illuminated_area == 1.0
+        illum.illuminated_area = orig_illum
 
 
 def test_stem(microscope):
@@ -255,10 +285,15 @@ def test_general(microscope, check_door=False):
     print("Testing configuration...")
 
     print("\tConfiguration.ProductFamily:", microscope.family)
-    #print("\tUserButtons:", microscope.user_buttons)
+    print("\tUserButtons:", microscope.user_buttons)
     print("\tBlankerShutter.ShutterOverrideOn:",
           microscope.optics.is_shutter_override_on)
     print("\tCondenser system:", microscope.condenser_system)
+
+    if microscope.family == ProductFamily.TITAN:
+        assert microscope.condenser_system == CondenserLensSystem.THREE_CONDENSER_LENSES.name
+    else:
+        assert microscope.condenser_system == CondenserLensSystem.TWO_CONDENSER_LENSES.name
 
     if check_door:
         print("\tUser door:", microscope.user_door.state)
@@ -271,7 +306,7 @@ if __name__ == '__main__':
 
     full_test = False
     microscope = Microscope()
-    test_projection(microscope, eftem=False)
+    test_projection(microscope, has_eftem=False)
     test_detectors(microscope)
     test_vacuum(microscope, buffer_cycle=full_test)
     test_autoloader(microscope, check_loading=full_test, slot=1)
@@ -290,7 +325,7 @@ if __name__ == '__main__':
 
 """
 Notes for Tecnai F20:
-- DF element was not found?
-- Userbuttons didnt work
+- DF element not found -> no DF mode or beam tilt. Check if python is 32-bit?
+- Userbuttons not found
 
 """

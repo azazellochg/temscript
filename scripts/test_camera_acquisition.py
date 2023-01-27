@@ -35,7 +35,7 @@ def camera_acquire(microscope, cam_name, exp_time, binning, **kwargs):
     plt.suptitle(cam_name)
     plt.ion()
     plt.show()
-    plt.pause(0.1)
+    plt.pause(1.0)
 
 
 if __name__ == '__main__':

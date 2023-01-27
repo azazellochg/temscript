@@ -55,10 +55,10 @@ class Microscope(BaseMicroscope):
         self.autoloader = Autoloader(self)
         self.stage = Stage(self)
         self.piezo_stage = PiezoStage(self)
+        self.apertures = Apertures(self)
 
         if self._tem_adv is not None:
             self.user_door = UserDoor(self)
-            self.apertures = Apertures(self)
             self.energy_filter = EnergyFilter(self)
 
         if useLD:
@@ -109,7 +109,16 @@ class UserDoor:
 
 
 class Acquisition:
-    """ Image acquisition functions. """
+    """ Image acquisition functions.
+
+    In order for acquisition to be available TIA (TEM Imaging and Acquisition)
+    must be running (even if you are using DigitalMicrograph as the CCD server).
+
+    If it is necessary to update the acquisition object (e.g. when the STEM detector
+    selection on the TEM UI has been changed), you have to release and recreate the
+    main microscope object. If you do not do so, you keep accessing the same
+    acquisition object which will not work properly anymore.
+    """
     def __init__(self, microscope):
         self._tem = microscope._tem
         self._tem_acq = self._tem.Acquisition
@@ -118,12 +127,13 @@ class Acquisition:
         self._has_advanced = microscope._tem_adv is not None
         self._prev_shutter_mode = None
         self._eer = False
+        self.__has_film = False
 
         try:
             _ = self._tem_cam.Stock
-            self._has_film = True
+            self.__has_film = True
         except:
-            self._has_film = False
+            pass
 
         if self._has_advanced:
             self._tem_csa = microscope._tem_adv.Acquisitions.CameraSingleAcquisition
@@ -450,7 +460,7 @@ class Acquisition:
         :param exp_time: Exposure time in seconds
         :type exp_time: float
         """
-        if self._has_film and self._tem_cam.Stock > 0:
+        if self.__has_film and self._tem_cam.Stock > 0:
             self._tem_cam.PlateLabelDataType = PlateLabelDateFormat.DDMMYY
             exp_num = self._tem_cam.ExposureNumber
             self._tem_cam.ExposureNumber = exp_num + 1
@@ -470,11 +480,12 @@ class Detectors:
         self._tem_acq = microscope._tem.Acquisition
         self._tem_cam = microscope._tem.Camera
         self._has_advanced = microscope._tem_adv is not None
+        self.__has_film = False
 
         try:
             _ = self._tem_cam.Stock
+            self.__has_film = True
         except:
-            self._tem_acq._has_film = False
             logging.info("No film/plate device detected.")
 
         if self._has_advanced:
@@ -561,8 +572,11 @@ class Detectors:
 
     @property
     def film_settings(self):
-        """ Returns a dict with film settings. """
-        if self._tem_acq._has_film:
+        """ Returns a dict with film settings.
+        Note: The plate camera has become obsolete with Win7 so
+        most of the existing functions are no longer supported.
+        """
+        if self.__has_film:
             return {
                 "stock": self._tem_cam.Stock,
                 "exposure_time": self._tem_cam.ManualExposureTime,
@@ -591,7 +605,9 @@ class Temperature:
         return self._tem_temp_control.TemperatureControlAvailable
 
     def force_refill(self):
-        """ Forces LN refill if the level is below 70%, otherwise does nothing. """
+        """ Forces LN refill if the level is below 70%, otherwise does nothing.
+        Note: this function takes considerable time to execute.
+        """
         if self.is_available:
             self._tem_temp_control.ForceRefill()
         elif self._tem_temp_control_adv is not None:
@@ -718,7 +734,9 @@ class Autoloader:
             raise Exception("Autoloader is not available")
 
     def run_inventory(self):
-        """ Performs an inventory of the cassette. """
+        """ Performs an inventory of the cassette.
+        Note: This function takes considerable time to execute.
+        """
         # TODO: check if cassette is present
         if self.is_available:
             self._tem_autoloader.PerformCassetteInventory()
@@ -806,6 +824,11 @@ class Stage:
 
     def _change_position(self, direct=False, **kwargs):
         # TODO: check limits beforehand
+        # X and Y - 1000 to + 1000(micrometers)
+        # Z - 375 to 375(micrometers)
+        # a - 80 to + 80(degrees)
+        # b - 29.7 to + 29.7(degrees)
+
         if self._tem_stage.Status == StageStatus.READY:
             # convert units to meters and radians
             new_pos = dict()
@@ -993,7 +1016,11 @@ class Optics:
 
     @property
     def is_shutter_override_on(self):
-        """ Determines the state of the shutter override function. """
+        """ Determines the state of the shutter override function.
+        WARNING: Do not leave the Shutter override on when stopping the script.
+        The microscope operator will be unable to have a beam come down and has
+        no separate way of seeing that it is blocked by the closed microscope shutter.
+        """
         return self._tem.BlankerShutter.ShutterOverrideOn
 
     @property
@@ -1149,9 +1176,8 @@ class Illumination:
 
     @beam_shift.setter
     def beam_shift(self, value):
-        value[0] *= 1e-6
-        value[1] *= 1e-6
-        Vector.set(self._tem_illumination, "Shift", value)
+        new_value = (value[0] * 1e-6, value[1] * 1e-6)
+        Vector.set(self._tem_illumination, "Shift", new_value)
 
     @property
     def rotation_center(self):
@@ -1161,9 +1187,8 @@ class Illumination:
 
     @rotation_center.setter
     def rotation_center(self, value):
-        value[0] *= 1e-3
-        value[1] *= 1e-3
-        Vector.set(self._tem_illumination, "RotationCenter", value)
+        new_value = (value[0] * 1e-3, value[1] * 1e-3)
+        Vector.set(self._tem_illumination, "RotationCenter", new_value)
 
     @property
     def condenser_stigmator(self):
@@ -1339,9 +1364,8 @@ class Projection:
 
     @image_shift.setter
     def image_shift(self, value):
-        value[0] *= 1e-6
-        value[1] *= 1e-6
-        Vector.set(self._tem_projection, "ImageShift", value)
+        new_value = (value[0] * 1e-6, value[1] * 1e-6)
+        Vector.set(self._tem_projection, "ImageShift", new_value)
 
     @property
     def image_beam_shift(self):
@@ -1351,9 +1375,8 @@ class Projection:
 
     @image_beam_shift.setter
     def image_beam_shift(self, value):
-        value[0] *= 1e-6
-        value[1] *= 1e-6
-        Vector.set(self._tem_projection, "ImageBeamShift", value)
+        new_value = (value[0] * 1e-6, value[1] * 1e-6)
+        Vector.set(self._tem_projection, "ImageBeamShift", new_value)
 
     @property
     def image_beam_tilt(self):
@@ -1363,9 +1386,8 @@ class Projection:
 
     @image_beam_tilt.setter
     def image_beam_tilt(self, value):
-        value[0] *= 1e-3
-        value[1] *= 1e-3
-        Vector.set(self._tem_projection, "ImageBeamTilt", value)
+        new_value = (value[0] * 1e-3, value[1] * 1e-3)
+        Vector.set(self._tem_projection, "ImageBeamTilt", new_value)
 
     @property
     def diffraction_shift(self):
@@ -1375,9 +1397,8 @@ class Projection:
 
     @diffraction_shift.setter
     def diffraction_shift(self, value):
-        value[0] *= 1e-3
-        value[1] *= 1e-3
-        Vector.set(self._tem_projection, "DiffractionShift", value)
+        new_value = (value[0] * 1e-3, value[1] * 1e-3)
+        Vector.set(self._tem_projection, "DiffractionShift", new_value)
 
     @property
     def diffraction_stigmator(self):
@@ -1473,12 +1494,14 @@ class Projection:
 class Apertures:
     """ Apertures and VPP controls. """
     def __init__(self, microscope):
-        self._tem_vpp = microscope._tem_adv.PhasePlate
-        self._tem_apertures = None
+        self._has_advanced = microscope._tem_adv is not None
+        if self._has_advanced:
+            self._tem_vpp = microscope._tem_adv.PhasePlate
 
         try:
             self._tem_apertures = microscope._tem.ApertureMechanismCollection
         except:
+            self._tem_apertures = None
             logging.info("Apertures interface is not available. Requires a separate license")
 
     def _find_aperture(self, name):
