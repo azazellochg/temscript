@@ -66,13 +66,13 @@ Execute from the command line (assuming you have your Python interpreter in the 
 
 .. code-block:: python
 
-    py -m pip install numpy comtypes pytemscript --no-index --find-links .
+    py -m pip install numpy comtypes mrcfile pytemscript --no-index --find-links .
 
 If you want to install pytemscript from sources (you still need to download comtypes \*.whl):
 
 .. code-block:: python
 
-    py -m pip install numpy comtypes --no-index --find-links .
+    py -m pip install numpy comtypes mrcfile --no-index --find-links .
     py -m pip install -e <source_directory>
 
 Supported functions of the COM interface

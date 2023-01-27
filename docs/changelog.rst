@@ -8,6 +8,14 @@ Version 3.0
 * Interface re-written using comtypes library
 * Standard scripting interfaces updated to v1.9
 * Added Advanced scripting interfaces v1.2
+* Development and testing are performed on:
+
+    - Tecnai Spirit (WinXP, Python 3.4)
+    - Tecnai F20 (Win7, Python 3.6)
+    - Tecnai Polara (WinXP)
+    - Glacios (Win10, Python 3.8)
+    - Tundra (Win10, Python 3.11)
+    - Titan Krios G1 (Win7, Python 3.6), G2, G3i (Win10, Python 3.8)
 
 Version 2.0.0
 ^^^^^^^^^^^^^
