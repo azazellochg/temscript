@@ -140,9 +140,9 @@ class Image(BaseImage):
         :param filename: File path
         :type filename: str
         """
-        fmt = os.path.splitext(filename)[1].upper().replace(".", "")
+        fmt = os.path.splitext(filename)[1].upper().lstrip(".")
         if fmt == "MRC":
-            print("Convert to int16 since MRC does not support int32")
+            logging.info("Convert to int16 since MRC does not support int32")
             import mrcfile
             with mrcfile.new(filename) as mrc:
                 mrc.set_data(self.data.astype("int16"))

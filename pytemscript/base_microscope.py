@@ -152,17 +152,17 @@ class Vector:
     """ Vector object/property. """
 
     @staticmethod
-    def set(obj, attr_name, value, range=None):
-        value = [float(c) for c in value]
-        if len(value) != 2:
-            raise ValueError("Expected two items for attribute %s" % attr_name)
+    def set(obj, attr_name, values, range=None):
+        values = list(map(float, values))
+        if len(values) != 2:
+            raise ValueError("Expected two values for Vector attribute %s" % attr_name)
 
         if range is not None:
-            for v in value:
+            for v in values:
                 if not(range[0] <= v <= range[1]):
-                    raise ValueError("%s is outside of range %s" % (value, range))
+                    raise ValueError("%s is outside of range %s" % (v, range))
 
         vector = getattr(obj, attr_name)
-        vector.X = value[0]
-        vector.Y = value[1]
+        vector.X = values[0]
+        vector.Y = values[1]
         setattr(obj, attr_name, vector)

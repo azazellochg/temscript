@@ -12,7 +12,7 @@ Version 3.0
 
     - Tecnai Spirit (WinXP, Python 3.4)
     - Tecnai F20 (Win7, Python 3.6)
-    - Tecnai Polara (WinXP)
+    - Tecnai Polara (WinXP, Python 3.4)
     - Glacios (Win10, Python 3.8)
     - Tundra (Win10, Python 3.11)
     - Titan Krios G1 (Win7, Python 3.6), G2, G3i (Win10, Python 3.8)
