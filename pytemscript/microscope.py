@@ -1254,6 +1254,7 @@ class Illumination:
         else:
             raise NotImplementedError("Probe defocus exists only on 3-condenser lens systems.")
 
+    #TODO: check if the illum. mode is probe?
     @property
     def convergence_angle(self):
         """ Convergence angle. Works only on 3-condenser lens systems. (read/write)"""
@@ -1689,7 +1690,12 @@ class Gun:
         if not (0.0 <= value <= voltage_max):
             raise ValueError("%s is outside of range 0.0-%s" % (value, voltage_max))
         self._tem_gun.HTValue = float(value) * 1000
-        logging.info("Warning: changing HT voltage might take considerable time")
+        while True:
+            if self._tem_gun.HTValue == float(value) * 1000:
+                logging.info("Changing HT voltage complete.")
+                break
+            else:
+                time.sleep(10)
 
     @property
     def voltage_max(self):
