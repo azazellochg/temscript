@@ -11,7 +11,7 @@ Version 3.0
 * Development and testing are performed on:
 
     - Tecnai Spirit (WinXP, Python 3.4)
-    - Tecnai F20 (Win7, Python 3.6)
+    - Tecnai F20 (Win7, Python 3.8)
     - Tecnai Polara (WinXP, Python 3.4)
     - Glacios (Win10, Python 3.8)
     - Tundra (Win10, Python 3.11)
