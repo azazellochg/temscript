@@ -33,7 +33,7 @@ Two acquisition functions: :meth:`~pytemscript.microscope.Acquisition.acquire_te
 that has the following methods and properties:
 
 .. autoclass:: pytemscript.microscope.Image
-    :members:
+    :members: width, height, bit_depth, pixel_type, data, save, name, metadata
 
 
 Example usage
