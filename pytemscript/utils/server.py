@@ -6,7 +6,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 import argparse
 import platform
 
-from .marshall import ExtendedJsonEncoder, gzip_encode, MIME_TYPE_PICKLE, MIME_TYPE_JSON, pack_array
+from .marshall import ExtendedJsonEncoder, gzip_encode, MIME_TYPE_JSON, pack_array
 
 
 def multi_getattr(obj, attr):
@@ -27,13 +27,13 @@ def rsetattr(obj, attr, val):
     return setattr(rgetattr(obj, pre) if pre else obj, post, val)
 
 
-def rgetattr(obj, attr, *args):
+def rgetattr(obj, attr, *args, **kwargs):
     def _getattr(obj, attr):
-        return getattr(obj, attr, *args)
+        return getattr(obj, attr, *args)  # remove default values?
     result = functools.reduce(_getattr, [obj] + attr.split('.'))
     if callable(result):
-        result()
-        return "OK"
+        res = result(**kwargs)
+        return res
     else:
         return result
 
@@ -47,41 +47,11 @@ def rhasattr(obj, attr):
         return False
 
 
-class TestScope:
-    def __init__(self):
-        print("Initialised TestScope")
-        self._tem_adv = True
-
-    @property
-    def family(self):
-        return 1
-
-
 class MicroscopeHandler(BaseHTTPRequestHandler):
-    GET_V1_FORWARD = ("family", "microscope_id", "version", "voltage", "vacuum", "stage_holder",
-                      "stage_status", "stage_position", "stage_limits", "detectors", "cameras", "stem_detectors",
-                      "stem_acquisition_param", "image_shift", "beam_shift", "beam_tilt", "projection_sub_mode",
-                      "projection_mode", "projection_mode_string", "magnification_index", "indicated_camera_length",
-                      "indicated_magnification", "defocus", "objective_excitation", "intensity", "objective_stigmator",
-                      "condenser_stigmator", "diffraction_shift", "screen_current", "screen_position",
-                      "illumination_mode", "condenser_mode", "illuminated_area", "probe_defocus", "convergence_angle",
-                      "stem_magnification", "stem_rotation", "spot_size_index", "dark_field_mode", "beam_blanked",
-                      "instrument_mode", 'optics_state', 'state', 'column_valves_open')
-
-    PUT_V1_FORWARD = ("image_shift", "beam_shift", "beam_tilt", "projection_mode", "magnification_index",
-                      "defocus", "intensity", "diffraction_shift", "objective_stigmator", "condenser_stigmator",
-                      "screen_position", "illumination_mode", "spot_size_index", "dark_field_mode",
-                      "condenser_mode", "illuminated_area", "probe_defocus", "convergence_angle",
-                      "stem_magnification", "stem_rotation", "beam_blanked", "instrument_mode")
-
     def get_microscope(self):
         """Return microscope object from server."""
         assert isinstance(self.server, MicroscopeServer)
         return self.server.microscope
-
-    def get_accept_types(self):
-        """Return list of accepted encodings."""
-        return [x.split(';', 1)[0].strip() for x in self.headers.get("Accept", "").split(",")]
 
     def build_response(self, response):
         """Encode response and send to client"""
@@ -91,18 +61,11 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            accept_type = self.get_accept_types()
-            if MIME_TYPE_PICKLE in accept_type:
-                import pickle
-                encoded_response = pickle.dumps(response, protocol=2)
-                content_type = MIME_TYPE_PICKLE
-            else:
-                encoded_response = ExtendedJsonEncoder().encode(response).encode("utf-8")
-                content_type = MIME_TYPE_JSON
+            encoded_response = ExtendedJsonEncoder().encode(response).encode("utf-8")
+            content_type = MIME_TYPE_JSON
 
             # Compression?
-            accept_encoding = [x.split(';', 1)[0].strip() for x in self.headers.get("Accept-Encoding", "").split(",")]
-            if len(encoded_response) > 256 and 'gzip' in accept_encoding:
+            if len(encoded_response) > 256:
                 encoded_response = gzip_encode(encoded_response)
                 content_encoding = 'gzip'
             else:
@@ -119,81 +82,29 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(encoded_response)
 
-    def do_GET_V1(self, endpoint, query):
-        """Handle V1 GET requests"""
-        if endpoint in self.GET_V1_FORWARD:
-            response = getattr(self.get_microscope(), 'get_' + endpoint)()
-        elif endpoint.startswith("detector_param/"):
-            name = unquote(endpoint[15:])
-            response = self.get_microscope().get_detector_param(name)
-        elif endpoint.startswith("camera_param/"):
-            name = unquote(endpoint[13:])
-            response = self.get_microscope().get_camera_param(name)
-        elif endpoint.startswith("stem_detector_param/"):
-            name = unquote(endpoint[20:])
-            response = self.get_microscope().get_stem_detector_param(name)
-        elif endpoint == "acquire":
-            detectors = tuple(query.get("detectors", ()))
-            response = self.get_microscope().acquire(*detectors)
-            if MIME_TYPE_PICKLE not in self.get_accept_types():
-                response = {key: pack_array(value) for key, value in response.items()}
-        elif endpoint == "stem_available":
-            response = self.get_microscope().is_stem_available()
-        else:
-            raise KeyError("Unknown endpoint: '%s'" % endpoint)
-        return response
-
-    def do_PUT_V1(self, endpoint, query):
-        """Handle V1 PUT requests"""
-        length = int(self.headers['Content-Length'])
-        if length > 4096:
-            raise ValueError("Too much content...")
-        content = self.rfile.read(length)
-        decoded_content = json.loads(content.decode("utf-8"))
-
-        # Check for known endpoints
+    def process_request(self, request, **params):
+        """ """
         response = None
-        if endpoint in self.PUT_V1_FORWARD:
-            response = getattr(self.get_microscope(), 'set_' + endpoint)(decoded_content)
-        elif endpoint == "stage_position":
-            method = str(query["method"][0]) if "method" in query else None
-            speed = float(query["speed"][0]) if "speed" in query else None
-            pos = dict((k, decoded_content[k]) for k in decoded_content.keys() if k in STAGE_AXES)
-            self.get_microscope().set_stage_position(pos, method=method, speed=speed)
-        elif endpoint.startswith("camera_param/"):
-            name = unquote(endpoint[13:])
-            ignore_errors = bool(query.get("ignore_errors", [False])[0])
-            response = self.get_microscope().set_camera_param(name, decoded_content, ignore_errors=ignore_errors)
-        elif endpoint.startswith("stem_detector_param/"):
-            name = unquote(endpoint[20:])
-            ignore_errors = bool(query.get("ignore_errors", [False])[0])
-            response = self.get_microscope().set_stem_detector_param(name, decoded_content, ignore_errors=ignore_errors)
-        elif endpoint == "stem_acquisition_param":
-            ignore_errors = bool(query.get("ignore_errors", [False])[0])
-            response = self.get_microscope().set_stem_acquisition_param(decoded_content, ignore_errors=ignore_errors)
-        elif endpoint.startswith("detector_param/"):
-            name = unquote(endpoint[15:])
-            response = self.get_microscope().set_detector_param(name, decoded_content)
-        elif endpoint == "normalize":
-            self.get_microscope().normalize(decoded_content)
-        elif endpoint == "column_valves_open":
-            state = bool(decoded_content)
-            assert isinstance(self.server, MicroscopeServer)
-            self.get_microscope().set_column_valves_open(state)
-        else:
-            raise KeyError("Unknown endpoint: '%s'" % endpoint)
+        microscope = self.get_microscope()
+
+        if request.path.startswith("/get/"):
+            response = rgetattr(microscope, request.path.lstrip("/get/"), kwargs=params)
+        elif request.path.startswith("/set/"):
+            rsetattr(microscope, request.path.lstrip("/set/"), params)
+        elif request.path.startswith("/has/"):
+            response = rhasattr(microscope, request.path.lstrip("/has/"))
+        elif request.path.startswith("/exec/"):
+            response = rgetattr(microscope, request.path.lstrip("/exec/"))
+
         return response
 
     # Handler for the GET requests
     def do_GET(self):
         try:
             request = urlparse(self.path)
-            if request.path.startswith("/v1/"):
-                response = self.do_GET_V1(request.path[4:], parse_qs(request.query))
-            else:
-                raise KeyError('Unknown API version: %s' % self.path)
-        except KeyError as exc:
-            self.log_error("KeyError raised during handling of GET request '%s': %s" % (self.path, repr(exc)))
+            response = self.process_request(request)
+        except AttributeError as exc:
+            self.log_error("AttributeError raised during handling of GET request '%s': %s" % (self.path, repr(exc)))
             self.send_error(404, str(exc))
         except Exception as exc:
             self.log_error("Exception raised during handling of GET request '%s': %s" % (self.path, repr(exc)))
@@ -201,19 +112,21 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
         else:
             self.build_response(response)
 
-    # Handler for the PUT requests
-    def do_PUT(self):
+    # Handler for the POST requests
+    def do_POST(self):
         try:
             request = urlparse(self.path)
-            if request.path.startswith("/v1/"):
-                response = self.do_PUT_V1(request.path[4:], parse_qs(request.query))
-            else:
-                raise KeyError('Unknown API version: %s' % self.path)
-        except KeyError as exc:
-            self.log_error("KeyError raised during handling of GET request '%s': %s" % (self.path, repr(exc)))
+            length = int(self.headers['Content-Length'])
+            if length > 4096:
+                raise ValueError("Too much content...")
+            content = self.rfile.read(length)
+            decoded_content = json.loads(content.decode("utf-8"))
+            response = self.process_request(request, **decoded_content)
+        except AttributeError as exc:
+            self.log_error("AttributeError raised during handling of POST request '%s': %s" % (self.path, repr(exc)))
             self.send_error(404, str(exc))
         except Exception as exc:
-            self.log_error("Exception raised during handling of GET request '%s': %s" % (self.path, repr(exc)))
+            self.log_error("Exception raised during handling of POST request '%s': %s" % (self.path, repr(exc)))
             self.send_error(500, "Error handling request '%s': %s" % (self.path, str(exc)))
         else:
             self.build_response(response)
@@ -247,8 +160,8 @@ def main(argv=None):
                              "Digital Micrograph (may be faster than via TIA / std scripting)")
     args = parser.parse_args(argv)
 
-    #if platform.system() != "Windows":
-    #    raise NotImplementedError("This server should be started on the microscope PC (Windows only)")
+    if platform.system() != "Windows":
+        raise NotImplementedError("This server should be started on the microscope PC (Windows only)")
 
     # Create a web server and define the handler to manage the incoming request
     server = MicroscopeServer((args.host, args.port),
