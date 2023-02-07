@@ -1,2 +1,3 @@
 from pytemscript.microscope import Microscope
-__version__ = '3.0a3'
+#from pytemscript.remote_microscope import RemoteMicroscope
+__version__ = '3.0a5'

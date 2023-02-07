@@ -35,7 +35,7 @@ setup(name='pytemscript',
           'Operating System :: OS Independent'
       ],
       install_requires=['comtypes', 'mrcfile', 'numpy'],
-      entry_points={'console_scripts': ['pytemscript-server = pytemscript.server:run_server']},
+      entry_points={'console_scripts': ['pytemscript-server = pytemscript.utils.server:main']},
       url="https://github.com/azazellochg/pytemscript",
       project_urls={
           "Source": "https://github.com/azazellochg/pytemscript",

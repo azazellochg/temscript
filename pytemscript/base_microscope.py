@@ -1,12 +1,6 @@
 import logging
 import platform
-import warnings
 import sys
-
-try:
-    import comtypes.client
-except ImportError:
-    warnings.warn("Importing comtypes failed. Non-Windows platform?", ImportWarning)
 
 from .utils.constants import *
 from .utils.enums import TEMScriptingError
@@ -14,14 +8,12 @@ from .utils.enums import TEMScriptingError
 
 class BaseMicroscope:
     """ Base class that handles COM interface connections. """
-    def __init__(self, address, timeout, simulate, useLD, useTecnaiCCD,
-                 useSEMCCD, logLevel=logging.INFO):
+    def __init__(self, useLD, useTecnaiCCD, useSEMCCD, logLevel=logging.INFO):
         self._tem = None
         self._tem_adv = None
         self._lowdose = None
         self._tecnai_ccd = None
         self._sem_ccd = None
-        self._address = address
 
         logging.basicConfig(level=logLevel,
                             datefmt='%d-%m-%Y %H:%M:%S',
@@ -30,19 +22,15 @@ class BaseMicroscope:
                                 logging.FileHandler("debug.log", "w", "utf-8"),
                                 logging.StreamHandler()])
 
-        if simulate:
-            raise NotImplementedError
-        elif self._address is None:
-            if platform.system() == "Windows":
-                self._initialize(useLD, useTecnaiCCD, useSEMCCD)
-            else:
-                raise NotImplementedError("Running locally is only supported for Windows platform")
+        if platform.system() == "Windows":
+            self._initialize(useLD, useTecnaiCCD, useSEMCCD)
         else:
-            raise NotImplementedError
+            raise NotImplementedError("Running locally is only supported for Windows platform")
 
     def _createCOMObject(self, progId):
         """ Connect to a COM interface. """
         try:
+            import comtypes.client
             obj = comtypes.client.CreateObject(progId)
             logging.info("Connected to %s" % progId)
             return obj
@@ -152,17 +140,17 @@ class Vector:
     """ Vector object/property. """
 
     @staticmethod
-    def set(obj, attr_name, value, range=None):
-        value = [float(c) for c in value]
-        if len(value) != 2:
-            raise ValueError("Expected two items for attribute %s" % attr_name)
+    def set(obj, attr_name, values, range=None):
+        values = list(map(float, values))
+        if len(values) != 2:
+            raise ValueError("Expected two values for Vector attribute %s" % attr_name)
 
         if range is not None:
-            for v in value:
+            for v in values:
                 if not(range[0] <= v <= range[1]):
-                    raise ValueError("%s is outside of range %s" % (value, range))
+                    raise ValueError("%s is outside of range %s" % (v, range))
 
         vector = getattr(obj, attr_name)
-        vector.X = value[0]
-        vector.Y = value[1]
+        vector.X = values[0]
+        vector.Y = values[1]
         setattr(obj, attr_name, vector)

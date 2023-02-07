@@ -12,9 +12,6 @@ class Microscope(BaseMicroscope):
     """ High level interface to the local microscope.
     Creating an instance of this class already queries COM interfaces for the instrument.
 
-    :param address: IP address of the microscope PC, localhost if not specified
-    :param timeout: Timeout for remote connection
-    :param simulate: NA
     :param useLD: Connect to LowDose server on microscope PC (limited control only)
     :type useLD: bool
     :param useTecnaiCCD: Connect to TecnaiCCD plugin on microscope PC that controls Digital Micrograph (may be faster than via TIA / std scripting)
@@ -22,24 +19,22 @@ class Microscope(BaseMicroscope):
     :param useSEMCCD: Connect to SerialEMCCD plugin on Gatan PC that controls Digital Micrograph (may be faster than via TIA / std scripting)
     :type useSEMCCD: bool
     """
-    def __init__(self, address=None, timeout=None, simulate=False, useLD=True,
-                 useTecnaiCCD=False, useSEMCCD=False):
+    def __init__(self, useLD=True, useTecnaiCCD=False, useSEMCCD=False):
 
-        super().__init__(address, timeout, simulate, useLD, useTecnaiCCD,
-                         useSEMCCD)
+        super().__init__(useLD, useTecnaiCCD, useSEMCCD)
 
         if useTecnaiCCD:
             if self._tecnai_ccd is None:
-                raise Exception("Could not use Tecnai CCD plugin, "
-                                "please set useTecnaiCCD=False")
+                raise RuntimeError("Could not use Tecnai CCD plugin, "
+                                   "please set useTecnaiCCD=False")
             else:
                 from .tecnai_ccd_plugin import TecnaiCCDPlugin
                 self._tecnai_ccd_plugin = TecnaiCCDPlugin(self)
 
         if useSEMCCD:
             if self._sem_ccd is None:
-                raise Exception("Could not use SerialEM CCD plugin, "
-                                "please set useSEMCCD=False")
+                raise RuntimeError("Could not use SerialEM CCD plugin, "
+                                   "please set useSEMCCD=False")
             else:
                 from .serialem_ccd_plugin import SerialEMCCDPlugin
                 self._sem_ccd_plugin = SerialEMCCDPlugin(self)
@@ -98,14 +93,14 @@ class UserDoor:
         if self._tem_door.IsControlAllowed:
             self._tem_door.Open()
         else:
-            raise Exception("Door control is unavailable")
+            raise RuntimeError("Door control is unavailable")
 
     def close(self):
         """ Close the door. """
         if self._tem_door.IsControlAllowed:
             self._tem_door.Close()
         else:
-            raise Exception("Door control is unavailable")
+            raise RuntimeError("Door control is unavailable")
 
 
 class Acquisition:
@@ -196,7 +191,7 @@ class Acquisition:
                 if int(b) == int(binning):
                     return b
 
-        raise Exception("Unsupported binning value: %d" % binning)
+        raise ValueError("Unsupported binning value: %d" % binning)
 
     def _set_camera_param(self, name, size, exp_time, binning, **kwargs):
         """ Find the TEM camera and set its params. """
@@ -214,7 +209,7 @@ class Acquisition:
                 if hasattr(capabilities, 'SupportsRecording') and capabilities.SupportsRecording:
                     settings.RecordingDuration = kwargs['recording']
                 else:
-                    raise Exception("This camera does not support continuous acquisition")
+                    raise NotImplementedError("This camera does not support continuous acquisition")
 
             else:
                 self._tem_csa.Camera = camera
@@ -235,13 +230,13 @@ class Acquisition:
                 if capabilities.SupportsDriftCorrection:
                     settings.AlignImage = kwargs['align_image']
                 else:
-                    raise Exception("This camera does not support drift correction")
+                    raise NotImplementedError("This camera does not support drift correction")
 
             if 'electron_counting' in kwargs:
                 if capabilities.SupportsElectronCounting:
                     settings.ElectronCounting = kwargs['electron_counting']
                 else:
-                    raise Exception("This camera does not support electron counting")
+                    raise NotImplementedError("This camera does not support electron counting")
 
             if 'eer' in kwargs and hasattr(capabilities, 'SupportsEER'):
                 if capabilities.SupportsEER:
@@ -249,11 +244,11 @@ class Acquisition:
                     settings.EER = self._eer
 
                     if self._eer and not settings.ElectronCounting:
-                        raise Exception("Electron counting should be enabled when using EER")
+                        raise RuntimeError("Electron counting should be enabled when using EER")
                     if self._eer and 'frame_ranges' in kwargs:
-                        raise Exception("No frame ranges allowed when using EER")
+                        raise RuntimeError("No frame ranges allowed when using EER")
                 else:
-                    raise Exception("This camera does not support EER")
+                    raise NotImplementedError("This camera does not support EER")
 
             if 'frame_ranges' in kwargs:  # a list of tuples
                 dfd = settings.DoseFractionsDefinition
@@ -265,13 +260,13 @@ class Acquisition:
                 settings.SubPathPattern = name + "_" + now.strftime("%d%m%Y_%H%M%S")
                 output = settings.PathToImageStorage + settings.SubPathPattern
 
-                print("Movie of %s frames will be saved to: %s.mrc" % (
+                logging.info("Movie of %s frames will be saved to: %s.mrc" % (
                     settings.CalculateNumberOfFrames(), output))
                 if not self._eer:
-                    print("MRC format can only contain images of up to "
-                          "16-bits per pixel, to get true CameraCounts "
-                          "multiply pixels by PixelToValueCameraCounts "
-                          "factor found in the metadata")
+                    logging.info("MRC format can only contain images of up to "
+                                 "16-bits per pixel, to get true CameraCounts "
+                                 "multiply pixels by PixelToValueCameraCounts "
+                                 "factor found in the metadata")
 
         else:
             info = camera.Info
@@ -291,13 +286,13 @@ class Acquisition:
                 info.ShutterMode = kwargs['shutter_mode']
             if 'pre_exp_time' in kwargs:
                 if kwargs['shutter_mode'] != AcqShutterMode.BOTH:
-                    raise Exception("Pre-exposures can only be be done "
-                                    "when the shutter mode is set to BOTH")
+                    raise RuntimeError("Pre-exposures can only be be done "
+                                       "when the shutter mode is set to BOTH")
                 settings.PreExposureTime = kwargs['pre_exp_time']
             if 'pre_exp_pause_time' in kwargs:
                 if kwargs['shutter_mode'] != AcqShutterMode.BOTH:
-                    raise Exception("Pre-exposures can only be be done when "
-                                    "the shutter mode is set to BOTH")
+                    raise RuntimeError("Pre-exposures can only be be done when "
+                                       "the shutter mode is set to BOTH")
                 settings.PreExposurePauseTime = kwargs['pre_exp_pause_time']
 
             # Set exposure after binning, since it adjusted
@@ -306,7 +301,7 @@ class Acquisition:
 
     def _set_film_param(self, film_text, exp_time, **kwargs):
         """ Set params for plate camera / film. """
-        self._tem_cam.FilmText = film_text
+        self._tem_cam.FilmText = film_text.strip()[:96]
         self._tem_cam.ManualExposureTime = exp_time
 
     def _acquire(self, cameraName):
@@ -334,28 +329,28 @@ class Acquisition:
         counter = 0
         while counter < 10:
             if self._tem.Vacuum.PVPRunning:
-                print("Buffer cycle in progress, waiting...\r")
+                logging.info("Buffer cycle in progress, waiting...\r")
                 time.sleep(2)
                 counter += 1
             else:
-                print("Checking buffer levels...")
+                logging.info("Checking buffer levels...")
                 break
 
         counter = 0
         while counter < 40:
             if tc.TemperatureControlAvailable and tc.DewarsAreBusyFilling:
-                print("Dewars are filling, waiting...\r")
+                logging.info("Dewars are filling, waiting...\r")
                 time.sleep(30)
                 counter += 1
             else:
-                print("Checking dewars levels...")
+                logging.info("Checking dewars levels...")
                 break
 
     def _acquire_with_tecnaiccd(self, cameraName, size, exp_time,
                                 binning, **kwargs):
         if not hasattr(self, "_ccdplugin"):
-            raise Exception("Tecnai CCD plugin not found, did you "
-                            "pass useTecnaiCCD=True to Microscope() ?")
+            raise RuntimeError("Tecnai CCD plugin not found, did you "
+                               "pass useTecnaiCCD=True to Microscope() ?")
         else:
             logging.info("Using TecnaiCCD plugin for Gatan camera")
             camerasize = self._find_camera(cameraName).Info.Width  # Get camera size from std scripting
@@ -393,10 +388,12 @@ class Acquisition:
                                                 binning, **kwargs)
 
         if kwargs.get("recording", False) and self._tem_cca is None:
-            raise Exception("Recording / continuous acquisition is not available")
+            raise NotImplementedError("Recording / continuous acquisition is not available")
 
         self._set_camera_param(cameraName, size, exp_time, binning, **kwargs)
         if self._is_advanced:
+            #while self._tem_csa.IsActive:
+            #    time.sleep(0.1)
             self._check_prerequisites()
 
             if "recording" in kwargs:
@@ -445,9 +442,9 @@ class Acquisition:
 
         settings.DwellTime = dwell_time
 
-        print("Max resolution:",
-              settings.MaxResolution.X,
-              settings.MaxResolution.Y)
+        logging.info("Max resolution: %s, %s" % (
+            settings.MaxResolution.X,
+            settings.MaxResolution.Y))
 
         self._check_prerequisites()
         return self._acquire(cameraName)
@@ -455,7 +452,7 @@ class Acquisition:
     def acquire_film(self, film_text, exp_time, **kwargs):
         """ Expose a film.
 
-        :param film_text: Film text
+        :param film_text: Film text, 96 symbols
         :type film_text: str
         :param exp_time: Exposure time in seconds
         :type exp_time: float
@@ -471,7 +468,7 @@ class Acquisition:
             self._tem_cam.TakeExposure()
             logging.info("Film exposure completed")
         else:
-            raise Exception("Plate is not available or stock is empty!")
+            raise RuntimeError("Plate is not available or stock is empty!")
 
 
 class Detectors:
@@ -578,11 +575,11 @@ class Detectors:
         """
         if self.__has_film:
             return {
-                "stock": self._tem_cam.Stock,
+                "stock": self._tem_cam.Stock,  # Int
                 "exposure_time": self._tem_cam.ManualExposureTime,
                 "film_text": self._tem_cam.FilmText,
                 "exposure_number": self._tem_cam.ExposureNumber,
-                "user_code": self._tem_cam.Usercode,
+                "user_code": self._tem_cam.Usercode,  # 3 digits
                 "screen_current": self._tem_cam.ScreenCurrent  # check if works without film
             }
         else:
@@ -605,7 +602,7 @@ class Temperature:
         return self._tem_temp_control.TemperatureControlAvailable
 
     def force_refill(self):
-        """ Forces LN refill if the level is below 70%, otherwise does nothing.
+        """ Forces LN refill if the level is below 70%, otherwise returns an error.
         Note: this function takes considerable time to execute.
         """
         if self.is_available:
@@ -613,7 +610,7 @@ class Temperature:
         elif self._tem_temp_control_adv is not None:
             return self._tem_temp_control_adv.RefillAllDewars()
         else:
-            raise Exception("TemperatureControl is not available")
+            raise RuntimeError("TemperatureControl is not available")
 
     def dewar_level(self, dewar):
         """ Returns the LN level (%) in a dewar.
@@ -624,7 +621,7 @@ class Temperature:
         if self.is_available:
             return self._tem_temp_control.RefrigerantLevel(dewar)
         else:
-            raise Exception("TemperatureControl is not available")
+            raise RuntimeError("TemperatureControl is not available")
 
     @property
     def is_dewar_filling(self):
@@ -634,7 +631,7 @@ class Temperature:
         elif self._tem_temp_control_adv is not None:
             return self._tem_temp_control_adv.IsAnyDewarFilling
         else:
-            raise Exception("TemperatureControl is not available")
+            raise RuntimeError("TemperatureControl is not available")
 
     @property
     def dewars_time(self):
@@ -642,10 +639,11 @@ class Temperature:
         Returns -1 if no refill is scheduled (e.g. All room temperature, or no
         dewar present).
         """
+        # TODO: check if returns -60 at room temperature
         if self.is_available:
             return self._tem_temp_control.DewarsRemainingTime
         else:
-            raise Exception("TemperatureControl is not available")
+            raise RuntimeError("TemperatureControl is not available")
 
     @property
     def temp_docker(self):
@@ -705,7 +703,7 @@ class Autoloader:
         if self.is_available:
             return self._tem_autoloader.NumberOfCassetteSlots
         else:
-            raise Exception("Autoloader is not available")
+            raise RuntimeError("Autoloader is not available")
 
     def load_cartridge(self, slot):
         """ Loads the cartridge in the given slot into the microscope.
@@ -717,12 +715,12 @@ class Autoloader:
             total = self.number_of_slots
             slot = int(slot)
             if slot > total:
-                raise Exception("Only %s slots are available" % total)
+                raise ValueError("Only %s slots are available" % total)
             if self.slot_status(slot) != CassetteSlotStatus.OCCUPIED.name:
-                raise Exception("Slot %d is not occupied" % slot)
+                raise RuntimeError("Slot %d is not occupied" % slot)
             self._tem_autoloader.LoadCartridge(slot)
         else:
-            raise Exception("Autoloader is not available")
+            raise RuntimeError("Autoloader is not available")
 
     def unload_cartridge(self):
         """ Unloads the cartridge currently in the microscope and puts it back into its
@@ -731,7 +729,7 @@ class Autoloader:
         if self.is_available:
             self._tem_autoloader.UnloadCartridge()
         else:
-            raise Exception("Autoloader is not available")
+            raise RuntimeError("Autoloader is not available")
 
     def run_inventory(self):
         """ Performs an inventory of the cassette.
@@ -741,7 +739,7 @@ class Autoloader:
         if self.is_available:
             self._tem_autoloader.PerformCassetteInventory()
         else:
-            raise Exception("Autoloader is not available")
+            raise RuntimeError("Autoloader is not available")
 
     def slot_status(self, slot):
         """ The status of the slot specified.
@@ -752,11 +750,11 @@ class Autoloader:
         if self.is_available:
             total = self.number_of_slots
             if slot > total:
-                raise Exception("Only %s slots are available" % total)
+                raise ValueError("Only %s slots are available" % total)
             status = self._tem_autoloader.SlotStatus(int(slot))
             return CassetteSlotStatus(status).name
         else:
-            raise Exception("Autoloader is not available")
+            raise RuntimeError("Autoloader is not available")
 
     def undock_cassette(self):
         """ Moves the cassette from the docker to the capsule. """
@@ -764,7 +762,7 @@ class Autoloader:
             if self.is_available:
                 self._tem_autoloader_adv.UndockCassette()
             else:
-                raise Exception("Autoloader is not available")
+                raise RuntimeError("Autoloader is not available")
         else:
             raise NotImplementedError("This function is not available "
                                       "in your adv. scripting interface.")
@@ -775,7 +773,7 @@ class Autoloader:
             if self.is_available:
                 self._tem_autoloader_adv.DockCassette()
             else:
-                raise Exception("Autoloader is not available")
+                raise RuntimeError("Autoloader is not available")
         else:
             raise NotImplementedError("This function is not available "
                                       "in your adv. scripting interface.")
@@ -786,7 +784,7 @@ class Autoloader:
             if self.is_available:
                 self._tem_autoloader_adv.Initialize()
             else:
-                raise Exception("Autoloader is not available")
+                raise RuntimeError("Autoloader is not available")
         else:
             raise NotImplementedError("This function is not available "
                                       "in your adv. scripting interface.")
@@ -797,7 +795,7 @@ class Autoloader:
             if self.is_available:
                 self._tem_autoloader_adv.BufferCycle()
             else:
-                raise Exception("Autoloader is not available")
+                raise RuntimeError("Autoloader is not available")
         else:
             raise NotImplementedError("This function is not available "
                                       "in your adv. scripting interface.")
@@ -822,40 +820,52 @@ class Stage:
     def _beta_available(self):
         return self.limits['b']['unit'] != MeasurementUnitType.UNKNOWN.name
 
-    def _change_position(self, direct=False, **kwargs):
-        # TODO: check limits beforehand
-        # X and Y - 1000 to + 1000(micrometers)
-        # Z - 375 to 375(micrometers)
-        # a - 80 to + 80(degrees)
-        # b - 29.7 to + 29.7(degrees)
-
-        if self._tem_stage.Status == StageStatus.READY:
-            # convert units to meters and radians
-            new_pos = dict()
-            for axis in 'xyz':
-                if axis in kwargs:
-                    new_pos.update({axis: kwargs[axis] * 1e-6})
-            for axis in 'ab':
-                if axis in kwargs:
-                    new_pos.update({axis: math.radians(kwargs[axis])})
-
-            speed = kwargs.get("speed", None)
-            if speed is not None and not (0.0 <= speed <= 1.0):
-                raise Exception("Speed must be within 0.0-1.0 range")
-
-            if 'b' in new_pos and not self._beta_available():
-                raise Exception("B-axis is not available")
-
-            new_pos, axes = self._from_dict(**new_pos)
-            if not direct:
-                self._tem_stage.MoveTo(new_pos, axes)
+    def _change_position(self, direct=False, tries=5, **kwargs):
+        attempt = 0
+        while attempt < tries:
+            if self._tem_stage.Status != StageStatus.READY:
+                logging.info("Stage is not ready, retrying...")
+                tries += 1
+                time.sleep(1)
             else:
-                if speed is not None:
-                    self._tem_stage.GoToWithSpeed(new_pos, axes, speed)
+                # convert units to meters and radians
+                new_pos = dict()
+                for axis in 'xyz':
+                    if axis in kwargs:
+                        new_pos.update({axis: kwargs[axis] * 1e-6})
+                for axis in 'ab':
+                    if axis in kwargs:
+                        new_pos.update({axis: math.radians(kwargs[axis])})
+
+                speed = kwargs.get("speed", None)
+                if speed is not None and not (0.0 <= speed <= 1.0):
+                    raise ValueError("Speed must be within 0.0-1.0 range")
+
+                if 'b' in new_pos and not self._beta_available():
+                    raise KeyError("B-axis is not available")
+
+                limits = self.limits
+                for key, value in new_pos.items():
+                    if value < limits[key]['min'] or value > limits[key]['max']:
+                        raise ValueError('Stage position %s=%s is out of range' % (value, key))
+
+                # X and Y - 1000 to + 1000(micrometers)
+                # Z - 375 to 375(micrometers)
+                # a - 80 to + 80(degrees)
+                # b - 29.7 to + 29.7(degrees)
+
+                new_pos, axes = self._from_dict(**new_pos)
+                if not direct:
+                    self._tem_stage.MoveTo(new_pos, axes)
                 else:
-                    self._tem_stage.GoTo(new_pos, axes)
+                    if speed is not None:
+                        self._tem_stage.GoToWithSpeed(new_pos, axes, speed)
+                    else:
+                        self._tem_stage.GoTo(new_pos, axes)
+
+                break
         else:
-            raise Exception("Stage is not ready.")
+            raise RuntimeError("Stage is not ready.")
 
     @property
     def status(self):
@@ -1034,10 +1044,12 @@ class Optics:
     def beam_blank(self):
         """ Activates the beam blanker. """
         self._tem_illumination.BeamBlanked = True
+        logging.warning("Falcon protector might delay blanker response")
 
     def beam_unblank(self):
         """ Deactivates the beam blanker. """
         self._tem_illumination.BeamBlanked = False
+        logging.warning("Falcon protector might delay blanker response")
 
     def normalize_all(self):
         """ Normalize all lenses. """
@@ -1073,7 +1085,7 @@ class Stem:
         if self.is_available:
             self._tem_control.InstrumentMode = InstrumentMode.STEM
         else:
-            raise Exception("No STEM mode available")
+            raise RuntimeError("No STEM mode available")
 
     def disable(self):
         """ Switch back to TEM mode. """
@@ -1085,14 +1097,14 @@ class Stem:
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             return self._tem_illumination.StemMagnification
         else:
-            raise Exception("Microscope not in STEM mode.")
+            raise RuntimeError("Microscope not in STEM mode.")
 
     @magnification.setter
     def magnification(self, mag):
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             self._tem_illumination.StemMagnification = float(mag)
         else:
-            raise Exception("Microscope not in STEM mode.")
+            raise RuntimeError("Microscope not in STEM mode.")
 
     @property
     def rotation(self):
@@ -1100,14 +1112,14 @@ class Stem:
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             return self._tem_illumination.StemRotation * 1e3
         else:
-            raise Exception("Microscope not in STEM mode.")
+            raise RuntimeError("Microscope not in STEM mode.")
 
     @rotation.setter
     def rotation(self, rot):
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             self._tem_illumination.StemRotation = float(rot) * 1e-3
         else:
-            raise Exception("Microscope not in STEM mode.")
+            raise RuntimeError("Microscope not in STEM mode.")
 
     @property
     def scan_field_of_view(self):
@@ -1116,14 +1128,14 @@ class Stem:
             return (self._tem_illumination.StemFullScanFieldOfView.X,
                     self._tem_illumination.StemFullScanFieldOfView.Y)
         else:
-            raise Exception("Microscope not in STEM mode.")
+            raise RuntimeError("Microscope not in STEM mode.")
 
     @scan_field_of_view.setter
     def scan_field_of_view(self, values):
         if self._tem_control.InstrumentMode == InstrumentMode.STEM:
             Vector.set(self._tem_illumination, "StemFullScanFieldOfView", values)
         else:
-            raise Exception("Microscope not in STEM mode.")
+            raise RuntimeError("Microscope not in STEM mode.")
 
 
 class Illumination:
@@ -1139,6 +1151,8 @@ class Illumination:
 
     @spotsize.setter
     def spotsize(self, value):
+        if not (1 <= int(value) <= 11):
+            raise ValueError("%s is outside of range 1-11" % value)
         self._tem_illumination.SpotsizeIndex = int(value)
 
     @property
@@ -1148,6 +1162,8 @@ class Illumination:
 
     @intensity.setter
     def intensity(self, value):
+        if not (0.0 <= value <= 1.0):
+            raise ValueError("%s is outside of range 0.0-1.0" % value)
         self._tem_illumination.Intensity = float(value)
 
     @property
@@ -1181,7 +1197,10 @@ class Illumination:
 
     @property
     def rotation_center(self):
-        """ Rotation center X and Y in mrad. (read/write)"""
+        """ Rotation center X and Y in mrad. (read/write)
+            Depending on the scripting version,
+            the values might need scaling by 6.0 to get mrads.
+        """
         return (self._tem_illumination.RotationCenter.X * 1e3,
                 self._tem_illumination.RotationCenter.Y * 1e3)
 
@@ -1230,6 +1249,7 @@ class Illumination:
         else:
             raise NotImplementedError("Probe defocus exists only on 3-condenser lens systems.")
 
+    #TODO: check if the illum. mode is probe?
     @property
     def convergence_angle(self):
         """ Convergence angle. Works only on 3-condenser lens systems. (read/write)"""
@@ -1341,12 +1361,18 @@ class Projection:
 
     @focus.setter
     def focus(self, value):
+        if not (-1.0 <= value <= 1.0):
+            raise ValueError("%s is outside of range -1.0 to 1.0" % value)
+
         self._tem_projection.Focus = float(value)
 
     @property
     def magnification(self):
         """ The reference magnification value (screen up setting)."""
-        return self._tem_projection.Magnification
+        if self._tem_projection.Mode == ProjectionMode.IMAGING:
+            return self._tem_projection.Magnification
+        else:
+            raise RuntimeError("Microscope is in diffraction mode.")
 
     @property
     def camera_length(self):
@@ -1354,7 +1380,7 @@ class Projection:
         if self._tem_projection.Mode == ProjectionMode.DIFFRACTION:
             return self._tem_projection.CameraLength
         else:
-            raise Exception("Microscope is not in diffraction mode.")
+            raise RuntimeError("Microscope is not in diffraction mode.")
 
     @property
     def image_shift(self):
@@ -1403,13 +1429,19 @@ class Projection:
     @property
     def diffraction_stigmator(self):
         """ Diffraction stigmator. (read/write)"""
-        return (self._tem_projection.DiffractionStigmator.X,
-                self._tem_projection.DiffractionStigmator.Y)
+        if self._tem_projection.Mode == ProjectionMode.DIFFRACTION:
+            return (self._tem_projection.DiffractionStigmator.X,
+                    self._tem_projection.DiffractionStigmator.Y)
+        else:
+            raise RuntimeError("Microscope is not in diffraction mode.")
 
     @diffraction_stigmator.setter
     def diffraction_stigmator(self, value):
-        Vector.set(self._tem_projection, "DiffractionStigmator",
-                   value, range=(-1.0, 1.0))
+        if self._tem_projection.Mode == ProjectionMode.DIFFRACTION:
+            Vector.set(self._tem_projection, "DiffractionStigmator",
+                       value, range=(-1.0, 1.0))
+        else:
+            raise RuntimeError("Microscope is not in diffraction mode.")
 
     @property
     def objective_stigmator(self):
@@ -1507,7 +1539,7 @@ class Apertures:
     def _find_aperture(self, name):
         """Find aperture object by name. """
         if self._tem_apertures is None:
-            raise Exception("Apertures interface is not available. Requires a separate license")
+            raise NotImplementedError("Apertures interface is not available. Requires a separate license")
         for ap in self._tem_apertures:
             if MechanismId(ap.Id).name == name.upper():
                 return ap
@@ -1519,14 +1551,14 @@ class Apertures:
         try:
             return self._tem_vpp.GetCurrentPresetPosition + 1
         except:
-            raise Exception("Either no VPP found or it's not enabled and inserted.")
+            raise RuntimeError("Either no VPP found or it's not enabled and inserted.")
 
     def vpp_next_position(self):
         """ Goes to the next preset location on the VPP aperture. """
         try:
             self._tem_vpp.SelectNextPresetPosition()
         except:
-            raise Exception("Either no VPP found or it's not enabled and inserted.")
+            raise RuntimeError("Either no VPP found or it's not enabled and inserted.")
 
     def enable(self, aperture):
         ap = self._find_aperture(aperture)
@@ -1558,14 +1590,14 @@ class Apertures:
                 if ap.SelectedAperture.Diameter == size:
                     return
                 else:
-                    raise Exception("Could not select aperture!")
+                    raise RuntimeError("Could not select aperture!")
 
     @property
     def show_all(self):
         """ Returns a dict with apertures information. """
         if self._tem_apertures is None:
-            raise Exception("Apertures interface is not available. "
-                            "Requires a separate license")
+            raise NotImplementedError("Apertures interface is not available. "
+                                      "Requires a separate license")
         result = {}
         for ap in self._tem_apertures:
             result[MechanismId(ap.Id).name] = {"retractable": ap.IsRetractable,
@@ -1591,7 +1623,7 @@ class Gun:
             self._tem_feg = microscope._tem_adv.Source
             _ = self._tem_feg.State
         except:
-            logging.info("Source/FEG interface is not available.")
+            logging.info("Source/C-FEG interface is not available.")
 
     @property
     def shift(self):
@@ -1615,20 +1647,20 @@ class Gun:
     def voltage_offset(self):
         """ High voltage offset. (read/write)"""
         if self._tem_gun1 is None:
-            raise Exception("Gun1 interface is not available.")
+            raise RuntimeError("Gun1 interface is not available.")
         return self._tem_gun1.HighVoltageOffset
 
     @voltage_offset.setter
     def voltage_offset(self, offset):
         if self._tem_gun1 is None:
-            raise Exception("Gun1 interface is not available.")
+            raise RuntimeError("Gun1 interface is not available.")
         self._tem_gun1.HighVoltageOffset = offset
 
     @property
     def feg_state(self):
         """ FEG emitter status. """
         if self._tem_feg is None:
-            raise Exception("Gun1 interface is not available.")
+            raise RuntimeError("Gun1 interface is not available.")
         return FegState(self._tem_feg.State).name
 
     @property
@@ -1658,7 +1690,16 @@ class Gun:
 
     @voltage.setter
     def voltage(self, value):
+        voltage_max = self.voltage_max
+        if not (0.0 <= value <= voltage_max):
+            raise ValueError("%s is outside of range 0.0-%s" % (value, voltage_max))
         self._tem_gun.HTValue = float(value) * 1000
+        while True:
+            if self._tem_gun.HTValue == float(value) * 1000:
+                logging.info("Changing HT voltage complete.")
+                break
+            else:
+                time.sleep(10)
 
     @property
     def voltage_max(self):
@@ -1669,28 +1710,28 @@ class Gun:
     def voltage_offset_range(self):
         """ Returns the high voltage offset range. """
         if self._tem_gun1 is None:
-            raise Exception("Gun1 interface is not available.")
+            raise RuntimeError("Gun1 interface is not available.")
         return self._tem_gun1.GetHighVoltageOffsetRange()
 
     @property
     def beam_current(self):
-        """ Returns the beam current in Amperes. """
+        """ Returns the C-FEG beam current in Amperes. """
         if self._tem_feg is None:
-            raise Exception("Source/FEG interface is not available.")
+            raise RuntimeError("Source/C-FEG interface is not available.")
         return self._tem_feg.BeamCurrent
 
     @property
     def extractor_voltage(self):
         """ Returns the extractor voltage. """
         if self._tem_feg is None:
-            raise Exception("Source/FEG interface is not available.")
+            raise RuntimeError("Source/C-FEG interface is not available.")
         return self._tem_feg.ExtractorVoltage
 
     @property
     def focus_index(self):
         """ Returns coarse and fine gun lens index. """
         if self._tem_feg is None:
-            raise Exception("Source/FEG interface is not available.")
+            raise RuntimeError("Source/C-FEG interface is not available.")
         focus_index = self._tem_feg.FocusIndex
         return (focus_index.Coarse, focus_index.Fine)
 
@@ -1701,11 +1742,12 @@ class Gun:
         :type flash_type: IntEnum
         """
         if self._tem_feg is None:
-            raise Exception("Source/FEG interface is not available.")
+            raise RuntimeError("Source/C-FEG interface is not available.")
         if self._tem_feg.Flashing.IsFlashingAdvised(flash_type):
+            # FIXME: lowT flashing can be done even if not advised
             self._tem_feg.Flashing.PerformFlashing(flash_type)
         else:
-            raise Exception("Flashing type %s is not advised" % flash_type)
+            raise Warning("Flashing type %s is not advised" % flash_type)
 
 
 class EnergyFilter:
@@ -1718,9 +1760,9 @@ class EnergyFilter:
 
     def _check_range(self, ev_range, value):
         if not (ev_range.Begin <= value <= ev_range.End):
-            raise Exception("Value is outside of allowed "
-                            "range: %0.0f - %0.0f" % (ev_range.Begin,
-                                                      ev_range.End))
+            raise ValueError("Value is outside of allowed "
+                             "range: %0.0f - %0.0f" % (ev_range.Begin,
+                                                       ev_range.End))
 
     def insert_slit(self, width):
         """ Insert energy slit.
@@ -1787,7 +1829,7 @@ class LowDose:
         if self.is_available:
             return LDStatus(self._tem_ld.LowDoseActive) == LDStatus.IS_ON
         else:
-            raise Exception("Low Dose is not available")
+            raise RuntimeError("Low Dose is not available")
 
     @property
     def state(self):
@@ -1795,28 +1837,28 @@ class LowDose:
         if self.is_available and self.is_active:
             return LDState(self._tem_ld.LowDoseState).name
         else:
-            raise Exception("Low Dose is not available")
+            raise RuntimeError("Low Dose is not available")
 
     @state.setter
     def state(self, state):
         if self.is_available:
             self._tem_ld.LowDoseState = state
         else:
-            raise Exception("Low Dose is not available")
+            raise RuntimeError("Low Dose is not available")
 
     def on(self):
         """ Switch ON Low Dose."""
         if self.is_available:
             self._tem_ld.LowDoseActive = LDStatus.IS_ON
         else:
-            raise Exception("Low Dose is not available")
+            raise RuntimeError("Low Dose is not available")
 
     def off(self):
         """ Switch OFF Low Dose."""
         if self.is_available:
             self._tem_ld.LowDoseActive = LDStatus.IS_OFF
         else:
-            raise Exception("Low Dose is not available")
+            raise RuntimeError("Low Dose is not available")
 
 
 class Image(BaseImage):
@@ -1868,7 +1910,7 @@ class Image(BaseImage):
         """
         fmt = os.path.splitext(filename)[1].upper().replace(".", "")
         if fmt == "MRC":
-            print("Convert to int16 since MRC does not support int32")
+            logging.info("Convert to int16 since MRC does not support int32")
             import mrcfile
             with mrcfile.new(filename) as mrc:
                 if self.metadata is not None:
