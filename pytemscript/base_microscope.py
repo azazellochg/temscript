@@ -1,6 +1,7 @@
 import logging
 import platform
 import sys
+import atexit
 
 from .utils.constants import *
 from .utils.enums import TEMScriptingError
@@ -25,6 +26,7 @@ class BaseMicroscope:
 
         if platform.system() == "Windows":
             self._initialize(useLD, useTecnaiCCD, useSEMCCD)
+            atexit.register(self._close)
         else:
             raise NotImplementedError("Running locally is only supported for Windows platform")
 
@@ -74,10 +76,9 @@ class BaseMicroscope:
         except ValueError:
             logging.info('Exception : %s' % sys.exc_info()[1])
 
-    #def __del__(self):
-        #pass
-        #if self._address is None:
-        #    comtypes.CoUninitialize()
+    def _close(self):
+        import comtypes
+        comtypes.CoUninitialize()
 
 
 class BaseImage:

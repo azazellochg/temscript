@@ -580,7 +580,7 @@ class Detectors:
                 "film_text": self._tem_cam.FilmText,
                 "exposure_number": self._tem_cam.ExposureNumber,
                 "user_code": self._tem_cam.Usercode,  # 3 digits
-                "screen_current": self._tem_cam.ScreenCurrent  # check if works without film
+                "screen_current": self._tem_cam.ScreenCurrent * 1e9  # check if works without film
             }
         else:
             logging.info("No film/plate device detected.")
@@ -1418,6 +1418,7 @@ class Projection:
     @property
     def diffraction_shift(self):
         """ Diffraction shift in mrad. (read/write)"""
+        #TODO: 180/pi*value = approx number in TUI
         return (self._tem_projection.DiffractionShift.X * 1e3,
                 self._tem_projection.DiffractionShift.Y * 1e3)
 
