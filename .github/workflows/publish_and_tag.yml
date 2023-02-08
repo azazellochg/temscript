@@ -28,7 +28,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools wheel twine numpy comtypes mrcfile
+        pip install setuptools wheel twine numpy mrcfile
     - name: Build and publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
@@ -38,6 +38,6 @@ jobs:
         twine upload dist/*
     - name: Get version and tag
       run: |
-        export PACKAGE_VERSION=$(python -c "import $FOLDER_WITH_VERSION; print('v'+$FOLDER_WITH_VERSION.__version__);")
+        export PACKAGE_VERSION=$(python -c "import $FOLDER_WITH_VERSION.version; print('v'+$FOLDER_WITH_VERSION.version.__version__);")
         git tag $PACKAGE_VERSION
         git push origin $PACKAGE_VERSION

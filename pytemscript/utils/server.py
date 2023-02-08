@@ -2,7 +2,7 @@
 import json
 import functools
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import urlparse, parse_qs, unquote
+from urllib.parse import urlparse
 import argparse
 import platform
 
@@ -27,13 +27,15 @@ def rsetattr(obj, attr, val):
     return setattr(rgetattr(obj, pre) if pre else obj, post, val)
 
 
-def rgetattr(obj, attr, *args, **kwargs):
+def rgetattr(obj, attr, kwargs=None, is_callable=False):
     def _getattr(obj, attr):
-        return getattr(obj, attr, *args)  # remove default values?
+        return getattr(obj, attr)
     result = functools.reduce(_getattr, [obj] + attr.split('.'))
-    if callable(result):
-        res = result(**kwargs)
-        return res
+    if is_callable:
+        if kwargs is not None:
+            return result(kwargs)
+        else:
+            return result()
     else:
         return result
 
@@ -62,8 +64,6 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
 
         try:
             encoded_response = ExtendedJsonEncoder().encode(response).encode("utf-8")
-            content_type = MIME_TYPE_JSON
-
             # Compression?
             if len(encoded_response) > 256:
                 encoded_response = gzip_encode(encoded_response)
@@ -78,28 +78,34 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
             if content_encoding:
                 self.send_header('Content-Encoding', content_encoding)
             self.send_header('Content-Length', str(len(encoded_response)))
-            self.send_header('Content-Type', content_type)
+            self.send_header('Content-Type', MIME_TYPE_JSON)
             self.end_headers()
             self.wfile.write(encoded_response)
 
-    def process_request(self, request, **params):
-        """ """
+    def process_request(self, request, body=None):
+        """ Get or set microscope attrs. """
         response = None
+        url = request.path
         microscope = self.get_microscope()
 
-        if request.path.startswith("/get/"):
-            response = rgetattr(microscope, request.path.lstrip("/get/"), kwargs=params)
-        elif request.path.startswith("/set/"):
-            rsetattr(microscope, request.path.lstrip("/set/"), params)
-        elif request.path.startswith("/has/"):
-            response = rhasattr(microscope, request.path.lstrip("/has/"))
-        elif request.path.startswith("/exec/"):
-            response = rgetattr(microscope, request.path.lstrip("/exec/"))
+        print("url=", url)
+        print("params=", body)
+
+        if url.startswith("/get/"):
+            response = rgetattr(microscope, url.lstrip("/get/"))
+        elif url.startswith("/exec/"):
+            response = rgetattr(microscope, url.lstrip("/exec/").rstrip("()"), body, is_callable=True)
+        elif url.startswith("/set/"):
+            rsetattr(microscope, url.lstrip("/set/"), body)
+        elif url.startswith("/has/"):
+            response = rhasattr(microscope, url.lstrip("/has/"))
+        else:
+            raise RuntimeError("URL %s not found" % url)
 
         return response
 
-    # Handler for the GET requests
     def do_GET(self):
+        """ Handler for the GET requests. """
         try:
             request = urlparse(self.path)
             response = self.process_request(request)
@@ -112,8 +118,8 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
         else:
             self.build_response(response)
 
-    # Handler for the POST requests
     def do_POST(self):
+        """ Handler for the POST requests. """
         try:
             request = urlparse(self.path)
             length = int(self.headers['Content-Length'])
@@ -121,7 +127,7 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
                 raise ValueError("Too much content...")
             content = self.rfile.read(length)
             decoded_content = json.loads(content.decode("utf-8"))
-            response = self.process_request(request, **decoded_content)
+            response = self.process_request(request, decoded_content)
         except AttributeError as exc:
             self.log_error("AttributeError raised during handling of POST request '%s': %s" % (self.path, repr(exc)))
             self.send_error(404, str(exc))

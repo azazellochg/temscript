@@ -4,14 +4,15 @@ from setuptools import setup
 from codecs import open
 from os import path
 
-import pytemscript
-from pytemscript import __version__
-
 here = path.abspath(path.dirname(__file__))
 
 # Long description
 with open(path.join(here, "README.rst"), "r", encoding="utf-8") as fp:
     long_description = fp.read()
+
+# Read version
+with open("pytemscript/version.py") as fp:
+    exec(fp.read())
 
 setup(name='pytemscript',
       version=__version__,
@@ -34,7 +35,11 @@ setup(name='pytemscript',
           'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
           'Operating System :: OS Independent'
       ],
-      install_requires=['comtypes', 'mrcfile', 'numpy'],
+      install_requires=[
+          "comtypes;platform_system=='Windows'",
+          "mrcfile",
+          "numpy"
+      ],
       entry_points={'console_scripts': ['pytemscript-server = pytemscript.utils.server:main']},
       url="https://github.com/azazellochg/pytemscript",
       project_urls={

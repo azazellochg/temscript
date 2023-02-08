@@ -5,6 +5,7 @@ import logging
 
 from .utils.enums import *
 from .utils.marshall import ExtendedJsonEncoder, unpack_array, gzip_decode, MIME_TYPE_JSON
+#from .base_microscope import Vector
 from .microscope import (Acquisition, Detectors, Gun, LowDose, Optics, Stem, Temperature,
                          Vacuum, Autoloader, Stage, PiezoStage, Apertures, UserDoor, EnergyFilter)
 
@@ -19,7 +20,7 @@ class RemoteMicroscope:
     :param timeout: Connection timeout in seconds
     :type timeout: int
     """
-    def __init__(self, host="localhost", port=8001, timeout=None):
+    def __init__(self, host="localhost", port=8080, timeout=None):
         self._port = port
         self._host = host
         self._timeout = timeout
@@ -36,10 +37,11 @@ class RemoteMicroscope:
         self._conn = HTTPConnection(self._host, self._port, timeout=self._timeout)
 
         hasTem = self._request("GET", "/has/_tem")[1]
-        #hasTemAdv = self._request("GET", "/v1/_tem_adv")[1]
-        #useLD = self._request("GET", "/v1/_lowdose")[1]
-        #useTecnaiCCD = self._request("GET", "/v1/_tecnai_ccd")[1]
-        #useSEMCCD = self._request("GET", "/v1/_sem_ccd")[1]
+        print("Received hasTem=", hasTem)
+        #hasTemAdv = self._request("GET", "/has/_tem_adv")[1]
+        #useLD = self._request("GET", "/has/_lowdose")[1]
+        #useTecnaiCCD = self._request("GET", "/has/_tecnai_ccd")[1]
+        #useSEMCCD = self._request("GET", "/has/_sem_ccd")[1]
 
         #self.user_door = UserDoor(self)
 
@@ -75,6 +77,9 @@ class RemoteMicroscope:
             self._conn = None
             raise
 
+        if response.status == 204:  # returns nothing, e.g. after a successfull SET
+            return response, None
+
         if response.status != 200:
             raise RuntimeError("Failed remote call: %s" % response.reason)
 
@@ -89,6 +94,7 @@ class RemoteMicroscope:
             encoded_body = gzip_decode(encoded_body)
 
         body = json.loads(encoded_body.decode("utf-8"))
+
         return response, body
 
     @property
@@ -96,3 +102,46 @@ class RemoteMicroscope:
         """ Returns the microscope product family / platform. """
         result = self._request("GET", "/get/_tem.Configuration.ProductFamily")[1]
         return ProductFamily(result).name
+
+    @property
+    def intensity(self):
+        """ Intensity / C2 condenser lens value. (read/write)"""
+        return self._request("GET", "/get/_tem.Illumination.Intensity")[1]
+
+    @intensity.setter
+    def intensity(self, value):
+        if not (0.0 <= value <= 1.0):
+            raise ValueError("%s is outside of range 0.0-1.0" % value)
+        self._request("POST", "/set/_tem.Illumination.Intensity", float(value))
+
+    @property
+    def beam_shift(self):
+        """ Beam shift X and Y in um. (read/write)"""
+        x = float(self._request("GET", "/get/_tem.Illumination.Shift.X")[1]) * 1e6
+        y = float(self._request("GET", "/get/_tem.Illumination.Shift.Y")[1]) * 1e6
+        return (x, y)
+
+    #@beam_shift.setter
+    #def beam_shift(self, value):
+    #    new_value = (value[0] * 1e-6, value[1] * 1e-6)
+    #    Vector.set(self._tem_illumination, "Shift", new_value)
+
+    def run_buffer_cycle(self):
+        """ Runs a pumping cycle to empty the buffer. """
+        self._request("GET", "/exec/_tem.Vacuum.RunBufferCycle()")
+
+    def column_close(self):
+        """ Close column valves. """
+        self._request("POST", "/set/_tem.Vacuum.ColumnValvesOpen", True)
+
+    def normalize(self, mode):
+        """ Normalize condenser or projection lens system.
+        :param mode: Normalization mode (ProjectionNormalization or IlluminationNormalization enum)
+        :type mode: IntEnum
+        """
+        if mode in ProjectionNormalization:
+            self._request("POST", "/exec/_tem.Projection.Normalize()", mode)
+        elif mode in IlluminationNormalization:
+            self._request("POST", "/exec/_tem.Illumination.Normalize()", mode)
+        else:
+            raise ValueError("Unknown normalization mode: %s" % mode)
