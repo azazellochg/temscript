@@ -1,12 +1,12 @@
 #!/usr/bin/python
 import json
 import functools
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import urlparse
 import argparse
 import platform
+import logging
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from .marshall import ExtendedJsonEncoder, gzip_encode, MIME_TYPE_JSON, pack_array
+from pytemscript.utils.marshall import ExtendedJsonEncoder, gzip_encode, MIME_TYPE_JSON, pack_array
 
 
 def multi_getattr(obj, attr):
@@ -71,7 +71,7 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
             else:
                 content_encoding = None
         except Exception as exc:
-            self.log_error("Exception raised during encoding of response: %s" % repr(exc))
+            logging.error("Exception raised during encoding of response: %s" % repr(exc))
             self.send_error(500, "Error handling request '%s': %s" % (self.path, str(exc)))
         else:
             self.send_response(200)
@@ -82,14 +82,13 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(encoded_response)
 
-    def process_request(self, request, body=None):
+    def process_request(self, url, body=None):
         """ Get or set microscope attrs. """
         response = None
-        url = request.path
         microscope = self.get_microscope()
 
-        print("url=", url)
-        print("params=", body)
+        logging.debug("Received url=%s" % url)
+        logging.debug("      params=%s" % body)
 
         if url.startswith("/get/"):
             response = rgetattr(microscope, url.lstrip("/get/"))
@@ -100,20 +99,19 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
         elif url.startswith("/has/"):
             response = rhasattr(microscope, url.lstrip("/has/"))
         else:
-            raise RuntimeError("URL %s not found" % url)
+            raise ValueError("Invalid URL: %s" % url)
 
         return response
 
     def do_GET(self):
         """ Handler for the GET requests. """
         try:
-            request = urlparse(self.path)
-            response = self.process_request(request)
+            response = self.process_request(self.path)
         except AttributeError as exc:
-            self.log_error("AttributeError raised during handling of GET request '%s': %s" % (self.path, repr(exc)))
+            logging.error("AttributeError raised during handling of GET request '%s': %s" % (self.path, repr(exc)))
             self.send_error(404, str(exc))
         except Exception as exc:
-            self.log_error("Exception raised during handling of GET request '%s': %s" % (self.path, repr(exc)))
+            logging.error("Exception raised during handling of GET request '%s': %s" % (self.path, repr(exc)))
             self.send_error(500, "Error handling request '%s': %s" % (self.path, str(exc)))
         else:
             self.build_response(response)
@@ -121,18 +119,17 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         """ Handler for the POST requests. """
         try:
-            request = urlparse(self.path)
             length = int(self.headers['Content-Length'])
             if length > 4096:
                 raise ValueError("Too much content...")
             content = self.rfile.read(length)
             decoded_content = json.loads(content.decode("utf-8"))
-            response = self.process_request(request, decoded_content)
+            response = self.process_request(self.path, decoded_content)
         except AttributeError as exc:
-            self.log_error("AttributeError raised during handling of POST request '%s': %s" % (self.path, repr(exc)))
+            logging.error("AttributeError raised during handling of POST request '%s': %s" % (self.path, repr(exc)))
             self.send_error(404, str(exc))
         except Exception as exc:
-            self.log_error("Exception raised during handling of POST request '%s': %s" % (self.path, repr(exc)))
+            logging.error("Exception raised during handling of POST request '%s': %s" % (self.path, repr(exc)))
             self.send_error(500, "Error handling request '%s': %s" % (self.path, str(exc)))
         else:
             self.build_response(response)
@@ -143,6 +140,13 @@ class MicroscopeServer(HTTPServer, object):
         from pytemscript.microscope import Microscope
         self.microscope = Microscope(useLD, useTecnaiCCD, useSEMCCD)
         super().__init__(server_address, MicroscopeHandler)
+
+        logging.basicConfig(level=logging.DEBUG,
+                            datefmt='%d/%b/%Y %H:%M:%S',
+                            format='[%(asctime)s] %(message)s',
+                            handlers=[
+                                logging.FileHandler("remote_server.log", "w", "utf-8"),
+                                logging.StreamHandler()])
 
 
 def main(argv=None):
@@ -175,14 +179,14 @@ def main(argv=None):
                               useTecnaiCCD=args.useTecnaiCCD,
                               useSEMCCD=args.useSEMCCD)
     try:
-        print("Started httpserver on host '%s' port %d." % (args.host, args.port))
-        print("Press Ctrl+C to stop server.")
+        logging.info("Started httpserver on host '%s' port %d." % (args.host, args.port))
+        logging.info("Press Ctrl+C to stop server.")
 
         # Wait forever for incoming http requests
         server.serve_forever()
 
     except KeyboardInterrupt:
-        print('Ctrl+C received, shutting down the http server')
+        logging.info("Ctrl+C received, shutting down the http server")
 
     finally:
         server.socket.close()

@@ -1,7 +1,6 @@
 import socket
 import json
 from http.client import HTTPConnection
-import logging
 
 from .utils.enums import *
 from .utils.marshall import ExtendedJsonEncoder, unpack_array, gzip_decode, MIME_TYPE_JSON
@@ -12,7 +11,7 @@ from .microscope import (Acquisition, Detectors, Gun, LowDose, Optics, Stem, Tem
 
 class RemoteMicroscope:
     """ High level interface to the remote microscope server.
-    Boolean params below have to match the server params.
+
     :param host: Specify host address on which the server is listening
     :type host: IP address or hostname
     :param port: Specify port on which the server is listening
@@ -26,14 +25,6 @@ class RemoteMicroscope:
         self._timeout = timeout
         self._conn = None
 
-        logging.basicConfig(level=logging.INFO,
-                            datefmt='%d-%m-%Y %H:%M:%S',
-                            format='%(asctime)s %(message)s',
-                            handlers=[
-                                logging.FileHandler("remote_debug.log", "w", "utf-8"),
-                                logging.StreamHandler()])
-
-        # Make connection
         self._conn = HTTPConnection(self._host, self._port, timeout=self._timeout)
 
         hasTem = self._request("GET", "/has/_tem")[1]
