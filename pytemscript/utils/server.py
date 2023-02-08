@@ -99,7 +99,7 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
         elif url.startswith("/has/"):
             response = rhasattr(microscope, url.lstrip("/has/"))
         else:
-            raise ValueError("Invalid URL: %s" % url)
+            raise ValueError("Invalid URL")
 
         return response
 
@@ -138,7 +138,7 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
 class MicroscopeServer(HTTPServer, object):
     def __init__(self, server_address=('', 8080), useLD=False, useTecnaiCCD=False, useSEMCCD=False):
         from pytemscript.microscope import Microscope
-        self.microscope = Microscope(useLD, useTecnaiCCD, useSEMCCD)
+        self.microscope = Microscope(useLD, useTecnaiCCD, useSEMCCD, remote=True)
         super().__init__(server_address, MicroscopeHandler)
 
         logging.basicConfig(level=logging.DEBUG,

@@ -8,19 +8,20 @@ from .utils.enums import TEMScriptingError
 
 class BaseMicroscope:
     """ Base class that handles COM interface connections. """
-    def __init__(self, useLD, useTecnaiCCD, useSEMCCD, logLevel=logging.INFO):
+    def __init__(self, useLD, useTecnaiCCD, useSEMCCD, logLevel=logging.INFO, remote=False):
         self._tem = None
         self._tem_adv = None
         self._lowdose = None
         self._tecnai_ccd = None
         self._sem_ccd = None
 
-        logging.basicConfig(level=logLevel,
-                            datefmt='%d-%m-%Y %H:%M:%S',
-                            format='%(asctime)s %(message)s',
-                            handlers=[
-                                logging.FileHandler("debug.log", "w", "utf-8"),
-                                logging.StreamHandler()])
+        if not remote:
+            logging.basicConfig(level=logLevel,
+                                datefmt='%d/%b/%Y %H:%M:%S',
+                                format='[%(asctime)s] %(message)s',
+                                handlers=[
+                                    logging.FileHandler("debug.log", "w", "utf-8"),
+                                    logging.StreamHandler()])
 
         if platform.system() == "Windows":
             self._initialize(useLD, useTecnaiCCD, useSEMCCD)

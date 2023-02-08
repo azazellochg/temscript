@@ -19,9 +19,9 @@ class Microscope(BaseMicroscope):
     :param useSEMCCD: Connect to SerialEMCCD plugin on Gatan PC that controls Digital Micrograph (may be faster than via TIA / std scripting)
     :type useSEMCCD: bool
     """
-    def __init__(self, useLD=True, useTecnaiCCD=False, useSEMCCD=False):
+    def __init__(self, useLD=True, useTecnaiCCD=False, useSEMCCD=False, remote=False):
 
-        super().__init__(useLD, useTecnaiCCD, useSEMCCD)
+        super().__init__(useLD, useTecnaiCCD, useSEMCCD, remote)
 
         if useTecnaiCCD:
             if self._tecnai_ccd is None:

@@ -20,15 +20,15 @@ class RemoteMicroscope:
     :type timeout: int
     """
     def __init__(self, host="localhost", port=8080, timeout=None):
-        self._port = port
         self._host = host
+        self._port = port
         self._timeout = timeout
         self._conn = None
 
         self._conn = HTTPConnection(self._host, self._port, timeout=self._timeout)
 
         hasTem = self._request("GET", "/has/_tem")[1]
-        print("Received hasTem=", hasTem)
+        print("hasTem=", hasTem)
         #hasTemAdv = self._request("GET", "/has/_tem_adv")[1]
         #useLD = self._request("GET", "/has/_lowdose")[1]
         #useTecnaiCCD = self._request("GET", "/has/_tecnai_ccd")[1]
