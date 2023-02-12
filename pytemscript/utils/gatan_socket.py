@@ -2,6 +2,7 @@ r"""
 
 The code below is a modified version of:
 https://github.com/instamatic-dev/instamatic/blob/master/instamatic/camera/gatansocket3.py
+https://github.com/nysbc/leginon-py3/blob/main/pyscope/gatansocket.py
 
 BSD 3-Clause License
 

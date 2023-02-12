@@ -5,6 +5,7 @@ import base64
 import zlib
 import gzip
 import io
+import functools
 
 
 MIME_TYPE_PICKLE = "application/python-pickle"
@@ -105,3 +106,47 @@ def gzip_encode(content):
 def gzip_decode(content):
     """Decode GZIP encoded bytes object"""
     return zlib.decompress(content, 16 + zlib.MAX_WBITS)    # No keyword arguments until Python 3.6
+
+
+def multi_getattr(obj, attr):
+    attributes = attr.split(".")
+    for i in attributes:
+        try:
+            obj = getattr(obj, i)
+            if callable(obj):
+                obj = obj()
+        except AttributeError:
+            raise
+    return obj
+
+
+def rsetattr(obj, attr, val):
+    """ https://stackoverflow.com/a/31174427 """
+    pre, _, post = attr.rpartition('.')
+    return setattr(rgetattr(obj, pre) if pre else obj, post, val)
+
+
+def rgetattr(obj, attr):
+    def _getattr(obj, attr):
+        return getattr(obj, attr)
+    result = functools.reduce(_getattr, [obj] + attr.split('.'))
+    return result
+
+
+def rexecattr(obj, attr, *args, **kwargs):
+    def _getattr(obj, attr):
+        return getattr(obj, attr)
+    result = functools.reduce(_getattr, [obj] + attr.split('.'))
+    if args or kwargs:
+        return result(*args, **kwargs)
+    else:
+        return result()
+
+
+def rhasattr(obj, attr):
+    """ https://stackoverflow.com/a/65781864 """
+    try:
+        functools.reduce(getattr, attr.split("."), obj)
+        return True
+    except AttributeError:
+        return False

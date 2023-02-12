@@ -9,20 +9,12 @@ from .utils.enums import TEMScriptingError
 
 class BaseMicroscope:
     """ Base class that handles COM interface connections. """
-    def __init__(self, useLD, useTecnaiCCD, useSEMCCD, logLevel=logging.INFO, remote=False):
-        self._tem = None
-        self._tem_adv = None
-        self._lowdose = None
-        self._tecnai_ccd = None
-        self._sem_ccd = None
-
-        if not remote:
-            logging.basicConfig(level=logLevel,
-                                datefmt='%d/%b/%Y %H:%M:%S',
-                                format='[%(asctime)s] %(message)s',
-                                handlers=[
-                                    logging.FileHandler("debug.log", "w", "utf-8"),
-                                    logging.StreamHandler()])
+    def __init__(self, useLD=True, useTecnaiCCD=False, useSEMCCD=False):
+        self.tem = None
+        self.tem_adv = None
+        self.tem_lowdose = None
+        self.tecnai_ccd = None
+        self.sem_ccd = None
 
         if platform.system() == "Windows":
             self._initialize(useLD, useTecnaiCCD, useSEMCCD)
@@ -49,22 +41,22 @@ class BaseMicroscope:
         except OSError:
             comtypes.CoInitialize()
 
-        self._tem_adv = self._createCOMObject(SCRIPTING_ADV)
-        self._tem = self._createCOMObject(SCRIPTING_STD)
+        self.tem_adv = self._createCOMObject(SCRIPTING_ADV)
+        self.tem = self._createCOMObject(SCRIPTING_STD)
 
-        if self._tem is None:  # try Tecnai instead
-            self._tem = self._createCOMObject(SCRIPTING_TECNAI)
+        if self.tem is None:  # try Tecnai instead
+            self.tem = self._createCOMObject(SCRIPTING_TECNAI)
 
         if useLD:
-            self._lowdose = self._createCOMObject(SCRIPTING_LOWDOSE)
+            self.tem_lowdose = self._createCOMObject(SCRIPTING_LOWDOSE)
         if useTecnaiCCD:
-            self._tecnai_ccd = self._createCOMObject(SCRIPTING_TECNAI_CCD)
-            if self._tecnai_ccd is None:
-                self._tecnai_ccd = self._createCOMObject(SCRIPTING_TECNAI_CCD2)
+            self.tecnai_ccd = self._createCOMObject(SCRIPTING_TECNAI_CCD)
+            if self.tecnai_ccd is None:
+                self.tecnai_ccd = self._createCOMObject(SCRIPTING_TECNAI_CCD2)
             import comtypes.gen.TECNAICCDLib
         if useSEMCCD:
             from .utils.gatan_socket import SocketFuncs
-            self._sem_ccd = SocketFuncs()
+            self.sem_ccd = SocketFuncs()
 
     @staticmethod
     def handle_com_error(com_error):
@@ -136,23 +128,3 @@ class BaseImage:
         :type normalize: bool
         """
         raise NotImplementedError
-
-
-class Vector:
-    """ Vector object/property. """
-
-    @staticmethod
-    def set(obj, attr_name, values, range=None):
-        values = list(map(float, values))
-        if len(values) != 2:
-            raise ValueError("Expected two values for Vector attribute %s" % attr_name)
-
-        if range is not None:
-            for v in values:
-                if not(range[0] <= v <= range[1]):
-                    raise ValueError("%s is outside of range %s" % (v, range))
-
-        vector = getattr(obj, attr_name)
-        vector.X = values[0]
-        vector.Y = values[1]
-        setattr(obj, attr_name, vector)

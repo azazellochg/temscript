@@ -1,52 +1,10 @@
 #!/usr/bin/python
-import json
-import functools
 import argparse
 import platform
 import logging
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from pytemscript.utils.marshall import ExtendedJsonEncoder, gzip_encode, MIME_TYPE_JSON, pack_array
-
-
-def multi_getattr(obj, attr):
-    attributes = attr.split(".")
-    for i in attributes:
-        try:
-            obj = getattr(obj, i)
-            if callable(obj):
-                obj = obj()
-        except AttributeError:
-            raise
-    return obj
-
-
-def rsetattr(obj, attr, val):
-    """ https://stackoverflow.com/a/31174427 """
-    pre, _, post = attr.rpartition('.')
-    return setattr(rgetattr(obj, pre) if pre else obj, post, val)
-
-
-def rgetattr(obj, attr, kwargs=None, is_callable=False):
-    def _getattr(obj, attr):
-        return getattr(obj, attr)
-    result = functools.reduce(_getattr, [obj] + attr.split('.'))
-    if is_callable:
-        if kwargs is not None:
-            return result(kwargs)
-        else:
-            return result()
-    else:
-        return result
-
-
-def rhasattr(obj, attr):
-    """ https://stackoverflow.com/a/65781864 """
-    try:
-        functools.reduce(getattr, attr.split("."), obj)
-        return True
-    except AttributeError:
-        return False
+from .misc import *
 
 
 class MicroscopeHandler(BaseHTTPRequestHandler):
@@ -93,11 +51,31 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
         if url.startswith("/get/"):
             response = rgetattr(microscope, url.lstrip("/get/"))
         elif url.startswith("/exec/"):
-            response = rgetattr(microscope, url.lstrip("/exec/").rstrip("()"), body, is_callable=True)
-        elif url.startswith("/set/"):
-            rsetattr(microscope, url.lstrip("/set/"), body)
+            response = rexecattr(microscope, url.lstrip("/exec/").rstrip("()"), body)
         elif url.startswith("/has/"):
             response = rhasattr(microscope, url.lstrip("/has/"))
+        elif url.startswith("/set/"):
+            url = url.lstrip("/set/")
+            value = body["value"]
+
+            if "vector" in body:
+                values = list(map(float, value))
+                if len(values) != 2:
+                    raise ValueError("Expected two values (X, Y) for Vector attribute %s" % url)
+
+                if "limits" in body:
+                    ranges = body["limits"]
+                    for v in values:
+                        if not (ranges[0] <= v <= ranges[1]):
+                            raise ValueError("%s is outside of range %s" % (v, ranges))
+
+                vector = rgetattr(microscope, url)
+                vector.X = values[0]
+                vector.Y = values[1]
+                rsetattr(microscope, url, vector)
+            else:
+                rsetattr(microscope, url, value)
+
         else:
             raise ValueError("Invalid URL")
 
@@ -108,10 +86,12 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
         try:
             response = self.process_request(self.path)
         except AttributeError as exc:
-            logging.error("AttributeError raised during handling of GET request '%s': %s" % (self.path, repr(exc)))
+            logging.error("AttributeError raised during handling of "
+                          "GET request '%s': %s" % (self.path, repr(exc)))
             self.send_error(404, str(exc))
         except Exception as exc:
-            logging.error("Exception raised during handling of GET request '%s': %s" % (self.path, repr(exc)))
+            logging.error("Exception raised during handling of "
+                          "GET request '%s': %s" % (self.path, repr(exc)))
             self.send_error(500, "Error handling request '%s': %s" % (self.path, str(exc)))
         else:
             self.build_response(response)
@@ -126,27 +106,23 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
             decoded_content = json.loads(content.decode("utf-8"))
             response = self.process_request(self.path, decoded_content)
         except AttributeError as exc:
-            logging.error("AttributeError raised during handling of POST request '%s': %s" % (self.path, repr(exc)))
+            logging.error("AttributeError raised during handling of "
+                          "POST request '%s': %s" % (self.path, repr(exc)))
             self.send_error(404, str(exc))
         except Exception as exc:
-            logging.error("Exception raised during handling of POST request '%s': %s" % (self.path, repr(exc)))
+            logging.error("Exception raised during  handling of "
+                          "POST request '%s': %s" % (self.path, repr(exc)))
             self.send_error(500, "Error handling request '%s': %s" % (self.path, str(exc)))
         else:
             self.build_response(response)
 
 
 class MicroscopeServer(HTTPServer, object):
-    def __init__(self, server_address=('', 8080), useLD=False, useTecnaiCCD=False, useSEMCCD=False):
-        from pytemscript.microscope import Microscope
-        self.microscope = Microscope(useLD, useTecnaiCCD, useSEMCCD, remote=True)
+    def __init__(self, server_address=('', 8080), useLD=True,
+                 useTecnaiCCD=False, useSEMCCD=False):
+        from ..base_microscope import BaseMicroscope
+        self.microscope = BaseMicroscope(useLD, useTecnaiCCD, useSEMCCD)
         super().__init__(server_address, MicroscopeHandler)
-
-        logging.basicConfig(level=logging.DEBUG,
-                            datefmt='%d/%b/%Y %H:%M:%S',
-                            format='[%(asctime)s] %(message)s',
-                            handlers=[
-                                logging.FileHandler("remote_server.log", "w", "utf-8"),
-                                logging.StreamHandler()])
 
 
 def main(argv=None):

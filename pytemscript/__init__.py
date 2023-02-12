@@ -1,2 +1,2 @@
-from pytemscript.microscope import Microscope
-from pytemscript.remote_microscope import RemoteMicroscope
+from pytemscript.client import Microscope
+from pytemscript.remote_client import RemoteMicroscope

@@ -1,106 +1,44 @@
+import os
 import logging
 import math
 import time
-import os
 from datetime import datetime
 
+from .base_microscope import BaseImage
 from .utils.enums import *
-from .base_microscope import BaseMicroscope, BaseImage, Vector
 
 
-class Microscope(BaseMicroscope):
-    """ High level interface to the local microscope.
-    Creating an instance of this class already queries COM interfaces for the instrument.
-
-    :param useLD: Connect to LowDose server on microscope PC (limited control only)
-    :type useLD: bool
-    :param useTecnaiCCD: Connect to TecnaiCCD plugin on microscope PC that controls Digital Micrograph (may be faster than via TIA / std scripting)
-    :type useTecnaiCCD: bool
-    :param useSEMCCD: Connect to SerialEMCCD plugin on Gatan PC that controls Digital Micrograph (may be faster than via TIA / std scripting)
-    :type useSEMCCD: bool
-    """
-    def __init__(self, useLD=True, useTecnaiCCD=False, useSEMCCD=False, remote=False):
-
-        super().__init__(useLD, useTecnaiCCD, useSEMCCD, remote)
-
-        if useTecnaiCCD:
-            if self._tecnai_ccd is None:
-                raise RuntimeError("Could not use Tecnai CCD plugin, "
-                                   "please set useTecnaiCCD=False")
-            else:
-                from .tecnai_ccd_plugin import TecnaiCCDPlugin
-                self._tecnai_ccd_plugin = TecnaiCCDPlugin(self)
-
-        if useSEMCCD:
-            if self._sem_ccd is None:
-                raise RuntimeError("Could not use SerialEM CCD plugin, "
-                                   "please set useSEMCCD=False")
-            else:
-                from .serialem_ccd_plugin import SerialEMCCDPlugin
-                self._sem_ccd_plugin = SerialEMCCDPlugin(self)
-
-        self.acquisition = Acquisition(self)
-        self.detectors = Detectors(self)
-        self.gun = Gun(self)
-        self.lowdose = LowDose(self)
-        self.optics = Optics(self)
-        self.stem = Stem(self)
-        self.temperature = Temperature(self)
-        self.vacuum = Vacuum(self)
-        self.autoloader = Autoloader(self)
-        self.stage = Stage(self)
-        self.piezo_stage = PiezoStage(self)
-        self.apertures = Apertures(self)
-
-        if self._tem_adv is not None:
-            self.user_door = UserDoor(self)
-            self.energy_filter = EnergyFilter(self)
-
-        if useLD:
-            self.lowdose = LowDose(self)
-
-    @property
-    def family(self):
-        """ Returns the microscope product family / platform. """
-        return ProductFamily(self._tem.Configuration.ProductFamily).name
-
-    @property
-    def condenser_system(self):
-        """ Returns the type of condenser lens system: two or three lenses. """
-        return CondenserLensSystem(self._tem.Configuration.CondenserLensSystem).name
-
-    @property
-    def user_buttons(self):
-        """ Returns a dict with assigned hand panels buttons. """
-        return {b.Name: b.Label for b in self._tem.UserButtons}
+ADV_SCR_ERR = "This function is not available in your adv. scripting interface."
 
 
 class UserDoor:
     """ User door hatch controls. """
     def __init__(self, microscope):
-        if hasattr(microscope._tem_adv, "UserDoorHatch"):
-            self._tem_door = microscope._tem_adv.UserDoorHatch
-        else:
-            self._tem_door = None
+        self._scope = microscope
+        self._err_msg = "Door control is unavailable"
+        self._tem_door = self._scope.has("tem_adv.UserDoorHatch")
 
     @property
     def state(self):
         """ Returns door state. """
-        return HatchState(self._tem_door.State).name
+        if self._tem_door:
+            return HatchState(self._scope.get("tem_adv.UserDoorHatch.State")).name
+        else:
+            raise NotImplementedError(self._err_msg)
 
     def open(self):
         """ Open the door. """
-        if self._tem_door.IsControlAllowed:
-            self._tem_door.Open()
+        if self._tem_door and self._scope.get("tem_adv.UserDoorHatch.IsControlAllowed"):
+            self._scope.exec("tem_adv.UserDoorHatch.Open()")
         else:
-            raise RuntimeError("Door control is unavailable")
+            raise NotImplementedError(self._err_msg)
 
     def close(self):
         """ Close the door. """
-        if self._tem_door.IsControlAllowed:
-            self._tem_door.Close()
+        if self._tem_door and self._scope.get("tem_adv.UserDoorHatch.IsControlAllowed"):
+            self._scope.exec("tem_adv.UserDoorHatch.Close()")
         else:
-            raise RuntimeError("Door control is unavailable")
+            raise NotImplementedError(self._err_msg)
 
 
 class Acquisition:
@@ -589,28 +527,29 @@ class Detectors:
 class Temperature:
     """ LN dewars and temperature controls. """
     def __init__(self, microscope):
-        self._tem_temp_control = microscope._tem.TemperatureControl
-
-        if microscope._tem_adv is not None and hasattr(microscope._tem_adv, "TemperatureControl"):
-            self._tem_temp_control_adv = microscope._tem_adv.TemperatureControl
-        else:
-            self._tem_temp_control_adv = None
+        self._scope = microscope
+        self._err_msg = "TemperatureControl is not available"
+        self._tem_tmpctrl = self._scope.has("tem.TemperatureControl")
+        self._tem_tmpctrl_adv = self._scope.has("tem_adv.TemperatureControl")
 
     @property
     def is_available(self):
         """ Status of the temperature control. Should be always False on Tecnai instruments. """
-        return self._tem_temp_control.TemperatureControlAvailable
+        if self._tem_tmpctrl:
+            return self._scope.get("tem.TemperatureControl.TemperatureControlAvailable")
+        else:
+            raise RuntimeError(self._err_msg)
 
     def force_refill(self):
         """ Forces LN refill if the level is below 70%, otherwise returns an error.
         Note: this function takes considerable time to execute.
         """
         if self.is_available:
-            self._tem_temp_control.ForceRefill()
-        elif self._tem_temp_control_adv is not None:
-            return self._tem_temp_control_adv.RefillAllDewars()
+            self._scope.exec("tem.TemperatureControl.ForceRefill()")
+        elif self._tem_tmpctrl_adv:
+            return self._scope.exec("tem_adv.TemperatureControl.RefillAllDewars()")
         else:
-            raise RuntimeError("TemperatureControl is not available")
+            raise RuntimeError(self._err_msg)
 
     def dewar_level(self, dewar):
         """ Returns the LN level (%) in a dewar.
@@ -619,19 +558,19 @@ class Temperature:
         :type dewar: IntEnum
         """
         if self.is_available:
-            return self._tem_temp_control.RefrigerantLevel(dewar)
+            return self._scope.exec("tem.TemperatureControl.RefrigerantLevel()", dewar)
         else:
-            raise RuntimeError("TemperatureControl is not available")
+            raise RuntimeError(self._err_msg)
 
     @property
     def is_dewar_filling(self):
         """ Returns TRUE if any of the dewars is currently busy filling. """
         if self.is_available:
-            return self._tem_temp_control.DewarsAreBusyFilling
-        elif self._tem_temp_control_adv is not None:
-            return self._tem_temp_control_adv.IsAnyDewarFilling
+            return self._scope.get("tem.TemperatureControl.DewarsAreBusyFilling")
+        elif self._tem_tmpctrl_adv:
+            return self._scope.get("tem_adv.TemperatureControl.IsAnyDewarFilling")
         else:
-            raise RuntimeError("TemperatureControl is not available")
+            raise RuntimeError(self._err_msg)
 
     @property
     def dewars_time(self):
@@ -641,69 +580,62 @@ class Temperature:
         """
         # TODO: check if returns -60 at room temperature
         if self.is_available:
-            return self._tem_temp_control.DewarsRemainingTime
+            return self._scope.get("tem.TemperatureControl.DewarsRemainingTime")
         else:
-            raise RuntimeError("TemperatureControl is not available")
+            raise RuntimeError(self._err_msg)
 
     @property
     def temp_docker(self):
         """ Returns Docker temperature in Kelvins. """
-        if self._tem_temp_control_adv is not None:
-            return self._tem_temp_control_adv.AutoloaderCompartment.DockerTemperature
+        if self._tem_tmpctrl_adv:
+            return self._scope.get("tem_adv.TemperatureControl.AutoloaderCompartment.DockerTemperature")
         else:
-            raise NotImplementedError("This function is not available "
-                                      "in your adv. scripting interface.")
+            raise NotImplementedError(ADV_SCR_ERR)
 
     @property
     def temp_cassette(self):
         """ Returns Cassette gripper temperature in Kelvins. """
-        if self._tem_temp_control_adv is not None:
-            return self._tem_temp_control_adv.AutoloaderCompartment.CassetteTemperature
+        if self._tem_tmpctrl_adv:
+            return self._scope.get("tem_adv.TemperatureControl.AutoloaderCompartment.CassetteTemperature")
         else:
-            raise NotImplementedError("This function is not available "
-                                      "in your adv. scripting interface.")
+            raise NotImplementedError(ADV_SCR_ERR)
 
     @property
     def temp_cartridge(self):
         """ Returns Cartridge gripper temperature in Kelvins. """
-        if self._tem_temp_control_adv is not None:
-            return self._tem_temp_control_adv.AutoloaderCompartment.CartridgeTemperature
+        if self._tem_tmpctrl_adv:
+            return self._scope.get("tem_adv.TemperatureControl.AutoloaderCompartment.CartridgeTemperature")
         else:
-            raise NotImplementedError("This function is not available "
-                                      "in your adv. scripting interface.")
+            raise NotImplementedError(ADV_SCR_ERR)
 
     @property
     def temp_holder(self):
         """ Returns Holder temperature in Kelvins. """
-        if self._tem_temp_control_adv is not None:
-            return self._tem_temp_control_adv.ColumnCompartment.HolderTemperature
+        if self._tem_tmpctrl_adv:
+            return self._scope.get("tem_adv.TemperatureControl.ColumnCompartment.HolderTemperature")
         else:
-            raise NotImplementedError("This function is not available "
-                                      "in your adv. scripting interface.")
+            raise NotImplementedError(ADV_SCR_ERR)
 
 
 class Autoloader:
     """ Sample loading functions. """
     def __init__(self, microscope):
-        self._tem_autoloader = microscope._tem.AutoLoader
-
-        if microscope._tem_adv is not None and hasattr(microscope._tem_adv, "AutoLoader"):
-            self._tem_autoloader_adv = microscope._tem_adv.AutoLoader
-        else:
-            self._tem_autoloader_adv = None
+        self._scope = microscope
+        self._err_msg = "Autoloader is not available"
+        self._tem_autoloader_adv = self._scope.has("tem_adv.AutoLoader")
 
     @property
     def is_available(self):
         """ Status of the autoloader. Should be always False on Tecnai instruments. """
-        return self._tem_autoloader.AutoLoaderAvailable
+        return self._scope.get("tem.AutoLoader.AutoLoaderAvailable")
 
     @property
     def number_of_slots(self):
         """ The number of slots in a cassette. """
         if self.is_available:
-            return self._tem_autoloader.NumberOfCassetteSlots
+            return self._scope.get("tem.AutoLoader.NumberOfCassetteSlots")
         else:
-            raise RuntimeError("Autoloader is not available")
+            raise RuntimeError(self._err_msg)
 
     def load_cartridge(self, slot):
         """ Loads the cartridge in the given slot into the microscope.
@@ -718,18 +650,18 @@ class Autoloader:
                 raise ValueError("Only %s slots are available" % total)
             if self.slot_status(slot) != CassetteSlotStatus.OCCUPIED.name:
                 raise RuntimeError("Slot %d is not occupied" % slot)
-            self._tem_autoloader.LoadCartridge(slot)
+            self._scope.exec("tem.AutoLoader.LoadCartridge()", slot)
         else:
-            raise RuntimeError("Autoloader is not available")
+            raise RuntimeError(self._err_msg)
 
     def unload_cartridge(self):
         """ Unloads the cartridge currently in the microscope and puts it back into its
         slot in the cassette.
         """
         if self.is_available:
-            self._tem_autoloader.UnloadCartridge()
+            self._scope.exec("tem.AutoLoader.UnloadCartridge()")
         else:
-            raise RuntimeError("Autoloader is not available")
+            raise RuntimeError(self._err_msg)
 
     def run_inventory(self):
         """ Performs an inventory of the cassette.
@@ -737,9 +669,9 @@ class Autoloader:
         """
         # TODO: check if cassette is present
         if self.is_available:
-            self._tem_autoloader.PerformCassetteInventory()
+            self._scope.exec("tem.AutoLoader.PerformCassetteInventory()")
         else:
-            raise RuntimeError("Autoloader is not available")
+            raise RuntimeError(self._err_msg)
 
     def slot_status(self, slot):
         """ The status of the slot specified.
@@ -751,64 +683,61 @@ class Autoloader:
             total = self.number_of_slots
             if slot > total:
                 raise ValueError("Only %s slots are available" % total)
-            status = self._tem_autoloader.SlotStatus(int(slot))
+            status = self._scope.exec("tem.AutoLoader.SlotStatus()", int(slot))
             return CassetteSlotStatus(status).name
         else:
-            raise RuntimeError("Autoloader is not available")
+            raise RuntimeError(self._err_msg)
 
     def undock_cassette(self):
         """ Moves the cassette from the docker to the capsule. """
-        if self._tem_autoloader_adv is not None:
+        if self._tem_autoloader_adv:
             if self.is_available:
-                self._tem_autoloader_adv.UndockCassette()
+                self._scope.exec("tem_adv.AutoLoader.UndockCassette()")
             else:
-                raise RuntimeError("Autoloader is not available")
+                raise RuntimeError(self._err_msg)
         else:
-            raise NotImplementedError("This function is not available "
-                                      "in your adv. scripting interface.")
+            raise NotImplementedError(ADV_SCR_ERR)
 
     def dock_cassette(self):
         """ Moves the cassette from the capsule to the docker. """
-        if self._tem_autoloader_adv is not None:
+        if self._tem_autoloader_adv:
             if self.is_available:
-                self._tem_autoloader_adv.DockCassette()
+                self._scope.exec("tem_adv.AutoLoader.DockCassette()")
             else:
-                raise RuntimeError("Autoloader is not available")
+                raise RuntimeError(self._err_msg)
         else:
-            raise NotImplementedError("This function is not available "
-                                      "in your adv. scripting interface.")
+            raise NotImplementedError(ADV_SCR_ERR)
 
     def initialize(self):
         """ Initializes / Recovers the Autoloader for further use. """
-        if self._tem_autoloader_adv is not None:
+        if self._tem_autoloader_adv:
             if self.is_available:
-                self._tem_autoloader_adv.Initialize()
+                self._scope.exec("tem_adv.AutoLoader.Initialize()")
             else:
-                raise RuntimeError("Autoloader is not available")
+                raise RuntimeError(self._err_msg)
         else:
-            raise NotImplementedError("This function is not available "
-                                      "in your adv. scripting interface.")
+            raise NotImplementedError(ADV_SCR_ERR)
 
     def buffer_cycle(self):
         """ Synchronously runs the Autoloader buffer cycle. """
-        if self._tem_autoloader_adv is not None:
+        if self._tem_autoloader_adv:
             if self.is_available:
-                self._tem_autoloader_adv.BufferCycle()
+                self._scope.exec("tem_adv.AutoLoader.BufferCycle()")
             else:
-                raise RuntimeError("Autoloader is not available")
+                raise RuntimeError(self._err_msg)
         else:
-            raise NotImplementedError("This function is not available "
-                                      "in your adv. scripting interface.")
+            raise NotImplementedError(ADV_SCR_ERR)
 
 
 class Stage:
     """ Stage functions. """
     def __init__(self, microscope):
-        self._tem_stage = microscope._tem.Stage
+        self._scope = microscope
+        self._err_msg = "Stage is not ready"
 
     def _from_dict(self, **values):
         axes = 0
-        position = self._tem_stage.Position
+        position = self._scope.get("tem.Stage.Position")
         for key, value in values.items():
             if key not in 'xyzab':
                 raise ValueError("Unexpected axis: %s" % key)
@@ -823,7 +752,7 @@ class Stage:
     def _change_position(self, direct=False, tries=5, **kwargs):
         attempt = 0
         while attempt < tries:
-            if self._tem_stage.Status != StageStatus.READY:
+            if self._scope.get("tem.Stage.Status") != StageStatus.READY:
                 logging.info("Stage is not ready, retrying...")
                 tries += 1
                 time.sleep(1)
@@ -856,31 +785,31 @@ class Stage:
 
                 new_pos, axes = self._from_dict(**new_pos)
                 if not direct:
-                    self._tem_stage.MoveTo(new_pos, axes)
+                    self._scope.exec("tem.Stage.MoveTo()", new_pos, axes)
                 else:
                     if speed is not None:
-                        self._tem_stage.GoToWithSpeed(new_pos, axes, speed)
+                        self._scope.exec("tem.Stage.GoToWithSpeed()", new_pos, axes, speed)
                     else:
-                        self._tem_stage.GoTo(new_pos, axes)
+                        self._scope.exec("tem.Stage.GoTo()", new_pos, axes)
 
                 break
         else:
-            raise RuntimeError("Stage is not ready.")
+            raise RuntimeError(self._err_msg)
 
     @property
     def status(self):
         """ The current state of the stage. """
-        return StageStatus(self._tem_stage.Status).name
+        return StageStatus(self._scope.get("tem.Stage.Status")).name
 
     @property
     def holder(self):
         """ The current specimen holder type. """
-        return StageHolderType(self._tem_stage.Holder).name
+        return StageHolderType(self._scope.get("tem.Stage.Holder")).name
 
     @property
     def position(self):
         """ The current position of the stage (x,y,z in um and a,b in degrees). """
-        pos = self._tem_stage.Position
+        pos = self._scope.get("tem.Stage.Position")
         result = {key.lower(): getattr(pos, key) * 1e6 for key in 'XYZ'}
 
         keys = 'AB' if self._beta_available() else 'A'
@@ -908,7 +837,7 @@ class Stage:
         """ Returns a dict with stage move limits. """
         result = dict()
         for axis in 'xyzab':
-            data = self._tem_stage.AxisData(StageAxes[axis.upper()])
+            data = self._scope.exec("tem.Stage.AxisData()", StageAxes[axis.upper()])
             result[axis] = {
                 'min': data.MinPos,
                 'max': data.MaxPos,
@@ -920,39 +849,40 @@ class Stage:
 class PiezoStage:
     """ Piezo stage functions. """
     def __init__(self, microscope):
+        self._scope = microscope
         try:
-            self._tem_pstage = microscope._tem_adv.PiezoStage
-            self.high_resolution = self._tem_pstage.HighResolution
+            self._tem_pstage = self._scope.has("tem_adv.PiezoStage")
+            _ = self._scope.has("tem_adv.PiezoStage.HighResolution")
         except:
             logging.info("PiezoStage interface is not available.")
 
     @property
     def position(self):
         """ The current position of the piezo stage (x,y,z in um). """
-        pos = self._tem_pstage.CurrentPosition
+        pos = self._scope.get("tem_adv.PiezoStage.CurrentPosition")
         return {key: getattr(pos, key.upper()) * 1e6 for key in 'xyz'}
 
     @property
     def position_range(self):
         """ Return min and max positions. """
-        return self._tem_pstage.GetPositionRange()
+        return self._scope.exec("tem_adv.PiezoStage.GetPositionRange()")
 
     @property
     def velocity(self):
         """ Returns a dict with stage velocities. """
-        pos = self._tem_pstage.CurrentJogVelocity
+        pos = self._scope.get("tem_adv.PiezoStage.CurrentJogVelocity")
         return {key: getattr(pos, key.upper()) for key in 'xyz'}
 
 
 class Vacuum:
     """ Vacuum functions. """
     def __init__(self, microscope):
-        self._tem_vacuum = microscope._tem.Vacuum
+        self._scope = microscope
 
     @property
     def status(self):
         """ Status of the vacuum system. """
-        return VacuumStatus(self._tem_vacuum.Status).name
+        return VacuumStatus(self._scope.get("tem.Vacuum.Status")).name
 
     @property
     def is_buffer_running(self):
@@ -960,12 +890,12 @@ class Vacuum:
         (consequences: vibrations, exposure function blocked
         or should not be called).
         """
-        return self._tem_vacuum.PVPRunning
+        return self._scope.get("tem.Vacuum.PVPRunning")
 
     @property
     def is_column_open(self):
         """ The status of the column valves. """
-        return self._tem_vacuum.ColumnValvesOpen
+        return self._scope.get("tem.Vacuum.ColumnValvesOpen")
 
     @property
     def gauges(self):
@@ -973,7 +903,7 @@ class Vacuum:
         Pressure values are in Pascals.
         """
         gauges = {}
-        for g in self._tem_vacuum.Gauges:
+        for g in self._scope.get("tem.Vacuum.Gauges"):
             # g.Read()
             if g.Status == GaugeStatus.UNDEFINED:
                 # set manually if undefined, otherwise fails
@@ -990,39 +920,33 @@ class Vacuum:
 
     def column_open(self):
         """ Open column valves. """
-        self._tem_vacuum.ColumnValvesOpen = True
+        self._scope.set("tem.Vacuum.ColumnValvesOpen", True)
 
     def column_close(self):
         """ Close column valves. """
-        self._tem_vacuum.ColumnValvesOpen = False
+        self._scope.set("tem.Vacuum.ColumnValvesOpen", False)
 
     def run_buffer_cycle(self):
         """ Runs a pumping cycle to empty the buffer. """
-        self._tem_vacuum.RunBufferCycle()
+        self._scope.exec("tem.Vacuum.RunBufferCycle()")
 
 
 class Optics:
     """ Projection, Illumination functions. """
     def __init__(self, microscope):
-        self._tem = microscope._tem
-        self._tem_adv = microscope._tem_adv
-        self._tem_cam = self._tem.Camera
-        self._tem_illumination = self._tem.Illumination
-        self._tem_projection = self._tem.Projection
-        self._tem_control = self._tem.InstrumentModeControl
-
-        self.illumination = Illumination(self._tem)
-        self.projection = Projection(self._tem_projection)
+        self._scope = microscope
+        self.illumination = Illumination(microscope)
+        self.projection = Projection(microscope)
 
     @property
     def screen_current(self):
         """ The current measured on the fluorescent screen (units: nanoAmperes). """
-        return self._tem_cam.ScreenCurrent * 1e9
+        return self._scope.get("tem.Camera.ScreenCurrent") * 1e9
 
     @property
     def is_beam_blanked(self):
         """ Status of the beam blanker. """
-        return self._tem_illumination.BeamBlanked
+        return self._scope.get("tem.Illumination.BeamBlanked")
 
     @property
     def is_shutter_override_on(self):
@@ -1031,7 +955,7 @@ class Optics:
         The microscope operator will be unable to have a beam come down and has
         no separate way of seeing that it is blocked by the closed microscope shutter.
         """
-        return self._tem.BlankerShutter.ShutterOverrideOn
+        return self._scope.get("tem.BlankerShutter.ShutterOverrideOn")
 
     @property
     def is_autonormalize_on(self):
@@ -1039,21 +963,21 @@ class Optics:
         the TEM microscope. Normally they are active, but for scripting it can be
         convenient to disable them temporarily.
         """
-        return self._tem.AutoNormalizeEnabled
+        return self._scope.get("tem.AutoNormalizeEnabled")
 
     def beam_blank(self):
         """ Activates the beam blanker. """
-        self._tem_illumination.BeamBlanked = True
+        self._scope.set("tem.Illumination.BeamBlanked", True)
         logging.warning("Falcon protector might delay blanker response")
 
     def beam_unblank(self):
         """ Deactivates the beam blanker. """
-        self._tem_illumination.BeamBlanked = False
+        self._scope.set("tem.Illumination.BeamBlanked", False)
         logging.warning("Falcon protector might delay blanker response")
 
     def normalize_all(self):
         """ Normalize all lenses. """
-        self._tem.NormalizeAll()
+        self._scope.exec("tem.NormalizeAll()")
 
     def normalize(self, mode):
         """ Normalize condenser or projection lens system.
@@ -1061,9 +985,9 @@ class Optics:
         :type mode: IntEnum
         """
         if mode in ProjectionNormalization:
-            self._tem_projection.Normalize(mode)
+            self._scope.exec("tem.Projection.Normalize()", mode)
         elif mode in IlluminationNormalization:
-            self._tem_illumination.Normalize(mode)
+            self._scope.exec("tem.Illumination.Normalize()", mode)
         else:
             raise ValueError("Unknown normalization mode: %s" % mode)
 
@@ -1071,129 +995,127 @@ class Optics:
 class Stem:
     """ STEM functions. """
     def __init__(self, microscope):
-        self._tem = microscope._tem
-        self._tem_illumination = self._tem.Illumination
-        self._tem_control = self._tem.InstrumentModeControl
+        self._scope = microscope
+        self._err_msg = "Microscope not in STEM mode"
 
     @property
     def is_available(self):
         """ Returns whether the microscope has a STEM system or not. """
-        return self._tem_control.StemAvailable
+        return self._scope.get("tem.InstrumentModeControl.StemAvailable")
 
     def enable(self):
         """ Switch to STEM mode."""
         if self.is_available:
-            self._tem_control.InstrumentMode = InstrumentMode.STEM
+            self._scope.set("tem.InstrumentModeControl.InstrumentMode", InstrumentMode.STEM)
         else:
-            raise RuntimeError("No STEM mode available")
+            raise RuntimeError(self._err_msg)
 
     def disable(self):
         """ Switch back to TEM mode. """
-        self._tem_control.InstrumentMode = InstrumentMode.TEM
+        self._scope.set("tem.InstrumentModeControl.InstrumentMode", InstrumentMode.TEM)
 
     @property
     def magnification(self):
         """ The magnification value in STEM mode. (read/write)"""
-        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            return self._tem_illumination.StemMagnification
+        if self._scope.get("tem.InstrumentModeControl.InstrumentMode") == InstrumentMode.STEM:
+            return self._scope.get("tem.Illumination.StemMagnification")
         else:
-            raise RuntimeError("Microscope not in STEM mode.")
+            raise RuntimeError(self._err_msg)
 
     @magnification.setter
     def magnification(self, mag):
-        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            self._tem_illumination.StemMagnification = float(mag)
+        if self._scope.get("tem.InstrumentModeControl.InstrumentMode") == InstrumentMode.STEM:
+            self._scope.set("tem.Illumination.StemMagnification", float(mag))
         else:
-            raise RuntimeError("Microscope not in STEM mode.")
+            raise RuntimeError(self._err_msg)
 
     @property
     def rotation(self):
         """ The STEM rotation angle (in mrad). (read/write)"""
-        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            return self._tem_illumination.StemRotation * 1e3
+        if self._scope.get("tem.InstrumentModeControl.InstrumentMode") == InstrumentMode.STEM:
+            return self._scope.get("tem.Illumination.StemRotation") * 1e3
         else:
-            raise RuntimeError("Microscope not in STEM mode.")
+            raise RuntimeError(self._err_msg)
 
     @rotation.setter
     def rotation(self, rot):
-        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            self._tem_illumination.StemRotation = float(rot) * 1e-3
+        if self._scope.get("tem.InstrumentModeControl.InstrumentMode") == InstrumentMode.STEM:
+            self._scope.set("tem.Illumination.StemRotation", float(rot) * 1e-3)
         else:
-            raise RuntimeError("Microscope not in STEM mode.")
+            raise RuntimeError(self._err_msg)
 
     @property
     def scan_field_of_view(self):
         """ STEM full scan field of view. (read/write)"""
-        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            return (self._tem_illumination.StemFullScanFieldOfView.X,
-                    self._tem_illumination.StemFullScanFieldOfView.Y)
+        if self._scope.get("tem.InstrumentModeControl.InstrumentMode") == InstrumentMode.STEM:
+            return (self._scope.get("tem.Illumination.StemFullScanFieldOfView.X"),
+                    self._scope.get("tem.Illumination.StemFullScanFieldOfView.Y"))
         else:
-            raise RuntimeError("Microscope not in STEM mode.")
+            raise RuntimeError(self._err_msg)
 
     @scan_field_of_view.setter
     def scan_field_of_view(self, values):
-        if self._tem_control.InstrumentMode == InstrumentMode.STEM:
-            Vector.set(self._tem_illumination, "StemFullScanFieldOfView", values)
+        if self._scope.get("tem.InstrumentModeControl.InstrumentMode") == InstrumentMode.STEM:
+            self._scope.set("tem.Illumination.StemFullScanFieldOfView", values, vector=True)
         else:
-            raise RuntimeError("Microscope not in STEM mode.")
+            raise RuntimeError(self._err_msg)
 
 
 class Illumination:
     """ Illumination functions. """
-    def __init__(self, tem):
-        self._tem = tem
-        self._tem_illumination = self._tem.Illumination
+    def __init__(self, microscope):
+        self._scope = microscope
 
     @property
     def spotsize(self):
         """ Spotsize number, usually 1 to 11. (read/write)"""
-        return self._tem_illumination.SpotsizeIndex
+        return self._scope.get("tem.Illumination.SpotsizeIndex")
 
     @spotsize.setter
     def spotsize(self, value):
         if not (1 <= int(value) <= 11):
             raise ValueError("%s is outside of range 1-11" % value)
-        self._tem_illumination.SpotsizeIndex = int(value)
+        self._scope.set("tem.Illumination.SpotsizeIndex", int(value))
 
     @property
     def intensity(self):
         """ Intensity / C2 condenser lens value. (read/write)"""
-        return self._tem_illumination.Intensity
+        return self._scope.get("tem.Illumination.Intensity")
 
     @intensity.setter
     def intensity(self, value):
         if not (0.0 <= value <= 1.0):
             raise ValueError("%s is outside of range 0.0-1.0" % value)
-        self._tem_illumination.Intensity = float(value)
+        self._scope.get("tem.Illumination.Intensity", float(value))
 
     @property
     def intensity_zoom(self):
         """ Intensity zoom. Set to False to disable. (read/write)"""
-        return self._tem_illumination.IntensityZoomEnabled
+        return self._scope.get("tem.Illumination.IntensityZoomEnabled")
 
     @intensity_zoom.setter
     def intensity_zoom(self, value):
-        self._tem_illumination.IntensityZoomEnabled = bool(value)
+        self._scope.set("tem.Illumination.IntensityZoomEnabled", bool(value))
 
     @property
     def intensity_limit(self):
         """ Intensity limit. Set to False to disable. (read/write)"""
-        return self._tem_illumination.IntensityLimitEnabled
+        return self._scope.get("tem.Illumination.IntensityLimitEnabled")
 
     @intensity_limit.setter
     def intensity_limit(self, value):
-        self._tem_illumination.IntensityLimitEnabled = bool(value)
+        self._scope.set("tem.Illumination.IntensityLimitEnabled", bool(value))
 
     @property
     def beam_shift(self):
         """ Beam shift X and Y in um. (read/write)"""
-        return (self._tem_illumination.Shift.X * 1e6,
-                self._tem_illumination.Shift.Y * 1e6)
+        return (self._scope.get("tem.Illumination.Shift.X") * 1e6,
+                self._scope.get("tem.Illumination.Shift.Y") * 1e6)
 
     @beam_shift.setter
     def beam_shift(self, value):
         new_value = (value[0] * 1e-6, value[1] * 1e-6)
-        Vector.set(self._tem_illumination, "Shift", new_value)
+        self._scope.set("tem.Illumination.Shift", new_value, vector=True)
 
     @property
     def rotation_center(self):
@@ -1201,51 +1123,51 @@ class Illumination:
             Depending on the scripting version,
             the values might need scaling by 6.0 to get mrads.
         """
-        return (self._tem_illumination.RotationCenter.X * 1e3,
-                self._tem_illumination.RotationCenter.Y * 1e3)
+        return (self._scope.get("tem.Illumination.RotationCenter.X") * 1e3,
+                self._scope.get("tem.Illumination.RotationCenter.Y") * 1e3)
 
     @rotation_center.setter
     def rotation_center(self, value):
         new_value = (value[0] * 1e-3, value[1] * 1e-3)
-        Vector.set(self._tem_illumination, "RotationCenter", new_value)
+        self._scope.set("tem.Illumination.RotationCenter", new_value, vector=True)
 
     @property
     def condenser_stigmator(self):
         """ C2 condenser stigmator X and Y. (read/write)"""
-        return (self._tem_illumination.CondenserStigmator.X,
-                self._tem_illumination.CondenserStigmator.Y)
+        return (self._scope.get("tem.Illumination.CondenserStigmator.X"),
+                self._scope.get("tem.Illumination.CondenserStigmator.Y"))
 
     @condenser_stigmator.setter
     def condenser_stigmator(self, value):
-        Vector.set(self._tem_illumination, "CondenserStigmator", value, range=(-1.0, 1.0))
+        self._scope.set("tem.Illumination.CondenserStigmator", value, vector=True, limits=(-1.0, 1.0))
 
     @property
     def illuminated_area(self):
         """ Illuminated area. Works only on 3-condenser lens systems. (read/write)"""
-        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
-            return self._tem_illumination.IlluminatedArea
+        if self._scope.get("tem.Configuration.CondenserLensSystem") == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            return self._scope.get("tem.Illumination.IlluminatedArea")
         else:
             raise NotImplementedError("Illuminated area exists only on 3-condenser lens systems.")
 
     @illuminated_area.setter
     def illuminated_area(self, value):
-        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
-            self._tem_illumination.IlluminatedArea = float(value)
+        if self._scope.get("tem.Configuration.CondenserLensSystem") == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            self._scope.set("tem.Illumination.IlluminatedArea", float(value))
         else:
             raise NotImplementedError("Illuminated area exists only on 3-condenser lens systems.")
 
     @property
     def probe_defocus(self):
         """ Probe defocus. Works only on 3-condenser lens systems. (read/write)"""
-        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
-            return self._tem_illumination.ProbeDefocus
+        if self._scope.get("tem.Configuration.CondenserLensSystem") == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            return self._scope.get("tem.Illumination.ProbeDefocus")
         else:
             raise NotImplementedError("Probe defocus exists only on 3-condenser lens systems.")
 
     @probe_defocus.setter
     def probe_defocus(self, value):
-        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
-            self._tem_illumination.ProbeDefocus = float(value)
+        if self._scope.get("tem.Configuration.CondenserLensSystem") == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            self._scope.set("tem.Illumination.ProbeDefocus", float(value))
         else:
             raise NotImplementedError("Probe defocus exists only on 3-condenser lens systems.")
 
@@ -1253,63 +1175,63 @@ class Illumination:
     @property
     def convergence_angle(self):
         """ Convergence angle. Works only on 3-condenser lens systems. (read/write)"""
-        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
-            return self._tem_illumination.ConvergenceAngle
+        if self._scope.get("tem.Configuration.CondenserLensSystem") == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            return self._scope.get("tem.Illumination.ConvergenceAngle")
         else:
             raise NotImplementedError("Convergence angle exists only on 3-condenser lens systems.")
 
     @convergence_angle.setter
     def convergence_angle(self, value):
-        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
-            self._tem_illumination.ConvergenceAngle = float(value)
+        if self._scope.get("tem.Configuration.CondenserLensSystem") == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            self._scope.set("tem.Illumination.ConvergenceAngle", float(value))
         else:
             raise NotImplementedError("Convergence angle exists only on 3-condenser lens systems.")
 
     @property
     def C3ImageDistanceParallelOffset(self):
         """ C3 image distance parallel offset. Works only on 3-condenser lens systems. (read/write)"""
-        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
-            return self._tem_illumination.C3ImageDistanceParallelOffset
+        if self._scope.get("tem.Configuration.CondenserLensSystem") == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            return self._scope.get("tem.Illumination.C3ImageDistanceParallelOffset")
         else:
             raise NotImplementedError("C3ImageDistanceParallelOffset exists only on 3-condenser lens systems.")
 
     @C3ImageDistanceParallelOffset.setter
     def C3ImageDistanceParallelOffset(self, value):
-        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
-            self._tem_illumination.C3ImageDistanceParallelOffset = float(value)
+        if self._scope.get("tem.Configuration.CondenserLensSystem") == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            self._scope.set("tem.Illumination.C3ImageDistanceParallelOffset", float(value))
         else:
             raise NotImplementedError("C3ImageDistanceParallelOffset exists only on 3-condenser lens systems.")
 
     @property
     def mode(self):
         """ Illumination mode: microprobe or nanoprobe. (read/write)"""
-        return IlluminationMode(self._tem_illumination.Mode).name
+        return IlluminationMode(self._scope.get("tem.Illumination.Mode")).name
 
     @mode.setter
     def mode(self, value):
-        self._tem_illumination.Mode = value
+        self._scope.set("tem.Illumination.Mode", value)
 
     @property
     def dark_field(self):
         """ Dark field mode: cartesian, conical or off. (read/write)"""
-        return DarkFieldMode(self._tem_illumination.DFMode).name
+        return DarkFieldMode(self._scope.get("tem.Illumination.DFMode")).name
 
     @dark_field.setter
     def dark_field(self, value):
-        self._tem_illumination.DFMode = value
+        self._scope.set("tem.Illumination.DFMode", value)
 
     @property
     def condenser_mode(self):
         """ Mode of the illumination system: parallel or probe. (read/write)"""
-        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
-            return CondenserMode(self._tem_illumination.CondenserMode).name
+        if self._scope.get("tem.Configuration.CondenserLensSystem") == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            return CondenserMode(self._scope.get("tem.Illumination.CondenserMode")).name
         else:
             raise NotImplementedError("Condenser mode exists only on 3-condenser lens systems.")
 
     @condenser_mode.setter
     def condenser_mode(self, value):
-        if self._tem.Configuration.CondenserLensSystem == CondenserLensSystem.THREE_CONDENSER_LENSES:
-            self._tem_illumination.CondenserMode = value
+        if self._scope.get("tem.Configuration.CondenserLensSystem") == CondenserLensSystem.THREE_CONDENSER_LENSES:
+            self._scope.set("tem.Illumination.CondenserMode", value)
         else:
             raise NotImplementedError("Condenser mode can be changed only on 3-condenser lens systems.")
 
@@ -1321,8 +1243,8 @@ class Illumination:
         tilt angles. The accuracy of the beam tilt physical units
         depends on a calibration of the tilt angles. (read/write)
         """
-        mode = self._tem_illumination.DFMode
-        tilt = self._tem_illumination.Tilt
+        mode = self._scope.get("tem.Illumination.DFMode")
+        tilt = self._scope.get("tem.Illumination.Tilt")
         if mode == DarkFieldMode.CONICAL:
             return tilt[0] * 1e3 * math.cos(tilt[1]), tilt[0] * 1e3 * math.sin(tilt[1])
         elif mode == DarkFieldMode.CARTESIAN:
@@ -1332,215 +1254,215 @@ class Illumination:
 
     @beam_tilt.setter
     def beam_tilt(self, tilt):
-        mode = self._tem_illumination.DFMode
+        mode = self._scope.get("tem.Illumination.DFMode")
         tilt[0] *= 1e-3
         tilt[1] *= 1e-3
         if tilt[0] == 0.0 and tilt[1] == 0.0:
-            self._tem_illumination.Tilt = 0.0, 0.0
-            self._tem_illumination.DFMode = DarkFieldMode.OFF
+            self._scope.set("tem.Illumination.Tilt", (0.0, 0.0))
+            self._scope.set("tem.Illumination.DFMode", DarkFieldMode.OFF)
         elif mode == DarkFieldMode.CONICAL:
-            self._tem_illumination.Tilt = math.sqrt(tilt[0] ** 2 + tilt[1] ** 2), math.atan2(tilt[1], tilt[0])
+            self._scope.set("tem.Illumination.Tilt", (math.sqrt(tilt[0] ** 2 + tilt[1] ** 2), math.atan2(tilt[1], tilt[0])))
         elif mode == DarkFieldMode.OFF:
-            self._tem_illumination.DFMode = DarkFieldMode.CARTESIAN
-            self._tem_illumination.Tilt = tilt
+            self._scope.set("tem.Illumination.DFMode", DarkFieldMode.CARTESIAN)
+            self._scope.set("tem.Illumination.Tilt", tilt)
         else:
-            self._tem_illumination.Tilt = tilt
+            self._scope.set("tem.Illumination.Tilt", tilt)
 
 
 class Projection:
     """ Projection system functions. """
-    def __init__(self, projection):
-        self._tem_projection = projection
+    def __init__(self, microscope):
+        self._scope = microscope
+        self._err_msg = "Microscope is not in diffraction mode"
         #self.magnification_index = self._tem_projection.MagnificationIndex
         #self.camera_length_index = self._tem_projection.CameraLengthIndex
 
     @property
     def focus(self):
         """ Absolute focus value. (read/write)"""
-        return self._tem_projection.Focus
+        return self._scope.get("tem.Projection.Focus")
 
     @focus.setter
     def focus(self, value):
         if not (-1.0 <= value <= 1.0):
             raise ValueError("%s is outside of range -1.0 to 1.0" % value)
 
-        self._tem_projection.Focus = float(value)
+        self._scope.set("tem.Projection.Focus", float(value))
 
     @property
     def magnification(self):
         """ The reference magnification value (screen up setting)."""
-        if self._tem_projection.Mode == ProjectionMode.IMAGING:
-            return self._tem_projection.Magnification
+        if self._scope.get("tem.Projection.Mode") == ProjectionMode.IMAGING:
+            return self._scope.get("tem.Projection.Magnification")
         else:
-            raise RuntimeError("Microscope is in diffraction mode.")
+            raise RuntimeError(self._err_msg)
 
     @property
     def camera_length(self):
         """ The reference camera length in m (screen up setting). """
-        if self._tem_projection.Mode == ProjectionMode.DIFFRACTION:
-            return self._tem_projection.CameraLength
+        if self._scope.get("tem.Projection.Mode") == ProjectionMode.DIFFRACTION:
+            return self._scope.get("tem.Projection.CameraLength")
         else:
-            raise RuntimeError("Microscope is not in diffraction mode.")
+            raise RuntimeError(self._err_msg)
 
     @property
     def image_shift(self):
         """ Image shift in um. (read/write)"""
-        return (self._tem_projection.ImageShift.X * 1e6,
-                self._tem_projection.ImageShift.Y * 1e6)
+        return (self._scope.get("tem.Projection.ImageShift.X") * 1e6,
+                self._scope.get("tem.Projection.ImageShift.Y") * 1e6)
 
     @image_shift.setter
     def image_shift(self, value):
         new_value = (value[0] * 1e-6, value[1] * 1e-6)
-        Vector.set(self._tem_projection, "ImageShift", new_value)
+        self._scope.set("tem.Projection.ImageShift", new_value, vector=True)
 
     @property
     def image_beam_shift(self):
         """ Image shift with beam shift compensation in um. (read/write)"""
-        return (self._tem_projection.ImageBeamShift.X * 1e6,
-                self._tem_projection.ImageBeamShift.Y * 1e6)
+        return (self._scope.get("tem.Projection.ImageBeamShift.X") * 1e6,
+                self._scope.get("tem.Projection.ImageBeamShift.Y") * 1e6)
 
     @image_beam_shift.setter
     def image_beam_shift(self, value):
         new_value = (value[0] * 1e-6, value[1] * 1e-6)
-        Vector.set(self._tem_projection, "ImageBeamShift", new_value)
+        self._scope.set("tem.Projection.ImageBeamShift", new_value, vector=True)
 
     @property
     def image_beam_tilt(self):
         """ Beam tilt with diffraction shift compensation in mrad. (read/write)"""
-        return (self._tem_projection.ImageBeamTilt.X * 1e3,
-                self._tem_projection.ImageBeamTilt.Y * 1e3)
+        return (self._scope.get("tem.Projection.ImageBeamTilt.X") * 1e3,
+                self._scope.get("tem.Projection.ImageBeamTilt.Y") * 1e3)
 
     @image_beam_tilt.setter
     def image_beam_tilt(self, value):
         new_value = (value[0] * 1e-3, value[1] * 1e-3)
-        Vector.set(self._tem_projection, "ImageBeamTilt", new_value)
+        self._scope.set("tem.Projection.ImageBeamTilt", new_value, vector=True)
 
     @property
     def diffraction_shift(self):
         """ Diffraction shift in mrad. (read/write)"""
         #TODO: 180/pi*value = approx number in TUI
-        return (self._tem_projection.DiffractionShift.X * 1e3,
-                self._tem_projection.DiffractionShift.Y * 1e3)
+        return (self._scope.get("tem.Projection.DiffractionShift.X") * 1e3,
+                self._scope.get("tem.Projection.DiffractionShift.Y") * 1e3)
 
     @diffraction_shift.setter
     def diffraction_shift(self, value):
         new_value = (value[0] * 1e-3, value[1] * 1e-3)
-        Vector.set(self._tem_projection, "DiffractionShift", new_value)
+        self._scope.set("tem.Projection.DiffractionShift", new_value, vector=True)
 
     @property
     def diffraction_stigmator(self):
         """ Diffraction stigmator. (read/write)"""
-        if self._tem_projection.Mode == ProjectionMode.DIFFRACTION:
-            return (self._tem_projection.DiffractionStigmator.X,
-                    self._tem_projection.DiffractionStigmator.Y)
+        if self._scope.get("tem.Projection.Mode") == ProjectionMode.DIFFRACTION:
+            return (self._scope.get("tem.Projection.DiffractionStigmator.X"),
+                    self._scope.get("tem.Projection.DiffractionStigmator.Y"))
         else:
-            raise RuntimeError("Microscope is not in diffraction mode.")
+            raise RuntimeError(self._err_msg)
 
     @diffraction_stigmator.setter
     def diffraction_stigmator(self, value):
-        if self._tem_projection.Mode == ProjectionMode.DIFFRACTION:
-            Vector.set(self._tem_projection, "DiffractionStigmator",
-                       value, range=(-1.0, 1.0))
+        if self._scope.get("tem.Projection.Mode") == ProjectionMode.DIFFRACTION:
+            self._scope.set("tem.Projection.DiffractionStigmator", value, 
+                           vector=True, limits=(-1.0, 1.0))
         else:
-            raise RuntimeError("Microscope is not in diffraction mode.")
+            raise RuntimeError(self._err_msg)
 
     @property
     def objective_stigmator(self):
         """ Objective stigmator. (read/write)"""
-        return (self._tem_projection.ObjectiveStigmator.X,
-                self._tem_projection.ObjectiveStigmator.Y)
+        return (self._scope.get("tem.Projection.ObjectiveStigmator.X"),
+                self._scope.get("tem.Projection.ObjectiveStigmator.Y"))
 
     @objective_stigmator.setter
     def objective_stigmator(self, value):
-        Vector.set(self._tem_projection, "ObjectiveStigmator",
-                   value, range=(-1.0, 1.0))
+        self._scope.set("tem.Projection.ObjectiveStigmator", value, 
+                       vector=True, limits=(-1.0, 1.0))
 
     @property
     def defocus(self):
         """ Defocus value in um. (read/write)"""
-        return self._tem_projection.Defocus * 1e6
+        return self._scope.get("tem.Projection.Defocus") * 1e6
 
     @defocus.setter
     def defocus(self, value):
-        self._tem_projection.Defocus = float(value) * 1e-6
+        self._scope.set("tem.Projection.Defocus", float(value) * 1e-6)
 
     @property
     def mode(self):
         """ Main mode of the projection system (either imaging or diffraction). (read/write)"""
-        return ProjectionMode(self._tem_projection.Mode).name
+        return ProjectionMode(self._scope.get("tem.Projection.Mode")).name
 
     @mode.setter
     def mode(self, mode):
-        self._tem_projection.Mode = mode
+        self._scope.set("tem.Projection.Mode", mode)
 
     @property
     def detector_shift(self):
         """ Detector shift. (read/write)"""
-        return ProjectionDetectorShift(self._tem_projection.DetectorShift).name
+        return ProjectionDetectorShift(self._scope.get("tem.Projection.DetectorShift")).name
 
     @detector_shift.setter
     def detector_shift(self, value):
-        self._tem_projection.DetectorShift = value
+        self._scope.set("tem.Projection.DetectorShift", value)
 
     @property
     def detector_shift_mode(self):
         """ Detector shift mode. (read/write)"""
-        return ProjDetectorShiftMode(self._tem_projection.DetectorShiftMode).name
+        return ProjDetectorShiftMode(self._scope.get("tem.Projection.DetectorShiftMode")).name
 
     @detector_shift_mode.setter
     def detector_shift_mode(self, value):
-        self._tem_projection.DetectorShiftMode = value
+        self._scope.set("tem.Projection.DetectorShiftMode", value)
 
     @property
     def magnification_range(self):
         """ Submode of the projection system (either LM, M, SA, MH, LAD or D).
         The imaging submode can change when the magnification is changed.
         """
-        return ProjectionSubMode(self._tem_projection.SubMode).name
+        return ProjectionSubMode(self._scope.get("tem.Projection.SubMode")).name
 
     @property
     def image_rotation(self):
         """ The rotation of the image or diffraction pattern on the
         fluorescent screen with respect to the specimen. Units: mrad.
         """
-        return self._tem_projection.ImageRotation * 1e3
+        return self._scope.get("tem.Projection.ImageRotation") * 1e3
 
     @property
     def is_eftem_on(self):
         """ Check if the EFTEM lens program setting is ON. """
-        return LensProg(self._tem_projection.LensProgram) == LensProg.EFTEM
+        return LensProg(self._scope.get("tem.Projection.LensProgram")) == LensProg.EFTEM
 
     def eftem_on(self):
         """ Switch on EFTEM. """
-        self._tem_projection.LensProgram = LensProg.EFTEM
+        self._scope.set("tem.Projection.LensProgram", LensProg.EFTEM)
 
     def eftem_off(self):
         """ Switch off EFTEM. """
-        self._tem_projection.LensProgram = LensProg.REGULAR
+        self._scope.set("tem.Projection.LensProgram", LensProg.REGULAR)
 
     def reset_defocus(self):
         """ Reset defocus value in the TEM user interface to zero.
         Does not change any lenses. """
-        self._tem_projection.ResetDefocus()
+        self._scope.exec("tem.Projection.ResetDefocus()")
 
 
 class Apertures:
     """ Apertures and VPP controls. """
     def __init__(self, microscope):
-        self._has_advanced = microscope._tem_adv is not None
-        if self._has_advanced:
-            self._tem_vpp = microscope._tem_adv.PhasePlate
-
+        self._scope = microscope
+        self._err_msg = "Apertures interface is not available. Requires a separate license"
+        self._err_msg_vpp = "Either no VPP found or it's not enabled and inserted"
         try:
-            self._tem_apertures = microscope._tem.ApertureMechanismCollection
+            self._tem_apertures = self._scope.get("tem.ApertureMechanismCollection")
         except:
             self._tem_apertures = None
-            logging.info("Apertures interface is not available. Requires a separate license")
+            logging.info(self._err_msg)
 
     def _find_aperture(self, name):
         """Find aperture object by name. """
         if self._tem_apertures is None:
-            raise NotImplementedError("Apertures interface is not available. Requires a separate license")
+            raise NotImplementedError(self._err_msg)
         for ap in self._tem_apertures:
             if MechanismId(ap.Id).name == name.upper():
                 return ap
@@ -1550,16 +1472,16 @@ class Apertures:
     def vpp_position(self):
         """ Returns the index of the current VPP preset position. """
         try:
-            return self._tem_vpp.GetCurrentPresetPosition + 1
+            return self._scope.get("tem_adv.PhasePlate.GetCurrentPresetPosition") + 1
         except:
-            raise RuntimeError("Either no VPP found or it's not enabled and inserted.")
+            raise RuntimeError(self._err_msg_vpp)
 
     def vpp_next_position(self):
         """ Goes to the next preset location on the VPP aperture. """
         try:
-            self._tem_vpp.SelectNextPresetPosition()
+            self._scope.exec("tem_adv.PhasePlate.SelectNextPresetPosition()")
         except:
-            raise RuntimeError("Either no VPP found or it's not enabled and inserted.")
+            raise RuntimeError(self._err_msg_vpp)
 
     def enable(self, aperture):
         ap = self._find_aperture(aperture)
@@ -1597,8 +1519,7 @@ class Apertures:
     def show_all(self):
         """ Returns a dict with apertures information. """
         if self._tem_apertures is None:
-            raise NotImplementedError("Apertures interface is not available. "
-                                      "Requires a separate license")
+            raise NotImplementedError(self._err_msg)
         result = {}
         for ap in self._tem_apertures:
             result[MechanismId(ap.Id).name] = {"retractable": ap.IsRetractable,
@@ -1611,58 +1532,62 @@ class Apertures:
 class Gun:
     """ Gun functions. """
     def __init__(self, microscope):
-        self._tem_gun = microscope._tem.Gun
-        self._tem_gun1 = None
-        self._tem_feg = None
+        self._scope = microscope
+        self._tem_gun1 = self._scope.has("tem.Gun1")
+        self._err_msg_gun1 = "Gun1 interface is not available"
+        self._err_msg_cfeg = "Source/C-FEG interface is not available"
 
-        if hasattr(microscope._tem, "Gun1"):
-            self._tem_gun1 = microscope._tem.Gun1
-        else:
-            logging.info("Gun1 interface is not available. Requires TEM Server 7.10+")
-
+        if not self._tem_gun1:
+            logging.info(self._err_msg_gun1 + ". Requires TEM Server 7.10+")
         try:
-            self._tem_feg = microscope._tem_adv.Source
-            _ = self._tem_feg.State
+            self._tem_feg = self._scope.has("tem_adv.Source")
+            _ = self._scope.get("tem_adv.Source.State")
         except:
-            logging.info("Source/C-FEG interface is not available.")
+            self._tem_feg = False
+            logging.info(self._err_msg_cfeg)
 
     @property
     def shift(self):
         """ Gun shift. (read/write)"""
-        return (self._tem_gun.Shift.X, self._tem_gun.Shift.Y)
+        return (self._scope.get("tem.Gun.Shift.X"),
+                self._scope.get("tem.Gun.Shift.Y"))
 
     @shift.setter
     def shift(self, value):
-        Vector.set(self._tem_gun, "Shift", value, range=(-1.0, 1.0))
+        self._scope.set("tem.Gun.Shift", value, vector=True, limits=(-1.0, 1.0))
 
     @property
     def tilt(self):
         """ Gun tilt. (read/write)"""
-        return (self._tem_gun.Tilt.X, self._tem_gun.Tilt.Y)
+        return (self._scope.get("tem.Gun.Tilt.X"),
+                self._scope.get("tem.Gun.Tilt.Y"))
 
     @tilt.setter
     def tilt(self, value):
-        Vector.set(self._tem_gun, "Tilt", value, range=(-1.0, 1.0))
+        self._scope.set("tem.Gun.Tilt", value, vector=True, limits=(-1.0, 1.0))
 
     @property
     def voltage_offset(self):
         """ High voltage offset. (read/write)"""
-        if self._tem_gun1 is None:
-            raise RuntimeError("Gun1 interface is not available.")
-        return self._tem_gun1.HighVoltageOffset
+        if self._tem_gun1:
+            return self._scope.get("tem.Gun1.HighVoltageOffset")
+        else:
+            raise NotImplementedError(self._err_msg_gun1)
 
     @voltage_offset.setter
     def voltage_offset(self, offset):
-        if self._tem_gun1 is None:
-            raise RuntimeError("Gun1 interface is not available.")
-        self._tem_gun1.HighVoltageOffset = offset
+        if self._tem_gun1:
+            self._scope.set("tem.Gun1.HighVoltageOffset", offset)
+        else:
+            raise NotImplementedError(self._err_msg_gun1)
 
     @property
     def feg_state(self):
         """ FEG emitter status. """
-        if self._tem_feg is None:
-            raise RuntimeError("Gun1 interface is not available.")
-        return FegState(self._tem_feg.State).name
+        if self._tem_feg:
+            return FegState(self._scope.get("tem_adv.Source.State")).name
+        else:
+            raise NotImplementedError(self._err_msg_cfeg)
 
     @property
     def ht_state(self):
@@ -1672,20 +1597,20 @@ class Gun:
         the high tension, this function cannot check if and
         when the set value is actually reached. (read/write)
         """
-        return HighTensionState(self._tem_gun.HTState).name
+        return HighTensionState(self._scope.get("tem.Gun.HTState")).name
 
     @ht_state.setter
     def ht_state(self, value):
-        self._tem_gun.State = value
+        self._scope.set("tem.Gun.HTState", value)
 
     @property
     def voltage(self):
         """ The value of the HT setting as displayed in the TEM user
         interface. Units: kVolts. (read/write)
         """
-        state = self._tem_gun.HTState
+        state = self._scope.get("tem.Gun.HTState")
         if state == HighTensionState.ON:
-            return self._tem_gun.HTValue * 1e-3
+            return self._scope.get("tem.Gun.HTValue") * 1e-3
         else:
             return 0.0
 
@@ -1694,9 +1619,9 @@ class Gun:
         voltage_max = self.voltage_max
         if not (0.0 <= value <= voltage_max):
             raise ValueError("%s is outside of range 0.0-%s" % (value, voltage_max))
-        self._tem_gun.HTValue = float(value) * 1000
+        self._scope.set("tem.Gun.HTValue", float(value) * 1000)
         while True:
-            if self._tem_gun.HTValue == float(value) * 1000:
+            if self._scope.get("tem.Gun.HTValue") == float(value) * 1000:
                 logging.info("Changing HT voltage complete.")
                 break
             else:
@@ -1705,36 +1630,41 @@ class Gun:
     @property
     def voltage_max(self):
         """ The maximum possible value of the HT on this microscope. Units: kVolts. """
-        return self._tem_gun.HTMaxValue * 1e-3
+        return self._scope.get("tem.Gun.HTMaxValue") * 1e-3
 
     @property
     def voltage_offset_range(self):
         """ Returns the high voltage offset range. """
-        if self._tem_gun1 is None:
-            raise RuntimeError("Gun1 interface is not available.")
-        return self._tem_gun1.GetHighVoltageOffsetRange()
+        if self._tem_gun1:
+            #TODO: this is a function?
+            return self._scope.exec("tem.Gun1.GetHighVoltageOffsetRange()")
+        else:
+            raise NotImplementedError(self._err_msg_gun1)
 
     @property
     def beam_current(self):
         """ Returns the C-FEG beam current in Amperes. """
-        if self._tem_feg is None:
-            raise RuntimeError("Source/C-FEG interface is not available.")
-        return self._tem_feg.BeamCurrent
+        if self._tem_feg:
+            return self._scope.get("tem_adv.Source.BeamCurrent")
+        else:
+            raise NotImplementedError(self._err_msg_cfeg)
 
     @property
     def extractor_voltage(self):
         """ Returns the extractor voltage. """
-        if self._tem_feg is None:
-            raise RuntimeError("Source/C-FEG interface is not available.")
-        return self._tem_feg.ExtractorVoltage
+        if self._tem_feg:
+            return self._scope.get("tem_adv.Source.ExtractorVoltage")
+        else:
+            raise NotImplementedError(self._err_msg_cfeg)
 
     @property
     def focus_index(self):
         """ Returns coarse and fine gun lens index. """
-        if self._tem_feg is None:
-            raise RuntimeError("Source/C-FEG interface is not available.")
-        focus_index = self._tem_feg.FocusIndex
-        return (focus_index.Coarse, focus_index.Fine)
+        if self._tem_feg:
+            return (self._scope.get("tem_adv.Source.FocusIndex.Coarse"),
+                    self._scope.get("tem_adv.Source.FocusIndex.Fine"))
+        else:
+            raise NotImplementedError(self._err_msg_cfeg)
 
     def do_flashing(self, flash_type):
         """ Perform cold FEG flashing.
@@ -1742,11 +1672,11 @@ class Gun:
         :param flash_type: FEG flashing type (FegFlashingType enum)
         :type flash_type: IntEnum
         """
-        if self._tem_feg is None:
-            raise RuntimeError("Source/C-FEG interface is not available.")
-        if self._tem_feg.Flashing.IsFlashingAdvised(flash_type):
+        if not self._tem_feg:
+            raise NotImplementedError(self._err_msg_cfeg)
+        if self._scope.exec("tem_adv.Source.Flashing.IsFlashingAdvised()", flash_type):
             # FIXME: lowT flashing can be done even if not advised
-            self._tem_feg.Flashing.PerformFlashing(flash_type)
+            self._scope.exec("tem_adv.Source.Flashing.PerformFlashing()", flash_type)
         else:
             raise Warning("Flashing type %s is not advised" % flash_type)
 
@@ -1754,16 +1684,18 @@ class Gun:
 class EnergyFilter:
     """ Energy filter controls. """
     def __init__(self, microscope):
-        if hasattr(microscope._tem_adv, "EnergyFilter"):
-            self._tem_ef = microscope._tem_adv.EnergyFilter
-        else:
-            logging.info("EnergyFilter interface is not available.")
+        self._scope = microscope
+        self._err_msg = "EnergyFilter interface is not available"
+        self._tem_ef = self._scope.has("tem_adv.EnergyFilter")
+        if not self._tem_ef:
+            logging.info(self._err_msg)
 
-    def _check_range(self, ev_range, value):
-        if not (ev_range.Begin <= value <= ev_range.End):
+    def _check_range(self, attrname, value):
+        vmin = self._scope.get(attrname + ".Begin")
+        vmax = self._scope.get(attrname + ".End")
+        if not (vmin <= value <= vmax):
             raise ValueError("Value is outside of allowed "
-                             "range: %0.0f - %0.0f" % (ev_range.Begin,
-                                                       ev_range.End))
+                             "range: %0.3f - %0.3f" % (vmin, vmax))
 
     def insert_slit(self, width):
         """ Insert energy slit.
@@ -1771,95 +1703,111 @@ class EnergyFilter:
         :param width: Slit width in eV
         :type width: float
         """
-        self._check_range(self._tem_ef.Slit.WidthRange, width)
-        self._tem_ef.Slit.Width = width
-        if not self._tem_ef.Slit.IsInserted:
-            self._tem_ef.Slit.Insert()
+        if not self._tem_ef:
+            raise NotImplementedError(self._err_msg)
+        self._check_range("tem_adv.EnergyFilter.Slit.WidthRange", width)
+        self._scope.set("tem_adv.EnergyFilter.Slit.Width", width)
+        if not self._scope.get("tem_adv.EnergyFilter.Slit.IsInserted"):
+            self._scope.exec("tem_adv.EnergyFilter.Slit.Insert()")
 
     def retract_slit(self):
         """ Retract energy slit. """
-        self._tem_ef.Slit.Retract()
+        if not self._tem_ef:
+            raise NotImplementedError(self._err_msg)
+        self._scope.exec("tem_adv.EnergyFilter.Slit.Retract()")
 
     @property
     def slit_width(self):
         """ Returns energy slit width in eV. """
-        return self._tem_ef.Slit.Width
+        if not self._tem_ef:
+            raise NotImplementedError(self._err_msg)
+        return self._scope.get("tem_adv.EnergyFilter.Slit.Width")
 
     @slit_width.setter
     def slit_width(self, value):
-        self._check_range(self._tem_ef.Slit.WidthRange, value)
-        self._tem_ef.Slit.Width = value
+        if not self._tem_ef:
+            raise NotImplementedError(self._err_msg)
+        self._check_range("tem_adv.EnergyFilter.Slit.WidthRange", value)
+        self._scope.set("tem_adv.EnergyFilter.Slit.Width", value)
 
     @property
     def ht_shift(self):
         """ Returns High Tension energy shift in eV. """
-        return self._tem_ef.HighTensionEnergyShift.EnergyShift
+        if not self._tem_ef:
+            raise NotImplementedError(self._err_msg)
+        return self._scope.get("tem_adv.EnergyFilter.HighTensionEnergyShift.EnergyShift")
 
     @ht_shift.setter
     def ht_shift(self, value):
-        self._check_range(self._tem_ef.HighTensionEnergyShift.EnergyShiftRange, value)
-        self._tem_ef.HighTensionEnergyShift.EnergyShift = value
+        if not self._tem_ef:
+            raise NotImplementedError(self._err_msg)
+        self._check_range("tem_adv.EnergyFilter.HighTensionEnergyShift.EnergyShiftRange", value)
+        self._scope.set("tem_adv.EnergyFilter.HighTensionEnergyShift.EnergyShift", value)
 
     @property
     def zlp_shift(self):
+        if not self._tem_ef:
+            raise NotImplementedError(self._err_msg)
         """ Returns Zero-Loss Peak (ZLP) energy shift in eV. """
-        return self._tem_ef.ZeroLossPeakAdjustment.EnergyShift
+        return self._scope.get("tem_adv.EnergyFilter.ZeroLossPeakAdjustment.EnergyShift")
 
     @zlp_shift.setter
     def zlp_shift(self, value):
-        self._check_range(self._tem_ef.ZeroLossPeakAdjustment.EnergyShiftRange, value)
-        self._tem_ef.ZeroLossPeakAdjustment.EnergyShift = value
+        if not self._tem_ef:
+            raise NotImplementedError(self._err_msg)
+        self._check_range("tem_adv.EnergyFilter.ZeroLossPeakAdjustment.EnergyShiftRange", value)
+        self._scope.set("tem_adv.EnergyFilter.ZeroLossPeakAdjustment.EnergyShift", value)
 
 
 class LowDose:
     """ Low Dose functions. """
     def __init__(self, microscope):
-        if microscope._lowdose is not None:
-            self._tem_ld = microscope._lowdose
-        else:
-            logging.info("LowDose server is not available.")
+        self._scope = microscope
+        self._err_msg = "Low Dose is not available"
+        if not self._scope.has("tem_lowdose"):
+            logging.info(self._err_msg)
 
     @property
     def is_available(self):
         """ Return True if Low Dose is available. """
-        return self._tem_ld.LowDoseAvailable and self._tem_ld.IsInitialized
+        return self._scope.get("tem_lowdose.LowDoseAvailable") and self._scope.get("tem_lowdose.IsInitialized")
 
     @property
     def is_active(self):
         """ Check if the Low Dose is ON. """
         if self.is_available:
-            return LDStatus(self._tem_ld.LowDoseActive) == LDStatus.IS_ON
+            return LDStatus(self._scope.get("tem_lowdose.LowDoseActive")) == LDStatus.IS_ON
         else:
-            raise RuntimeError("Low Dose is not available")
+            raise RuntimeError(self._err_msg)
 
     @property
     def state(self):
         """ Low Dose state (LDState enum). (read/write) """
         if self.is_available and self.is_active:
-            return LDState(self._tem_ld.LowDoseState).name
+            return LDState(self._scope.get("tem_lowdose.LowDoseState")).name
         else:
-            raise RuntimeError("Low Dose is not available")
+            raise RuntimeError(self._err_msg)
 
     @state.setter
     def state(self, state):
         if self.is_available:
-            self._tem_ld.LowDoseState = state
+            self._scope.set("tem_lowdose.LowDoseState", state)
         else:
-            raise RuntimeError("Low Dose is not available")
+            raise RuntimeError(self._err_msg)
 
     def on(self):
         """ Switch ON Low Dose."""
         if self.is_available:
-            self._tem_ld.LowDoseActive = LDStatus.IS_ON
+            self._scope.set("tem_lowdose.LowDoseActive", LDStatus.IS_ON)
         else:
-            raise RuntimeError("Low Dose is not available")
+            raise RuntimeError(self._err_msg)
 
     def off(self):
         """ Switch OFF Low Dose."""
         if self.is_available:
-            self._tem_ld.LowDoseActive = LDStatus.IS_OFF
+            self._scope.set("tem_lowdose.LowDoseActive", LDStatus.IS_OFF)
         else:
-            raise RuntimeError("Low Dose is not available")
+            raise RuntimeError(self._err_msg)
 
 
 class Image(BaseImage):
