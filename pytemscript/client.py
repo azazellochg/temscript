@@ -41,24 +41,24 @@ class Microscope:
                 from .plugins.serialem_ccd_plugin import SerialEMCCDPlugin
                 self._sem_ccd_plugin = SerialEMCCDPlugin(self._scope)
 
-        #self.acquisition = Acquisition(self._scope)
-        #self.detectors = Detectors(self._scope)
-        self.gun = Gun(self._scope)
-        self.optics = Optics(self._scope)
-        self.stem = Stem(self._scope)
-        self.temperature = Temperature(self._scope)
-        self.vacuum = Vacuum(self._scope)
-        self.autoloader = Autoloader(self._scope)
-        self.stage = Stage(self._scope)
-        self.piezo_stage = PiezoStage(self._scope)
-        #self.apertures = Apertures(self._scope)
+        #self.acquisition = Acquisition(self)
+        #self.detectors = Detectors(self)
+        self.gun = Gun(self)
+        self.optics = Optics(self)
+        self.stem = Stem(self)
+        self.temperature = Temperature(self)
+        self.vacuum = Vacuum(self)
+        self.autoloader = Autoloader(self)
+        self.stage = Stage(self)
+        self.piezo_stage = PiezoStage(self)
+        self.apertures = Apertures(self)
 
         if self._scope.tem_adv is not None:
-            self.user_door = UserDoor(self._scope)
-            self.energy_filter = EnergyFilter(self._scope)
+            self.user_door = UserDoor(self)
+            self.energy_filter = EnergyFilter(self)
 
         if useLD:
-            self.lowdose = LowDose(self._scope)
+            self.lowdose = LowDose(self)
 
     def get(self, attrname):
         return rgetattr(self._scope, attrname)

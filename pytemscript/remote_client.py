@@ -1,3 +1,4 @@
+import logging
 import socket
 import json
 from http.client import HTTPConnection
@@ -23,12 +24,19 @@ class RemoteMicroscope:
         self._timeout = timeout
         self._conn = None
 
+        logging.basicConfig(level=logging.INFO,
+                            datefmt='%d/%b/%Y %H:%M:%S',
+                            format='[%(asctime)s] %(message)s',
+                            handlers=[
+                                logging.FileHandler("remote_microscope.log", "w", "utf-8"),
+                                logging.StreamHandler()])
+
         self._conn = HTTPConnection(self._host, self._port, timeout=self._timeout)
 
-        self._has_tem_adv = self.has("tem_adv")
-        self._useLD = self.has("tem_lowdose")
-        #self._useTecnaiCCD = self.has("_tecnai_ccd")
-        #self._useSEMCCD = self.has("_sem_ccd")
+        self._has_tem_adv = self.get("tem_adv", check_none=True)
+        self._useLD = self.get("tem_lowdose", check_none=True)
+        self._useTecnaiCCD = self.get("tecnai_ccd", check_none=True)
+        self._useSEMCCD = self.get("sem_ccd", check_none=True)
 
         #self.acquisition = Acquisition(self)
         #self.detectors = Detectors(self)
@@ -40,14 +48,15 @@ class RemoteMicroscope:
         self.autoloader = Autoloader(self)
         self.stage = Stage(self)
         self.piezo_stage = PiezoStage(self)
-        #self.apertures = Apertures(self)
+        self.apertures = Apertures(self)
 
         if self._has_tem_adv:
             self.user_door = UserDoor(self)
             self.energy_filter = EnergyFilter(self)
 
         if self._useLD:
-            self.lowdose = LowDose(self)
+            # skip_check because we already checked tem_lowdose attr
+            self.lowdose = LowDose(self, skip_check=True)
 
     def _request(self, method, endpoint, body=None):
         """
@@ -101,8 +110,11 @@ class RemoteMicroscope:
 
         return body
 
-    def get(self, attrname):
-        return self._request("GET", "/get/" + attrname)
+    def get(self, attrname, check_none=False):
+        if check_none:
+            return self._request("GET", "/get_bool/" + attrname)
+        else:
+            return self._request("GET", "/get/" + attrname)
 
     def exec(self, attrname, *args, **kwargs):
         if args is not None:

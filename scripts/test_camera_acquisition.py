@@ -3,7 +3,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-from pytemscript.microscope import Microscope
+from pytemscript.client import Microscope
 from pytemscript.utils.enums import *
 
 

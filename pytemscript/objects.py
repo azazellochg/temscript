@@ -1086,7 +1086,7 @@ class Illumination:
     def intensity(self, value):
         if not (0.0 <= value <= 1.0):
             raise ValueError("%s is outside of range 0.0-1.0" % value)
-        self._scope.get("tem.Illumination.Intensity", float(value))
+        self._scope.set("tem.Illumination.Intensity", float(value))
 
     @property
     def intensity_zoom(self):
@@ -1761,10 +1761,10 @@ class EnergyFilter:
 
 class LowDose:
     """ Low Dose functions. """
-    def __init__(self, microscope):
+    def __init__(self, microscope, skip_check=False):
         self._scope = microscope
         self._err_msg = "Low Dose is not available"
-        if not self._scope.has("tem_lowdose"):
+        if not skip_check and not self._scope.has("tem_lowdose"):
             logging.info(self._err_msg)
 
     @property

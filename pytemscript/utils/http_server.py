@@ -45,17 +45,22 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
         response = None
         microscope = self.get_microscope()
 
-        logging.debug("Received url=%s" % url)
-        logging.debug("      params=%s" % body)
+        # FIXME: change level to debug
+        logging.info("RECV    url=%s" % url)
+        if body is not None:
+            logging.info("RECV params=%s" % body)
 
         if url.startswith("/get/"):
-            response = rgetattr(microscope, url.lstrip("/get/"))
+            response = rgetattr(microscope, url.split("/")[-1])
+        elif url.startswith("/get_bool/"):
+            result = rgetattr(microscope, url.split("/")[-1])
+            response = True if result is not None else False
         elif url.startswith("/exec/"):
-            response = rexecattr(microscope, url.lstrip("/exec/").rstrip("()"), body)
+            response = rexecattr(microscope, url.split("/")[-1].rstrip("()"), body)
         elif url.startswith("/has/"):
-            response = rhasattr(microscope, url.lstrip("/has/"))
+            response = rhasattr(microscope, url.split("/")[-1])
         elif url.startswith("/set/"):
-            url = url.lstrip("/set/")
+            url = url.split("/")[-1]
             value = body["value"]
 
             if "vector" in body:
@@ -78,6 +83,9 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
 
         else:
             raise ValueError("Invalid URL")
+
+        # FIXME: change level to debug
+        logging.info("REPLY      =%s" % response)
 
         return response
 
@@ -120,6 +128,14 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
 class MicroscopeServer(HTTPServer, object):
     def __init__(self, server_address=('', 8080), useLD=True,
                  useTecnaiCCD=False, useSEMCCD=False):
+
+        logging.basicConfig(level=logging.INFO,
+                            datefmt='%d/%b/%Y %H:%M:%S',
+                            format='[%(asctime)s] %(message)s',
+                            handlers=[
+                                logging.FileHandler("server.log", "w", "utf-8"),
+                                logging.StreamHandler()])
+
         from ..base_microscope import BaseMicroscope
         self.microscope = BaseMicroscope(useLD, useTecnaiCCD, useSEMCCD)
         super().__init__(server_address, MicroscopeHandler)

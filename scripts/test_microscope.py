@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import argparse
 from time import sleep
-from pytemscript.microscope import Microscope
+from pytemscript.client import Microscope
+from pytemscript.remote_client import RemoteMicroscope
 from pytemscript.utils.enums import *
 
 
@@ -38,7 +40,7 @@ def test_projection(microscope, has_eftem=False):
     print("\tImageBeamTilt:", projection.image_beam_tilt)
     print("\tLensProgram:", projection.is_eftem_on)
 
-    projection.reset_defocus()
+    projection.reset_defocus()  # TODO: not working remotely? check exec!
 
     if has_eftem:
         print("\tToggling EFTEM mode...")
@@ -193,8 +195,8 @@ def test_illumination(microscope):
     print("\tSpotsizeIndex:", illum.spotsize)
 
     orig_spot = illum.spotsize
-    illum.spotsize = 4
-    assert illum.spotsize == 4
+    illum.spotsize = 5
+    assert illum.spotsize == 5
     illum.spotsize = orig_spot
 
     print("\tIntensity:", illum.intensity)
@@ -212,10 +214,10 @@ def test_illumination(microscope):
     assert illum.beam_shift == (0.5, 0.5)
     illum.beam_shift = 0, 0
 
-    print("\tTilt:", illum.beam_tilt)
+    #print("\tTilt:", illum.beam_tilt)
     print("\tRotationCenter:", illum.rotation_center)
     print("\tCondenserStigmator:", illum.condenser_stigmator)
-    print("\tDFMode:", illum.dark_field)
+    #print("\tDFMode:", illum.dark_field)
 
     if microscope.condenser_system == CondenserLensSystem.THREE_CONDENSER_LENSES:
         print("\tCondenserMode:", illum.condenser_mode)
@@ -285,7 +287,7 @@ def test_general(microscope, check_door=False):
     print("Testing configuration...")
 
     print("\tConfiguration.ProductFamily:", microscope.family)
-    print("\tUserButtons:", microscope.user_buttons)
+    #print("\tUserButtons:", microscope.user_buttons)
     print("\tBlankerShutter.ShutterOverrideOn:",
           microscope.optics.is_shutter_override_on)
     print("\tCondenser system:", microscope.condenser_system)
@@ -301,13 +303,33 @@ def test_general(microscope, check_door=False):
         microscope.user_door.close()
 
 
-if __name__ == '__main__':
-    print("Starting microscope tests...")
+def main(argv=None):
+    microscope = None
+    parser = argparse.ArgumentParser(
+        description="This test can use local or remote client. In the latter case "
+                    "pytemscript-server must be already running",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-p", "--port", type=int, default=8080,
+                        help="Specify port on which the server is listening")
+    parser.add_argument("--host", type=str, default='',
+                        help="Specify host address on which the server is listening")
+    args = parser.parse_args(argv)
+
+    if args.host == '':
+        mode = "local"
+        microscope = Microscope()
+    else:
+        mode = "remote"
+        microscope = RemoteMicroscope(host=args.host, port=args.port)
+
+    if microscope is None:
+        raise RuntimeError("Could not create microscope client")
+
+    print("Starting %s microscope tests..." % mode)
 
     full_test = False
-    microscope = Microscope()
     test_projection(microscope, has_eftem=False)
-    test_detectors(microscope)
+    #test_detectors(microscope)
     test_vacuum(microscope, buffer_cycle=full_test)
     test_autoloader(microscope, check_loading=full_test, slot=1)
     test_temperature(microscope, force_refill=full_test)
@@ -321,6 +343,10 @@ if __name__ == '__main__':
         test_acquisition(microscope)
         test_stem(microscope)
         test_apertures(microscope, hasLicense=False)
+
+
+if __name__ == '__main__':
+    main()
 
 
 """
