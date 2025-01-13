@@ -11,10 +11,8 @@ class Microscope:
     :type useLD: bool
     :param useTecnaiCCD: Connect to TecnaiCCD plugin on microscope PC that controls Digital Micrograph (may be faster than via TIA / std scripting)
     :type useTecnaiCCD: bool
-    :param useSEMCCD: Connect to SerialEMCCD plugin on Gatan PC that controls Digital Micrograph (may be faster than via TIA / std scripting)
-    :type useSEMCCD: bool
     """
-    def __init__(self, useLD=True, useTecnaiCCD=False, useSEMCCD=False):
+    def __init__(self, useLD=False, useTecnaiCCD=False):
         logging.basicConfig(level=logging.INFO,
                             datefmt='%d/%b/%Y %H:%M:%S',
                             format='[%(asctime)s] %(message)s',
@@ -23,7 +21,7 @@ class Microscope:
                                 logging.StreamHandler()])
 
         # Create all COM interfaces
-        self._scope = BaseMicroscope(useLD, useTecnaiCCD, useSEMCCD)
+        self._scope = BaseMicroscope(useLD, useTecnaiCCD)
 
         if useTecnaiCCD:
             if self._scope.tecnai_ccd is None:
@@ -32,14 +30,6 @@ class Microscope:
             else:
                 from .plugins.tecnai_ccd_plugin import TecnaiCCDPlugin
                 self._scope.tecnai_ccd_plugin = TecnaiCCDPlugin(self._scope)
-
-        if useSEMCCD:
-            if self._scope.sem_ccd is None:
-                raise RuntimeError("Could not use SerialEM CCD plugin, "
-                                   "please set useSEMCCD=False")
-            else:
-                from .plugins.serialem_ccd_plugin import SerialEMCCDPlugin
-                self._sem_ccd_plugin = SerialEMCCDPlugin(self._scope)
 
         #self.acquisition = Acquisition(self)
         #self.detectors = Detectors(self)

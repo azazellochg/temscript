@@ -1,2 +1,1 @@
-from pytemscript.client import Microscope
-from pytemscript.remote_client import RemoteMicroscope
+__version__ = '3.0a7'

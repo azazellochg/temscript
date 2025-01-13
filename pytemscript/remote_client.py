@@ -36,7 +36,6 @@ class RemoteMicroscope:
         self._has_tem_adv = self.get("tem_adv", check_none=True)
         self._useLD = self.get("tem_lowdose", check_none=True)
         self._useTecnaiCCD = self.get("tecnai_ccd", check_none=True)
-        self._useSEMCCD = self.get("sem_ccd", check_none=True)
 
         #self.acquisition = Acquisition(self)
         #self.detectors = Detectors(self)

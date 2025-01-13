@@ -127,7 +127,7 @@ class MicroscopeHandler(BaseHTTPRequestHandler):
 
 class MicroscopeServer(HTTPServer, object):
     def __init__(self, server_address=('', 8080), useLD=True,
-                 useTecnaiCCD=False, useSEMCCD=False):
+                 useTecnaiCCD=False):
 
         logging.basicConfig(level=logging.INFO,
                             datefmt='%d/%b/%Y %H:%M:%S',
@@ -137,7 +137,7 @@ class MicroscopeServer(HTTPServer, object):
                                 logging.StreamHandler()])
 
         from ..base_microscope import BaseMicroscope
-        self.microscope = BaseMicroscope(useLD, useTecnaiCCD, useSEMCCD)
+        self.microscope = BaseMicroscope(useLD, useTecnaiCCD)
         super().__init__(server_address, MicroscopeHandler)
 
 
@@ -156,10 +156,6 @@ def main(argv=None):
                         default=False, action='store_true',
                         help="Connect to TecnaiCCD plugin on microscope PC that controls "
                              "Digital Micrograph (may be faster than via TIA / std scripting)")
-    parser.add_argument("--useSEMCCD", dest="useSEMCCD",
-                        default=False, action='store_true',
-                        help="Connect to SerialEMCCD plugin on Gatan PC that controls "
-                             "Digital Micrograph (may be faster than via TIA / std scripting)")
     args = parser.parse_args(argv)
 
     if platform.system() != "Windows":
@@ -168,8 +164,7 @@ def main(argv=None):
     # Create a web server and define the handler to manage the incoming request
     server = MicroscopeServer((args.host, args.port),
                               useLD=args.useLD,
-                              useTecnaiCCD=args.useTecnaiCCD,
-                              useSEMCCD=args.useSEMCCD)
+                              useTecnaiCCD=args.useTecnaiCCD)
     try:
         logging.info("Started httpserver on host '%s' port %d." % (args.host, args.port))
         logging.info("Press Ctrl+C to stop server.")

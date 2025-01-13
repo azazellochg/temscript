@@ -9,7 +9,7 @@ from .utils.enums import TEMScriptingError
 
 class BaseMicroscope:
     """ Base class that handles COM interface connections. """
-    def __init__(self, useLD=True, useTecnaiCCD=False, useSEMCCD=False):
+    def __init__(self, useLD=False, useTecnaiCCD=False):
         self.tem = None
         self.tem_adv = None
         self.tem_lowdose = None
@@ -17,7 +17,7 @@ class BaseMicroscope:
         self.sem_ccd = None
 
         if platform.system() == "Windows":
-            self._initialize(useLD, useTecnaiCCD, useSEMCCD)
+            self._initialize(useLD, useTecnaiCCD)
             atexit.register(self._close)
         else:
             raise NotImplementedError("Running locally is only supported for Windows platform")
@@ -33,7 +33,7 @@ class BaseMicroscope:
             logging.info("Could not connect to %s" % progId)
             return None
 
-    def _initialize(self, useLD, useTecnaiCCD, useSEMCCD):
+    def _initialize(self, useLD, useTecnaiCCD):
         """ Wrapper to create interfaces as requested. """
         import comtypes
         try:
@@ -54,9 +54,6 @@ class BaseMicroscope:
             if self.tecnai_ccd is None:
                 self.tecnai_ccd = self._createCOMObject(SCRIPTING_TECNAI_CCD2)
             import comtypes.gen.TECNAICCDLib
-        if useSEMCCD:
-            from .utils.gatan_socket import SocketFuncs
-            self.sem_ccd = SocketFuncs()
 
     @staticmethod
     def handle_com_error(com_error):

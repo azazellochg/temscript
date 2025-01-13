@@ -115,7 +115,7 @@ Execute this on the microscope PC (with ``pytemscript`` package installed) to cr
 
 .. code-block:: python
 
-    from pytemscript.microscope import Microscope
+    from pytemscript.client import Microscope
     microscope = Microscope()
 
 Show the current acceleration voltage:

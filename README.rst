@@ -49,7 +49,7 @@ Offline-Installation from wheels file on Windows
 
 This assumes you have downloaded the wheels file <downloaded-wheels-file>.whl for temscript and comtypes into the current folder.
 
-Execute from the command line (assuming you have your Python interpreter in the path:
+Execute from the command line (assuming you have your Python interpreter in the path):
 
 .. code-block:: python
 
@@ -101,7 +101,7 @@ Disclaimer
 Copyright (c) 2012-2021 by Tore Niermann
 Contact: tore.niermann (at) tu-berlin.de
 
-Copyleft 2022-2023 by Grigory Sharov
+Copyright (c) 2022-2025 by Grigory Sharov
 Contact: gsharov (at) mrc-lmb.cam.ac.uk
 
 All product and company names are trademarks or registered trademarks
