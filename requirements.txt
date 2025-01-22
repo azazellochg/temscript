@@ -1,0 +1,3 @@
+comtypes; platform_system == 'Windows'
+mrcfile
+numpy

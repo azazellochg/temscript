@@ -10,6 +10,10 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, "README.rst"), "r", encoding="utf-8") as fp:
     long_description = fp.read()
 
+# Load requirements.txt
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
+
 setup(name='pytemscript',
       version=__version__,
       description='TEM Scripting adapter for FEI/TFS microscopes',
@@ -33,13 +37,9 @@ setup(name='pytemscript',
           'Operating System :: OS Independent'
       ],
       keywords='TEM python',
-      install_requires=[
-          "comtypes;platform_system=='Windows'",
-          "mrcfile",
-          "numpy"
-      ],
+      install_requires=[requirements],
       extras_require={
-          "dev": ["Sphinx>7.0", "sphinx_rtd_theme", "matplotlib"]
+          "extra": ["matplotlib"]
       },
       #entry_points={'console_scripts': ['pytemscript-server = pytemscript.utils.http_server:main']},
       url="https://github.com/azazellochg/pytemscript",
