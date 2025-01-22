@@ -28,7 +28,6 @@ The documentation can be found at https://pytemscript.readthedocs.io
    about
    microscope
    enumerations
-   restrictions
    changelog
 
 Installation
@@ -115,7 +114,7 @@ Execute this on the microscope PC (with ``pytemscript`` package installed) to cr
 
 .. code-block:: python
 
-    from pytemscript.client import Microscope
+    from pytemscript.microscope import Microscope
     microscope = Microscope()
 
 Show the current acceleration voltage:
@@ -151,7 +150,7 @@ Disclaimer
 Copyright (c) 2012-2021 by Tore Niermann
 Contact: tore.niermann (at) tu-berlin.de
 
-Copyleft 2022-2023 by Grigory Sharov
+Copyright (c) 2022-2025 by Grigory Sharov
 Contact: gsharov (at) mrc-lmb.cam.ac.uk
 
 All product and company names are trademarks or registered trademarks
@@ -173,4 +172,3 @@ Indices and tables
 
 * :ref:`genindex`
 * :ref:`modindex`
-

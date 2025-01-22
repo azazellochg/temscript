@@ -3,8 +3,8 @@ import platform
 import sys
 import atexit
 
-from .utils.constants import *
-from .utils.enums import TEMScriptingError
+from utils.constants import *
+from utils.enums import TEMScriptingError
 
 
 class BaseMicroscope:
@@ -14,7 +14,6 @@ class BaseMicroscope:
         self.tem_adv = None
         self.tem_lowdose = None
         self.tecnai_ccd = None
-        self.sem_ccd = None
 
         if platform.system() == "Windows":
             self._initialize(useLD, useTecnaiCCD)
@@ -22,7 +21,8 @@ class BaseMicroscope:
         else:
             raise NotImplementedError("Running locally is only supported for Windows platform")
 
-    def _createCOMObject(self, progId):
+    @staticmethod
+    def _createCOMObject(progId):
         """ Connect to a COM interface. """
         try:
             import comtypes.client
@@ -61,67 +61,11 @@ class BaseMicroscope:
         try:
             default = TEMScriptingError.E_NOT_OK.value
             err = TEMScriptingError(int(getattr(com_error, 'hresult', default))).name
-            logging.info('COM error: %s' % err)
+            logging.error('COM error: %s' % err)
         except ValueError:
-            logging.info('Exception : %s' % sys.exc_info()[1])
+            logging.error('Exception : %s' % sys.exc_info()[1])
 
-    def _close(self):
+    @staticmethod
+    def _close():
         import comtypes
         comtypes.CoUninitialize()
-
-
-class BaseImage:
-    """ Acquired image basic object. """
-    def __init__(self, obj, name=None, isAdvanced=False, **kwargs):
-        self._img = obj
-        self._name = name
-        self._isAdvanced = isAdvanced
-        self._kwargs = kwargs
-
-    def _get_metadata(self, obj):
-        raise NotImplementedError
-
-    @property
-    def name(self):
-        """ Image name. """
-        return self._name if self._isAdvanced else self._img.Name
-
-    @property
-    def width(self):
-        """ Image width in pixels. """
-        return None
-
-    @property
-    def height(self):
-        """ Image height in pixels. """
-        return None
-
-    @property
-    def bit_depth(self):
-        """ Bit depth. """
-        return None
-
-    @property
-    def pixel_type(self):
-        """ Image pixels type: uint, int or float. """
-        return None
-
-    @property
-    def data(self):
-        """ Returns actual image object as numpy array. """
-        return None
-
-    @property
-    def metadata(self):
-        """ Returns a metadata dict for advanced camera image. """
-        return self._get_metadata(self._img) if self._isAdvanced else None
-
-    def save(self, filename, normalize=False):
-        """ Save acquired image to a file.
-
-        :param filename: File path
-        :type filename: str
-        :param normalize: Normalize image, only for non-MRC format
-        :type normalize: bool
-        """
-        raise NotImplementedError

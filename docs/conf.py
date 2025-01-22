@@ -17,15 +17,15 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'pytemscript'
-copyright = '2012-2021, Tore Niermann; 2022-2023, Grigory Sharov'
+copyright = '2012-2021, Tore Niermann; 2022-2025, Grigory Sharov'
 author = 'Tore Niermann, Grigory Sharov'
 
 # The full version, including alpha/beta/rc tags
-release = '3.0a3'
+release = '3.0a7'
 
 # -- General configuration ---------------------------------------------------
 # If your documentation needs a minimal Sphinx version, state it here.
-needs_sphinx = '2.0'
+needs_sphinx = '7.0'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -33,14 +33,14 @@ needs_sphinx = '2.0'
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode']
 
 # Add any paths that contain templates here, relative to this directory.
-source_suffix = '.rst'
+source_suffix = {'.rst': 'restructuredtext'}
 master_doc = 'index'
 language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'server.rst']
+exclude_patterns = ['_build']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'

@@ -38,7 +38,10 @@ setup(name='pytemscript',
           "mrcfile",
           "numpy"
       ],
-      entry_points={'console_scripts': ['pytemscript-server = pytemscript.utils.http_server:main']},
+      extras_require={
+          "dev": ["Sphinx>7.0", "sphinx_rtd_theme", "matplotlib"]
+      },
+      #entry_points={'console_scripts': ['pytemscript-server = pytemscript.utils.http_server:main']},
       url="https://github.com/azazellochg/pytemscript",
       project_urls={
           "Source": "https://github.com/azazellochg/pytemscript",

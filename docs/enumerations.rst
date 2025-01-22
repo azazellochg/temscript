@@ -11,7 +11,7 @@ Example:
 
 .. code-block:: python
 
-    from pytemscript.client import Microscope
+    from pytemscript.microscope import Microscope
     from pytemscript.utils.enums import *
 
     microscope = Microscope()

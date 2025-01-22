@@ -2,8 +2,7 @@
 
 import argparse
 from time import sleep
-from pytemscript.client import Microscope
-from pytemscript.remote_client import RemoteMicroscope
+from pytemscript.microscope import Microscope
 from pytemscript.utils.enums import *
 
 
@@ -320,7 +319,7 @@ def main(argv=None):
         microscope = Microscope()
     else:
         mode = "remote"
-        microscope = RemoteMicroscope(host=args.host, port=args.port)
+        #microscope = RemoteMicroscope(host=args.host, port=args.port)
 
     if microscope is None:
         raise RuntimeError("Could not create microscope client")
@@ -329,7 +328,7 @@ def main(argv=None):
 
     full_test = False
     test_projection(microscope, has_eftem=False)
-    #test_detectors(microscope)
+    test_detectors(microscope)
     test_vacuum(microscope, buffer_cycle=full_test)
     test_autoloader(microscope, check_loading=full_test, slot=1)
     test_temperature(microscope, force_refill=full_test)

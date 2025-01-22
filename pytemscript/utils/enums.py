@@ -150,7 +150,7 @@ class ProjectionDetectorShift(IntEnum):
 
 
 class ProjDetectorShiftMode(IntEnum):
-    """ This property determines, whether the chosen DetectorShift
+    """ This property determines whether the chosen DetectorShift
     is changed when the fluorescent screen is moved down. """
     AUTO_IGNORE = 1
     MANUAL = 2
@@ -325,12 +325,14 @@ class LDState(IntEnum):
 
 # ---------------- FEI Tecnai CCD enums -----------------------------------
 class AcqSpeed(IntEnum):
+    """ CCD acquisition mode. """
     TURBO = 0
     CONTINUOUS = 1
     SINGLEFRAME = 2
 
 
 class AcqMode(IntEnum):
+    """ CCD acquisition preset."""
     SEARCH = 0
     FOCUS = 1
     RECORD = 2

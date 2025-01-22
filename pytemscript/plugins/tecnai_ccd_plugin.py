@@ -2,15 +2,14 @@ import logging
 import os
 import time
 
-from ..utils.enums import *
-from ..base_microscope import BaseImage
+from ..utils.enums import AcqImageSize, AcqMode, AcqSpeed, ImagePixelType
+from ..modules.image import BaseImage
 
 
 class TecnaiCCDPlugin:
     """ Main class that uses FEI Tecnai CCD plugin on microscope PC. """
-    def __init__(self, microscope):
-        if microscope._tecnai_ccd is not None:
-            self._plugin = microscope._tecnai_ccd
+    def __init__(self, com_iface):
+            self._plugin = com_iface
             self._img_params = dict()
 
     def _find_camera(self, name):
@@ -20,7 +19,8 @@ class TecnaiCCDPlugin:
                 return i
         raise KeyError("No camera with name %s" % name)
 
-    def acquire_image(self, cameraName, size=AcqImageSize.FULL, exp_time=1, binning=1, camerasize=1024, **kwargs):
+    def acquire_image(self, cameraName, size=AcqImageSize.FULL, exp_time=1,
+                      binning=1, camerasize=1024, **kwargs):
         self._set_camera_param(cameraName, size, exp_time, binning, camerasize, **kwargs)
         if not self._plugin.IsAcquiring:
             #img = self._plugin.AcquireImageNotShown(id=1)
@@ -134,7 +134,7 @@ class Image(BaseImage):
 
         return data
 
-    def save(self, filename):
+    def save(self, filename, **kwargs):
         """ Save acquired image to a file.
 
         :param filename: File path
