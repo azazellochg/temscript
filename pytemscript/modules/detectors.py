@@ -79,7 +79,7 @@ class Detectors:
     def stem_detectors(self):
         """ Returns a dict with STEM detectors parameters. """
         stem_detectors = dict()
-        detectors = self._client.get_from_cache("tem.Acquisitions.Detectors")
+        detectors = self._client.get_from_cache("tem.Acquisition.Detectors")
         for d in detectors:
             info = d.Info
             name = info.Name

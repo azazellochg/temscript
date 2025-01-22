@@ -25,7 +25,7 @@ class Temperature:
         if self.__std_available:
             return self._client.has("tem.TemperatureControl.TemperatureControlAvailable")
         else:
-            raise NotImplementedError(self._err_msg)
+            return False
 
     def force_refill(self):
         """ Forces LN refill if the level is below 70%, otherwise returns an error.

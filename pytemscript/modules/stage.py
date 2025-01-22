@@ -12,13 +12,14 @@ class Stage:
 
     def _from_dict(self, **values):
         axes = 0
-        position = self._client.get("tem.Stage.Position")
+        position = self._client.get_from_cache("tem.Stage.Position")
         for key, value in values.items():
             if key not in 'xyzab':
                 raise ValueError("Unexpected axis: %s" % key)
             attr_name = key.upper()
             setattr(position, attr_name, float(value))
             axes |= getattr(StageAxes, attr_name)
+        self._client.clear_cache("tem.Stage.Position")
         return position, axes
 
     def _beta_available(self):
@@ -84,11 +85,12 @@ class Stage:
     @property
     def position(self):
         """ The current position of the stage (x,y,z in um and a,b in degrees). """
-        pos = self._client.get("tem.Stage.Position")
+        pos = self._client.get_from_cache("tem.Stage.Position")
         result = {key.lower(): getattr(pos, key) * 1e6 for key in 'XYZ'}
 
         keys = 'AB' if self._beta_available() else 'A'
         result.update({key.lower(): math.degrees(getattr(pos, key)) for key in keys})
+        self._client.clear_cache("tem.Stage.Position")
 
         return result
 

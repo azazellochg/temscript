@@ -7,7 +7,7 @@ from pytemscript.utils.enums import *
 
 
 def test_projection(microscope, has_eftem=False):
-    print("Testing projection...")
+    print("\nTesting projection...")
     projection = microscope.optics.projection
     print("\tMode:", projection.mode)
     print("\tFocus:", projection.focus)
@@ -19,6 +19,7 @@ def test_projection(microscope, has_eftem=False):
     projection.defocus = orig_def
 
     print("\tMagnification:", projection.magnification)
+    #TODO: avoid LM, since there it has no diffraction stigmator available
     #print("\tMagnificationIndex:", projection.magnificationIndex)
 
     projection.mode = ProjectionMode.DIFFRACTION
@@ -29,6 +30,8 @@ def test_projection(microscope, has_eftem=False):
     projection.mode = ProjectionMode.IMAGING
 
     print("\tImageShift:", projection.image_shift)
+    projection.image_shift = -0,0
+
     print("\tImageBeamShift:", projection.image_beam_shift)
     print("\tObjectiveStigmator:", projection.objective_stigmator)
     print("\tSubMode:", projection.magnification_range)
@@ -48,7 +51,7 @@ def test_projection(microscope, has_eftem=False):
 
 
 def test_acquisition(microscope):
-    print("Testing acquisition...")
+    print("\nTesting acquisition...")
     acquisition = microscope.acquisition
     cameras = microscope.detectors.cameras
     detectors = microscope.detectors.stem_detectors
@@ -86,7 +89,7 @@ def test_acquisition(microscope):
 
 
 def test_vacuum(microscope, buffer_cycle=False):
-    print("Testing vacuum...")
+    print("\nTesting vacuum...")
     vacuum = microscope.vacuum
     print("\tStatus:", vacuum.status)
     print("\tPVPRunning:", vacuum.is_buffer_running)
@@ -105,7 +108,7 @@ def test_vacuum(microscope, buffer_cycle=False):
 def test_temperature(microscope, force_refill=False):
     temp = microscope.temperature
     if temp.is_available:
-        print("Testing TemperatureControl...")
+        print("\nTesting TemperatureControl...")
         print("\tRefrigerantLevel (autoloader):",
               temp.dewar_level(RefrigerantDewar.AUTOLOADER_DEWAR))
         print("\tRefrigerantLevel (column):",
@@ -124,7 +127,7 @@ def test_temperature(microscope, force_refill=False):
 def test_autoloader(microscope, check_loading=False, slot=1):
     al = microscope.autoloader
     if al.is_available:
-        print("Testing Autoloader...")
+        print("\nTesting Autoloader...")
         print("\tNumberOfCassetteSlots", al.number_of_slots)
         print("\tSlotStatus for #%d" % slot, al.slot_status(slot))
 
@@ -142,7 +145,7 @@ def test_autoloader(microscope, check_loading=False, slot=1):
 
 def test_stage(microscope, move_stage=False):
     stage = microscope.stage
-    print("Testing stage...")
+    print("\nTesting stage...")
     pos = stage.position
     print("\tStatus:", stage.status)
     print("\tPosition:", pos)
@@ -167,7 +170,7 @@ def test_stage(microscope, move_stage=False):
 
 
 def test_detectors(microscope):
-    print("Testing cameras...")
+    print("\nTesting cameras...")
     dets = microscope.detectors
     print("\tFilm settings:", dets.film_settings)
     print("\tCameras:", dets.cameras)
@@ -175,7 +178,7 @@ def test_detectors(microscope):
 
 
 def test_optics(microscope):
-    print("Testing optics...")
+    print("\nTesting optics...")
     opt = microscope.optics
     print("\tScreenCurrent:", opt.screen_current)
     print("\tBeamBlanked:", opt.is_beam_blanked)
@@ -188,7 +191,7 @@ def test_optics(microscope):
 
 
 def test_illumination(microscope):
-    print("Testing illumination...")
+    print("\nTesting illumination...")
     illum = microscope.optics.illumination
     print("\tMode:", illum.mode)
     print("\tSpotsizeIndex:", illum.spotsize)
@@ -232,7 +235,7 @@ def test_illumination(microscope):
 
 
 def test_stem(microscope):
-    print("Testing STEM...")
+    print("\nTesting STEM...")
     stem = microscope.stem
     print("\tStemAvailable:", stem.is_available)
 
@@ -245,7 +248,7 @@ def test_stem(microscope):
 
 
 def test_gun(microscope, has_gun1=False, has_feg=False):
-    print("Testing gun...")
+    print("\nTesting gun...")
     gun = microscope.gun
     print("\tHTValue:", gun.voltage)
     print("\tHTMaxValue:", gun.voltage_max)
@@ -266,7 +269,7 @@ def test_gun(microscope, has_gun1=False, has_feg=False):
 
 
 def test_apertures(microscope, hasLicense=False):
-    print("Testing apertures...")
+    print("\nTesting apertures...")
     aps = microscope.apertures
 
     try:
@@ -283,7 +286,7 @@ def test_apertures(microscope, hasLicense=False):
 
 
 def test_general(microscope, check_door=False):
-    print("Testing configuration...")
+    print("\nTesting configuration...")
 
     print("\tConfiguration.ProductFamily:", microscope.family)
     #print("\tUserButtons:", microscope.user_buttons)
@@ -316,10 +319,11 @@ def main(argv=None):
 
     if args.host == '':
         mode = "local"
-        microscope = Microscope()
+        microscope = Microscope(debug=True)
     else:
         mode = "remote"
-        #microscope = RemoteMicroscope(host=args.host, port=args.port)
+        microscope = Microscope(connection="socket", host=args.host,
+                                port=args.port, debug=True)
 
     if microscope is None:
         raise RuntimeError("Could not create microscope client")
