@@ -3,7 +3,7 @@ import os
 import time
 
 from ..utils.enums import AcqImageSize, AcqMode, AcqSpeed, ImagePixelType
-from ..modules.image import BaseImage
+from ..modules.utilities import BaseImage
 
 
 class TecnaiCCDPlugin:

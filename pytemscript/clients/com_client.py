@@ -4,8 +4,8 @@ import sys
 import atexit
 import comtypes
 import comtypes.client
+from ..modules.utilities import Vector
 from ..utils.misc import rgetattr, rsetattr
-from ..modules.utilities import Vector, StagePosition
 from ..utils.constants import *
 from ..utils.enums import TEMScriptingError
 

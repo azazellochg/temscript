@@ -5,7 +5,6 @@ from .detectors import Detectors
 from .energyfilter import EnergyFilter
 from .gun import Gun
 from .illumination import Illumination
-from .image import Image
 from .lowdose import LowDose
 from .optics import Optics
 from .piezo_stage import PiezoStage
@@ -14,4 +13,5 @@ from .stage import Stage
 from .stem import Stem
 from .temperature import Temperature
 from .userdoor import UserDoor
+from .utilities import Image
 from .vacuum import Vacuum
