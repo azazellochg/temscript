@@ -20,11 +20,11 @@ def test_projection(microscope, has_eftem=False):
 
     print("\tMagnification:", projection.magnification)
     #TODO: avoid LM, since there it has no diffraction stigmator available
-    #print("\tMagnificationIndex:", projection.magnificationIndex)
+    print("\tMagnificationIndex:", projection.magnification_index)
 
     projection.mode = ProjectionMode.DIFFRACTION
     print("\tCameraLength:", projection.camera_length)
-    #print("\tCameraLengthIndex:", projection.camera_length_index)
+    print("\tCameraLengthIndex:", projection.camera_length_index)
     print("\tDiffractionShift:", projection.diffraction_shift)
     print("\tDiffractionStigmator:", projection.diffraction_stigmator)
     projection.mode = ProjectionMode.IMAGING
@@ -289,7 +289,6 @@ def test_general(microscope, check_door=False):
     print("\nTesting configuration...")
 
     print("\tConfiguration.ProductFamily:", microscope.family)
-    #print("\tUserButtons:", microscope.user_buttons)
     print("\tBlankerShutter.ShutterOverrideOn:",
           microscope.optics.is_shutter_override_on)
     print("\tCondenser system:", microscope.condenser_system)
@@ -303,6 +302,23 @@ def test_general(microscope, check_door=False):
         print("\tUser door:", microscope.user_door.state)
         microscope.user_door.open()
         microscope.user_door.close()
+
+
+def test_user_buttons(microscope):
+    print("\nTesting user buttons...")
+    buttons = microscope.user_buttons
+    print("Buttons: %s" % buttons.list)
+
+    def on_pressed(*args, **kwargs):
+        print("\tArgs: %s" % args)
+        print("\tKwargs: %s" % kwargs)
+
+    buttons.L1 = {"label": "My function", "method": on_pressed}
+    # Simulate pressing the button
+    button = buttons.L1
+    button.Pressed(42, name="example", active=True)
+    # Clear the assignment
+    del buttons.L1
 
 
 def main(argv=None):
@@ -340,6 +356,7 @@ def main(argv=None):
     test_optics(microscope)
     test_illumination(microscope)
     test_gun(microscope, has_gun1=False, has_feg=False)
+    test_user_buttons(microscope)
     test_general(microscope, check_door=False)
 
     if full_test:

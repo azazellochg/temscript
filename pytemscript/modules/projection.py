@@ -7,8 +7,23 @@ class Projection:
     def __init__(self, client):
         self._client = client
         self._err_msg = "Microscope is not in diffraction mode"
-        #self.magnification_index = self._tem_projection.MagnificationIndex
-        #self.camera_length_index = self._tem_projection.CameraLengthIndex
+        self._magnifications = []
+        self.__find_magnifications()
+
+    def __find_magnifications(self):
+        saved_index = self.magnification_index
+        previous_index = None
+        index = 0
+        while True:
+            self.magnification_index = index
+            index = self.magnification_index
+            if index == previous_index:  # failed to set new index
+                break
+            self._magnifications.append(self.magnification)
+            previous_index = index
+            index += 1
+        # restore initial mag
+        self.magnification_index = saved_index
 
     @property
     def focus(self):
@@ -31,12 +46,30 @@ class Projection:
             raise RuntimeError(self._err_msg)
 
     @property
+    def magnification_index(self):
+        """ The magnification index. (read/write)"""
+        return self._client.get("tem.Projection.MagnificationIndex")
+
+    @magnification_index.setter
+    def magnification_index(self, value):
+        self._client.set("tem.Projection.MagnificationIndex", value)
+
+    @property
     def camera_length(self):
         """ The reference camera length in m (screen up setting). """
         if self._client.get("tem.Projection.Mode") == ProjectionMode.DIFFRACTION:
             return self._client.get("tem.Projection.CameraLength")
         else:
             raise RuntimeError(self._err_msg)
+
+    @property
+    def camera_length_index(self):
+        """ The camera length index. (read/write)"""
+        return self._client.get("tem.Projection.CameraLengthIndex")
+
+    @camera_length_index.setter
+    def camera_length_index(self, value):
+        self._client.set("tem.Projection.CameraLengthIndex", value)
 
     @property
     def image_shift(self):

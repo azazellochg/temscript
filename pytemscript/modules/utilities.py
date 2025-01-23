@@ -4,6 +4,7 @@ from ..utils.enums import ImagePixelType, AcqImageFileFormat, StageAxes
 
 
 class Vector:
+    """ Utility object with two float attributes. """
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -38,6 +39,7 @@ class Vector:
 
 
 class StagePosition:
+    """ Utility object for the stage position. """
     def __init__(self, obj, **kwargs):
         self.obj = obj
         self.coords = kwargs

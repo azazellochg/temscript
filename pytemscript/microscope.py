@@ -34,6 +34,7 @@ class Microscope:
         self.piezo_stage = PiezoStage(client)
         self.apertures = Apertures(client)
         self.temperature = Temperature(client)
+        self.user_buttons = UserButtons(client)
 
         if client.has_advanced_iface:
             self.user_door = UserDoor(client)
@@ -53,9 +54,3 @@ class Microscope:
         """ Returns the type of condenser lens system: two or three lenses. """
         value = self.client.get_from_cache("tem.Configuration.CondenserLensSystem")
         return CondenserLensSystem(value).name
-
-    @property
-    def user_buttons(self):
-        """ Returns a dict with assigned hand panels buttons. """
-        values = self.client.get("tem.UserButtons")
-        return {b.Name: b.Label for b in values}
