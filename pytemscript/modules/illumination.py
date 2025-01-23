@@ -1,4 +1,5 @@
 import math
+from .utilities import Vector
 from ..utils.enums import CondenserLensSystem, CondenserMode, DarkFieldMode, IlluminationMode
 
 
@@ -59,9 +60,9 @@ class Illumination:
                 self._client.get("tem.Illumination.Shift.Y") * 1e6)
 
     @beam_shift.setter
-    def beam_shift(self, value):
-        new_value = (value[0] * 1e-6, value[1] * 1e-6)
-        self._client.set("tem.Illumination.Shift", new_value, vector=True)
+    def beam_shift(self, values):
+        new_value = Vector(values[0] * 1e-6, values[1] * 1e-6)
+        self._client.set("tem.Illumination.Shift", new_value)
 
     @property
     def rotation_center(self):
@@ -73,9 +74,9 @@ class Illumination:
                 self._client.get("tem.Illumination.RotationCenter.Y") * 1e3)
 
     @rotation_center.setter
-    def rotation_center(self, value):
-        new_value = (value[0] * 1e-3, value[1] * 1e-3)
-        self._client.set("tem.Illumination.RotationCenter", new_value, vector=True)
+    def rotation_center(self, values):
+        new_value = Vector(values[0] * 1e-3, values[1] * 1e-3)
+        self._client.set("tem.Illumination.RotationCenter", new_value)
 
     @property
     def condenser_stigmator(self):
@@ -84,8 +85,10 @@ class Illumination:
                 self._client.get("tem.Illumination.CondenserStigmator.Y"))
 
     @condenser_stigmator.setter
-    def condenser_stigmator(self, value):
-        self._client.set("tem.Illumination.CondenserStigmator", value, vector=True, limits=(-1.0, 1.0))
+    def condenser_stigmator(self, values):
+        new_value = Vector(*values)
+        new_value.set_limits(-1.0, 1.0)
+        self._client.set("tem.Illumination.CondenserStigmator", new_value)
 
     @property
     def illuminated_area(self):

@@ -1,4 +1,5 @@
 from ..utils.enums import ProjectionMode, ProjectionSubMode, ProjDetectorShiftMode, ProjectionDetectorShift, LensProg
+from .utilities import Vector
 
 
 class Projection:
@@ -44,9 +45,9 @@ class Projection:
                 self._client.get("tem.Projection.ImageShift.Y") * 1e6)
 
     @image_shift.setter
-    def image_shift(self, value):
-        new_value = (value[0] * 1e-6, value[1] * 1e-6)
-        self._client.set("tem.Projection.ImageShift", new_value, vector=True)
+    def image_shift(self, values):
+        new_value = Vector(values[0] * 1e-6, values[1] * 1e-6)
+        self._client.set("tem.Projection.ImageShift", new_value)
 
     @property
     def image_beam_shift(self):
@@ -55,9 +56,9 @@ class Projection:
                 self._client.get("tem.Projection.ImageBeamShift.Y") * 1e6)
 
     @image_beam_shift.setter
-    def image_beam_shift(self, value):
-        new_value = (value[0] * 1e-6, value[1] * 1e-6)
-        self._client.set("tem.Projection.ImageBeamShift", new_value, vector=True)
+    def image_beam_shift(self, values):
+        new_value = Vector(values[0] * 1e-6, values[1] * 1e-6)
+        self._client.set("tem.Projection.ImageBeamShift", new_value)
 
     @property
     def image_beam_tilt(self):
@@ -66,9 +67,9 @@ class Projection:
                 self._client.get("tem.Projection.ImageBeamTilt.Y") * 1e3)
 
     @image_beam_tilt.setter
-    def image_beam_tilt(self, value):
-        new_value = (value[0] * 1e-3, value[1] * 1e-3)
-        self._client.set("tem.Projection.ImageBeamTilt", new_value, vector=True)
+    def image_beam_tilt(self, values):
+        new_value = Vector(values[0] * 1e-3, values[1] * 1e-3)
+        self._client.set("tem.Projection.ImageBeamTilt", new_value)
 
     @property
     def diffraction_shift(self):
@@ -78,9 +79,9 @@ class Projection:
                 self._client.get("tem.Projection.DiffractionShift.Y") * 1e3)
 
     @diffraction_shift.setter
-    def diffraction_shift(self, value):
-        new_value = (value[0] * 1e-3, value[1] * 1e-3)
-        self._client.set("tem.Projection.DiffractionShift", new_value, vector=True)
+    def diffraction_shift(self, values):
+        new_value = Vector(values[0] * 1e-3, values[1] * 1e-3)
+        self._client.set("tem.Projection.DiffractionShift", new_value)
 
     @property
     def diffraction_stigmator(self):
@@ -92,10 +93,11 @@ class Projection:
             raise RuntimeError(self._err_msg)
 
     @diffraction_stigmator.setter
-    def diffraction_stigmator(self, value):
+    def diffraction_stigmator(self, values):
         if self._client.get("tem.Projection.Mode") == ProjectionMode.DIFFRACTION:
-            self._client.set("tem.Projection.DiffractionStigmator", value,
-                             vector=True, limits=(-1.0, 1.0))
+            new_value = Vector(*values)
+            new_value.set_limits(-1.0, 1.0)
+            self._client.set("tem.Projection.DiffractionStigmator", new_value)
         else:
             raise RuntimeError(self._err_msg)
 
@@ -106,9 +108,10 @@ class Projection:
                 self._client.get("tem.Projection.ObjectiveStigmator.Y"))
 
     @objective_stigmator.setter
-    def objective_stigmator(self, value):
-        self._client.set("tem.Projection.ObjectiveStigmator", value,
-                         vector=True, limits=(-1.0, 1.0))
+    def objective_stigmator(self, values):
+        new_value = Vector(*values)
+        new_value.set_limits(-1.0, 1.0)
+        self._client.set("tem.Projection.ObjectiveStigmator", new_value)
 
     @property
     def defocus(self):

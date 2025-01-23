@@ -1,3 +1,4 @@
+from .utilities import Vector
 from ..utils.enums import InstrumentMode
 
 
@@ -65,6 +66,7 @@ class Stem:
     @scan_field_of_view.setter
     def scan_field_of_view(self, values):
         if self._client.get("tem.InstrumentModeControl.InstrumentMode") == InstrumentMode.STEM:
-            self._client.set("tem.Illumination.StemFullScanFieldOfView", values, vector=True)
+            new_value = Vector(*values)
+            self._client.set("tem.Illumination.StemFullScanFieldOfView", new_value)
         else:
             raise RuntimeError(self._err_msg)

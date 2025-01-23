@@ -1,6 +1,7 @@
 import logging
 import time
 from ..utils.enums import FegState, HighTensionState
+from .utilities import Vector
 
 
 class Gun:
@@ -31,8 +32,10 @@ class Gun:
                 self._client.get("tem.Gun.Shift.Y"))
 
     @shift.setter
-    def shift(self, value):
-        self._client.set("tem.Gun.Shift", value, vector=True, limits=(-1.0, 1.0))
+    def shift(self, values):
+        new_value = Vector(*values)
+        new_value.set_limits(-1.0, 1.0)
+        self._client.set("tem.Gun.Shift", new_value)
 
     @property
     def tilt(self):
@@ -41,8 +44,10 @@ class Gun:
                 self._client.get("tem.Gun.Tilt.Y"))
 
     @tilt.setter
-    def tilt(self, value):
-        self._client.set("tem.Gun.Tilt", value, vector=True, limits=(-1.0, 1.0))
+    def tilt(self, values):
+        new_value = Vector(*values)
+        new_value.set_limits(-1.0, 1.0)
+        self._client.set("tem.Gun.Tilt", new_value)
 
     @property
     def voltage_offset(self):

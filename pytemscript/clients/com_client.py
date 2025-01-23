@@ -1,13 +1,16 @@
 import logging
 import platform
 import sys
-sys.coinit_flags = 0
-import comtypes  # COM is initialized automatically for the thread that imports this module for the first time
+import atexit
+import comtypes
 import comtypes.client
 from ..utils.misc import rgetattr, rsetattr
+from ..modules.utilities import Vector, StagePosition
 from ..utils.constants import *
 from ..utils.enums import TEMScriptingError
 
+
+com_module = comtypes
 
 class COMBase:
     """ Base class that handles COM interface connections. """
@@ -16,10 +19,12 @@ class COMBase:
         self.tem_adv = None
         self.tem_lowdose = None
         self.tecnai_ccd = None
+        self.vector = None
 
         if platform.system() == "Windows":
             logging.getLogger("comtypes").setLevel(logging.INFO)
             self._initialize(useLD, useTecnaiCCD)
+            atexit.register(self._close)
         else:
             raise NotImplementedError("Running locally is only supported for Windows platform")
 
@@ -36,11 +41,18 @@ class COMBase:
 
     def _initialize(self, useLD, useTecnaiCCD):
         """ Wrapper to create interfaces as requested. """
+        try:
+            com_module.CoInitializeEx(com_module.COINIT_MULTITHREADED)
+        except OSError:
+            com_module.CoInitialize()
+
         self.tem_adv = self._createCOMObject(SCRIPTING_ADV)
         self.tem = self._createCOMObject(SCRIPTING_STD)
 
         if self.tem is None:  # try Tecnai instead
             self.tem = self._createCOMObject(SCRIPTING_TECNAI)
+
+        self.vector = self.tem.Vector
 
         if useLD:
             self.tem_lowdose = self._createCOMObject(SCRIPTING_LOWDOSE)
@@ -59,6 +71,10 @@ class COMBase:
             logging.error('COM error: %s' % err)
         except ValueError:
             logging.error('Exception : %s' % sys.exc_info()[1])
+
+    @staticmethod
+    def _close():
+        com_module.CoUninitialize()
 
 
 class COMClient:
@@ -133,23 +149,10 @@ class COMClient:
         attrname = attrname.rstrip("()")
         return rgetattr(self._scope, attrname, *args, **kwargs)
 
-    def set(self, attrname, value, **kwargs):
-        if kwargs.get("vector"):
-            values = list(map(float, value))
-            if len(values) != 2:
-                msg = "Expected two values (X, Y) for Vector %s" % attrname
-                logging.error(msg)
-                raise ValueError(msg)
-
-            limits = kwargs.get("limits")
-            if limits and any(v < limits[0] or v > limits[1] for v in values):
-                msg = "One or more values (%s) are outside of range (%s)" % (values, limits)
-                logging.error(msg)
-                raise ValueError(msg)
-
-            vector = self.get(attrname)
-            vector.X = values[0]
-            vector.Y = values[1]
-            rsetattr(self._scope, attrname, vector)
+    def set(self, attrname, value):
+        if isinstance(value, Vector):
+            value.check_limits()
+            newVector = self._scope.vector(*value.components)
+            rsetattr(self._scope, attrname, newVector)
         else:
             rsetattr(self._scope, attrname, value)

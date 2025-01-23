@@ -2,6 +2,7 @@ import math
 import time
 import logging
 from ..utils.enums import StageAxes, MeasurementUnitType, StageStatus, StageHolderType
+from .utilities import StagePosition
 
 
 class Stage:
@@ -10,18 +11,7 @@ class Stage:
         self._client = client
         self._err_msg = "Stage is not ready"
 
-    def _from_dict(self, **values):
-        axes = 0
-        position = self._client.get_from_cache("tem.Stage.Position")
-        for key, value in values.items():
-            if key not in 'xyzab':
-                raise ValueError("Unexpected axis: %s" % key)
-            attr_name = key.upper()
-            setattr(position, attr_name, float(value))
-            axes |= getattr(StageAxes, attr_name)
-        self._client.clear_cache("tem.Stage.Position")
-        return position, axes
-
+    @property
     def _beta_available(self):
         return self.limits['b']['unit'] != MeasurementUnitType.UNKNOWN.name
 
@@ -34,23 +24,23 @@ class Stage:
                 time.sleep(1)
             else:
                 # convert units to meters and radians
-                new_pos = dict()
+                coords = dict()
                 for axis in 'xyz':
                     if axis in kwargs:
-                        new_pos.update({axis: kwargs[axis] * 1e-6})
+                        coords.update({axis: kwargs[axis] * 1e-6})
                 for axis in 'ab':
                     if axis in kwargs:
-                        new_pos.update({axis: math.radians(kwargs[axis])})
+                        coords.update({axis: math.radians(kwargs[axis])})
 
-                speed = kwargs.get("speed", None)
+                speed = kwargs.get("speed")
                 if speed is not None and not (0.0 <= speed <= 1.0):
                     raise ValueError("Speed must be within 0.0-1.0 range")
 
-                if 'b' in new_pos and not self._beta_available():
+                if 'b' in coords and not self._beta_available:
                     raise KeyError("B-axis is not available")
 
                 limits = self.limits
-                for key, value in new_pos.items():
+                for key, value in coords.items():
                     if value < limits[key]['min'] or value > limits[key]['max']:
                         raise ValueError('Stage position %s=%s is out of range' % (value, key))
 
@@ -59,7 +49,8 @@ class Stage:
                 # a - 80 to + 80(degrees)
                 # b - 29.7 to + 29.7(degrees)
 
-                new_pos, axes = self._from_dict(**new_pos)
+                pos = StagePosition(self._client.get("tem.Stage.Position"), **coords)
+                new_pos, axes = pos.apply()
                 if not direct:
                     self._client.call("tem.Stage.MoveTo()", new_pos, axes)
                 else:
@@ -67,7 +58,6 @@ class Stage:
                         self._client.call("tem.Stage.GoToWithSpeed()", new_pos, axes, speed)
                     else:
                         self._client.call("tem.Stage.GoTo()", new_pos, axes)
-
                 break
         else:
             raise RuntimeError(self._err_msg)
@@ -85,12 +75,14 @@ class Stage:
     @property
     def position(self):
         """ The current position of the stage (x,y,z in um and a,b in degrees). """
-        pos = self._client.get_from_cache("tem.Stage.Position")
-        result = {key.lower(): getattr(pos, key) * 1e6 for key in 'XYZ'}
-
-        keys = 'AB' if self._beta_available() else 'A'
-        result.update({key.lower(): math.degrees(getattr(pos, key)) for key in keys})
-        self._client.clear_cache("tem.Stage.Position")
+        coords_array = self._client.call("tem.Stage.Position.GetAsArray()")
+        keys = ['x', 'y', 'z', 'a', 'b']
+        result = {
+            key: value*1e6 if key in ['x','y','z'] else math.degrees(value)
+            for key, value in zip(keys, coords_array)
+        }
+        if not self._beta_available:
+            result['b'] = None
 
         return result
 

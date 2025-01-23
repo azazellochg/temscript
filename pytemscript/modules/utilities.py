@@ -1,6 +1,63 @@
 import os
 import logging
-from ..utils.enums import ImagePixelType, AcqImageFileFormat
+from ..utils.enums import ImagePixelType, AcqImageFileFormat, StageAxes
+
+
+class Vector:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self._min = None
+        self._max = None
+
+    def __repr__(self):
+        return "Vector(x=%f, y=%f)" % (self.x, self.y)
+
+    def set_limits(self, min_value, max_value):
+        """Set the range limits for the vector."""
+        self._min = min_value
+        self._max = max_value
+
+    @property
+    def has_limits(self):
+        """Check if range limits are set."""
+        return self._min is not None and self._max is not None
+
+    def check_limits(self):
+        """Validate that the vector's values are within the set limits."""
+        if self.has_limits:
+            if any(v < self._min or v > self._max for v in self.components):
+                msg = "One or more values (%s) are outside of range (%f, %f)" % (self.components, self.x, self.y)
+                logging.error(msg)
+                raise ValueError(msg)
+
+    @property
+    def components(self):
+        """Return the vector components as a tuple."""
+        return self.x, self.y
+
+
+class StagePosition:
+    def __init__(self, obj, **kwargs):
+        self.obj = obj
+        self.coords = kwargs
+        self.axes = 0
+
+        for key, value in kwargs.items():
+            if key not in 'xyzab':
+                raise ValueError("Unexpected axis: %s" % key)
+            self.axes |= getattr(StageAxes, key.upper())
+
+    def __repr__(self):
+        return "StagePosition(axes=%s, values=%s)" % (self.axes, self.coords)
+
+    def apply(self):
+        """ Apply new values to the stage position object.
+            Returns updated object and axes.
+        """
+        for key, value in self.coords.items():
+            setattr(self.obj, key.upper(), float(value))
+        return self.obj, self.axes
 
 
 class BaseImage:
