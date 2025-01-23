@@ -21,6 +21,7 @@ Below are the main class properties, each represented by a separate class:
     * stage = :meth:`~pytemscript.modules.Stage`
     * stem = :meth:`~pytemscript.modules.Stem`
     * temperature = :meth:`~pytemscript.modules.Temperature`
+    * user_buttons = :meth:`~pytemscript.modules.UserButtons`
     * user_door = :meth:`~pytemscript.modules.UserDoor`
     * vacuum = :meth:`~pytemscript.modules.Vacuum`
 
@@ -54,4 +55,4 @@ Documentation
 -------------
 
 .. automodule:: pytemscript.modules
-    :members: Acquisition, Apertures, Autoloader, Detectors, EnergyFilter, Gun, Optics, Illumination, Projection, PiezoStage, Stage, Stem, Temperature, UserDoor, Vacuum
+    :members: Acquisition, Apertures, Autoloader, Detectors, EnergyFilter, Gun, Optics, Illumination, Projection, PiezoStage, Stage, Stem, Temperature, UserButtons, UserDoor, Vacuum

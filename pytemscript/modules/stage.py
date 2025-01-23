@@ -49,8 +49,12 @@ class Stage:
                 # a - 80 to + 80(degrees)
                 # b - 29.7 to + 29.7(degrees)
 
-                pos = StagePosition(self._client.get("tem.Stage.Position"), **coords)
-                new_pos, axes = pos.apply()
+                pos = StagePosition(**coords)
+                axes = pos.axes
+                for key, value in coords.items():
+                    self._client.set("tem.Stage.Position." + key.upper(), float(value))
+
+                new_pos = self._client.get("tem.Stage.Position")
                 if not direct:
                     self._client.call("tem.Stage.MoveTo()", new_pos, axes)
                 else:
@@ -75,14 +79,14 @@ class Stage:
     @property
     def position(self):
         """ The current position of the stage (x,y,z in um and a,b in degrees). """
-        coords_array = self._client.call("tem.Stage.Position.GetAsArray()")
-        keys = ['x', 'y', 'z', 'a', 'b']
-        result = {
-            key: value*1e6 if key in ['x','y','z'] else math.degrees(value)
-            for key, value in zip(keys, coords_array)
-        }
+        result = {key.lower(): self._client.call("tem.Stage.Position." + key) * 1e6 for key in 'XYZ'}
+
         if not self._beta_available:
-            result['b'] = None
+            result["b"] = None
+        else:
+            result["b"] = math.degrees(self._client.call("tem.Stage.Position.B"))
+
+        result["a"] = math.degrees(self._client.call("tem.Stage.Position.A"))
 
         return result
 

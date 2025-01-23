@@ -11,8 +11,10 @@ class Detectors:
         if self._client.has_advanced_iface:
             # CSA is supported by Ceta 1, Ceta 2, Falcon 3, Falcon 4
             self._tem_csa = self._client.get_from_cache("tem_adv.Acquisitions.CameraSingleAcquisition")
+            # CCA is supported by Ceta 2
             if self._client.has("tem_adv.Acquisitions.CameraContinuousAcquisition"):
-                # CCA is supported by Ceta 2
+                # We need to replace the bool cached value with a real object
+                self._client.clear_cache("tem_adv.Acquisitions.CameraContinuousAcquisition")
                 self._tem_cca = self._client.get_from_cache("tem_adv.Acquisitions.CameraContinuousAcquisition")
                 self._cca_cameras = [c.Name for c in self._tem_cca.SupportedCameras]
             else:

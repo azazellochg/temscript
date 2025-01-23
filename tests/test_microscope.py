@@ -129,7 +129,7 @@ def test_autoloader(microscope, check_loading=False, slot=1):
     if al.is_available:
         print("\nTesting Autoloader...")
         print("\tNumberOfCassetteSlots", al.number_of_slots)
-        print("\tSlotStatus for #%d" % slot, al.slot_status(slot))
+        print("\tSlotStatus for #%d: %s" % (slot, al.slot_status(slot)))
 
         if check_loading:
             try:
@@ -285,6 +285,20 @@ def test_apertures(microscope, hasLicense=False):
         aps.select("C2", 50)
 
 
+def test_user_buttons(microscope):
+    print("\nTesting user buttons...")
+    buttons = microscope.user_buttons
+    print("Buttons: %s" % buttons.list)
+
+    def on_pressed():
+        print("\tDo smth..")
+
+    buttons.L1 = {"label": "My function", "method": on_pressed}
+    #sleep(10)
+    # Clear the assignment
+    del buttons.L1
+
+
 def test_general(microscope, check_door=False):
     print("\nTesting configuration...")
 
@@ -302,23 +316,6 @@ def test_general(microscope, check_door=False):
         print("\tUser door:", microscope.user_door.state)
         microscope.user_door.open()
         microscope.user_door.close()
-
-
-def test_user_buttons(microscope):
-    print("\nTesting user buttons...")
-    buttons = microscope.user_buttons
-    print("Buttons: %s" % buttons.list)
-
-    def on_pressed(*args, **kwargs):
-        print("\tArgs: %s" % args)
-        print("\tKwargs: %s" % kwargs)
-
-    buttons.L1 = {"label": "My function", "method": on_pressed}
-    # Simulate pressing the button
-    button = buttons.L1
-    button.Pressed(42, name="example", active=True)
-    # Clear the assignment
-    del buttons.L1
 
 
 def main(argv=None):

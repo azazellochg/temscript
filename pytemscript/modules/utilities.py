@@ -40,8 +40,7 @@ class Vector:
 
 class StagePosition:
     """ Utility object for the stage position. """
-    def __init__(self, obj, **kwargs):
-        self.obj = obj
+    def __init__(self, **kwargs):
         self.coords = kwargs
         self.axes = 0
 
@@ -52,14 +51,6 @@ class StagePosition:
 
     def __repr__(self):
         return "StagePosition(axes=%s, values=%s)" % (self.axes, self.coords)
-
-    def apply(self):
-        """ Apply new values to the stage position object.
-            Returns updated object and axes.
-        """
-        for key, value in self.coords.items():
-            setattr(self.obj, key.upper(), float(value))
-        return self.obj, self.axes
 
 
 class BaseImage:

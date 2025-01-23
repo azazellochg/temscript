@@ -19,7 +19,6 @@ class COMBase:
         self.tem_adv = None
         self.tem_lowdose = None
         self.tecnai_ccd = None
-        self.vector = None
 
         if platform.system() == "Windows":
             logging.getLogger("comtypes").setLevel(logging.INFO)
@@ -51,8 +50,6 @@ class COMBase:
 
         if self.tem is None:  # try Tecnai instead
             self.tem = self._createCOMObject(SCRIPTING_TECNAI)
-
-        self.vector = self.tem.Vector
 
         if useLD:
             self.tem_lowdose = self._createCOMObject(SCRIPTING_LOWDOSE)
@@ -152,7 +149,8 @@ class COMClient:
     def set(self, attrname, value):
         if isinstance(value, Vector):
             value.check_limits()
-            newVector = self._scope.vector(*value.components)
-            rsetattr(self._scope, attrname, newVector)
+            vector = rgetattr(self._scope, attrname, log=False)
+            vector.X, vector.Y = value.components
+            rsetattr(self._scope, attrname, vector)
         else:
             rsetattr(self._scope, attrname, value)

@@ -1,3 +1,5 @@
+import logging
+
 from ..utils.enums import ProjectionMode, ProjectionSubMode, ProjDetectorShiftMode, ProjectionDetectorShift, LensProg
 from .utilities import Vector
 
@@ -8,9 +10,11 @@ class Projection:
         self._client = client
         self._err_msg = "Microscope is not in diffraction mode"
         self._magnifications = []
-        self.__find_magnifications()
+        #self.__find_magnifications()
 
     def __find_magnifications(self):
+        logging.info("Querying magnification table..")
+        self._client.set("tem.AutoNormalizeEnabled", False)
         saved_index = self.magnification_index
         previous_index = None
         index = 0
@@ -24,6 +28,7 @@ class Projection:
             index += 1
         # restore initial mag
         self.magnification_index = saved_index
+        self._client.set("tem.AutoNormalizeEnabled", True)
 
     @property
     def focus(self):
