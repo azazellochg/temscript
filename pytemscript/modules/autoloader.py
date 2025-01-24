@@ -56,7 +56,7 @@ class Autoloader:
 
     def run_inventory(self) -> None:
         """ Performs an inventory of the cassette.
-        Note: This function takes considerable time to callute.
+        Note: This function takes considerable time to execute.
         """
         # TODO: check if cassette is present
         if self.is_available:

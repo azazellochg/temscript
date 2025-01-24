@@ -15,7 +15,9 @@ com_module = comtypes
 
 class COMBase:
     """ Base class that handles COM interface connections. """
-    def __init__(self, useLD: bool = False, useTecnaiCCD: bool = False):
+    def __init__(self,
+                 useLD: bool = False,
+                 useTecnaiCCD: bool = False):
         self.tem = None
         self.tem_adv = None
         self.tem_lowdose = None
@@ -86,7 +88,10 @@ class COMClient:
     :param debug: Print debug messages
     :type debug: bool
     """
-    def __init__(self, useLD: bool = False, useTecnaiCCD: bool = False, debug: bool = False):
+    def __init__(self,
+                 useLD: bool = False,
+                 useTecnaiCCD: bool = False,
+                 debug: bool = False):
         logging.basicConfig(level=logging.DEBUG if debug else logging.INFO,
                             datefmt='%d/%b/%Y %H:%M:%S',
                             format='[%(asctime)s] %(message)s',
@@ -127,11 +132,11 @@ class COMClient:
             self.cache[attrname] = self.get(attrname)
         return self.cache[attrname]
 
-    def clear_cache(self, attrname):
+    def clear_cache(self, attrname) -> None:
         if attrname in self.cache:
             del self.cache[attrname]
 
-    def has(self, attrname):
+    def has(self, attrname) -> bool:
         """ GET request with cache support. Should be used only for attributes
         that do not change.
         Behavior:
