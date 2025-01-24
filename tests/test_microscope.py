@@ -289,19 +289,22 @@ def test_user_buttons(microscope):
     print("\nTesting user buttons...")
     buttons = microscope.user_buttons
     print("Buttons: %s" % buttons.list)
+    import comtypes.client
 
-    def on_pressed():
-        print("\tDo smth..")
+    def eventHandler():
+        def Pressed():
+            print("L1 button was pressed!")
 
-    buttons.L1 = {"label": "My function", "method": on_pressed}
-    #sleep(10)
+    buttons.L1.Assignment = "My function"
+    comtypes.client.GetEvents(buttons.L1, eventHandler)
+    # Simulate L1 press
+    buttons.L1.Pressed()
     # Clear the assignment
-    del buttons.L1
+    buttons.L1.Assignment = ""
 
 
 def test_general(microscope, check_door=False):
     print("\nTesting configuration...")
-
     print("\tConfiguration.ProductFamily:", microscope.family)
     print("\tBlankerShutter.ShutterOverrideOn:",
           microscope.optics.is_shutter_override_on)
@@ -343,7 +346,7 @@ def main(argv=None):
 
     print("Starting %s microscope tests..." % mode)
 
-    full_test = False
+    full_test = True
     test_projection(microscope, has_eftem=False)
     test_detectors(microscope)
     test_vacuum(microscope, buffer_cycle=full_test)
@@ -353,7 +356,8 @@ def main(argv=None):
     test_optics(microscope)
     test_illumination(microscope)
     test_gun(microscope, has_gun1=False, has_feg=False)
-    test_user_buttons(microscope)
+    if microscope.family != ProductFamily.TECNAI.name:
+        test_user_buttons(microscope)
     test_general(microscope, check_door=False)
 
     if full_test:
@@ -370,5 +374,4 @@ if __name__ == '__main__':
 Notes for Tecnai F20:
 - DF element not found -> no DF mode or beam tilt. Check if python is 32-bit?
 - Userbuttons not found
-
 """

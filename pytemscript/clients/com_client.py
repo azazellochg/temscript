@@ -132,11 +132,20 @@ class COMClient:
 
     def has(self, attrname):
         """ GET request with cache support. Should be used only for attributes
-        that do not change over the session. """
+        that do not change.
+        Behavior:
+        - If the attribute's value is `True`, cache `True`.
+        - If the attribute's value is `False`, cache `False`.
+        - If the attribute's value is an object (not convertible to `bool`), cache `True`.
+        - If the attribute does not exist, cache `False`.
+        """
         if attrname not in self.cache:
             try:
-                _ = self.get(attrname)
-                self.cache[attrname] = True
+                output = self.get(attrname)
+                if isinstance(output, bool):
+                    self.cache[attrname] = output
+                else:
+                    self.cache[attrname] = True
             except AttributeError:
                 self.cache[attrname] = False
 

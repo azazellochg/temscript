@@ -10,6 +10,7 @@ class Stage:
     def __init__(self, client):
         self._client = client
         self._err_msg = "Stage is not ready"
+        self._limits = {}
 
     @property
     def _beta_available(self):
@@ -26,10 +27,10 @@ class Stage:
                 # convert units to meters and radians
                 coords = dict()
                 for axis in 'xyz':
-                    if axis in kwargs:
+                    if kwargs.get(axis) is not None:
                         coords.update({axis: kwargs[axis] * 1e-6})
                 for axis in 'ab':
-                    if axis in kwargs:
+                    if kwargs.get(axis) is not None:
                         coords.update({axis: math.radians(kwargs[axis])})
 
                 speed = kwargs.get("speed")
@@ -108,12 +109,12 @@ class Stage:
     @property
     def limits(self):
         """ Returns a dict with stage move limits. """
-        result = dict()
-        for axis in 'xyzab':
-            data = self._client.call("tem.Stage.AxisData()", StageAxes[axis.upper()])
-            result[axis] = {
-                'min': data.MinPos,
-                'max': data.MaxPos,
-                'unit': MeasurementUnitType(data.UnitType).name
-            }
-        return result
+        if not self._limits:
+            for axis in 'xyzab':
+                data = self._client.call("tem.Stage.AxisData()", StageAxes[axis.upper()])
+                self._limits[axis] = {
+                    'min': data.MinPos,
+                    'max': data.MaxPos,
+                    'unit': MeasurementUnitType(data.UnitType).name
+                }
+        return self._limits

@@ -15,7 +15,7 @@ def test_fegs():
 
     for feg in obj.GetRegisterList():
         print("Label", feg[0])
-        print("\tDateTime", feg[1].strftime("%d%m%Y_%H%M%S"))
+        print("\tDateTime", feg[1].strftime("%d-%m-%Y %H:%M:%S"))
         print("\tExtrVolt", feg[2])
         print("\tPotential", feg[3])
         print("\tGunLens", feg[4])

@@ -234,16 +234,16 @@ class Acquisition:
                 logging.info("Checking buffer levels...")
                 break
 
-        counter = 0
-        while counter < 40:
-            if (self._client.has("tem.TemperatureControl.TemperatureControlAvailable") and
-                    self._client.get("tem.TemperatureControl.DewarsAreBusyFilling")):
-                logging.info("Dewars are filling, waiting...\r")
-                time.sleep(30)
-                counter += 1
-            else:
-                logging.info("Checking dewars levels...")
-                break
+        if self._client.has("tem.TemperatureControl.TemperatureControlAvailable"):
+            counter = 0
+            while counter < 40:
+                if self._client.get("tem.TemperatureControl.DewarsAreBusyFilling"):
+                    logging.info("Dewars are filling, waiting...\r")
+                    time.sleep(30)
+                    counter += 1
+                else:
+                    logging.info("Checking dewars levels...")
+                    break
 
     def _acquire_with_tecnaiccd(self, cameraName, size, exp_time,
                                 binning, **kwargs):
