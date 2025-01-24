@@ -1,6 +1,6 @@
 import logging
 import time
-from ..utils.enums import FegState, HighTensionState
+from ..utils.enums import FegState, HighTensionState, FegFlashingType
 from .utilities import Vector
 
 
@@ -14,43 +14,43 @@ class Gun:
         self._err_msg_cfeg = "Source/C-FEG interface is not available"
 
     @property
-    def __gun1_available(self):
+    def __gun1_available(self) -> bool:
         if self._has_gun1 is None:
             self._has_gun1 = self._client.has("tem.Gun1")
         return self._has_gun1
 
     @property
-    def __adv_available(self):
+    def __adv_available(self) -> bool:
         if self._has_source is None:
             self._has_source = self._client.has("tem_adv.Source.State")
         return self._has_source
 
     @property
-    def shift(self):
+    def shift(self) -> tuple:
         """ Gun shift. (read/write)"""
         return (self._client.get("tem.Gun.Shift.X"),
                 self._client.get("tem.Gun.Shift.Y"))
 
     @shift.setter
-    def shift(self, values):
+    def shift(self, values: tuple) -> None:
         new_value = Vector(*values)
         new_value.set_limits(-1.0, 1.0)
         self._client.set("tem.Gun.Shift", new_value)
 
     @property
-    def tilt(self):
+    def tilt(self) -> tuple:
         """ Gun tilt. (read/write)"""
         return (self._client.get("tem.Gun.Tilt.X"),
                 self._client.get("tem.Gun.Tilt.Y"))
 
     @tilt.setter
-    def tilt(self, values):
+    def tilt(self, values: tuple) -> None:
         new_value = Vector(*values)
         new_value.set_limits(-1.0, 1.0)
         self._client.set("tem.Gun.Tilt", new_value)
 
     @property
-    def voltage_offset(self):
+    def voltage_offset(self) -> float:
         """ High voltage offset. (read/write)"""
         if self.__gun1_available:
             return self._client.get("tem.Gun1.HighVoltageOffset")
@@ -58,14 +58,14 @@ class Gun:
             raise NotImplementedError(self._err_msg_gun1)
 
     @voltage_offset.setter
-    def voltage_offset(self, offset):
+    def voltage_offset(self, offset: float) -> None:
         if self.__gun1_available:
-            self._client.set("tem.Gun1.HighVoltageOffset", offset)
+            self._client.set("tem.Gun1.HighVoltageOffset", float(offset))
         else:
             raise NotImplementedError(self._err_msg_gun1)
 
     @property
-    def feg_state(self):
+    def feg_state(self) -> str:
         """ FEG emitter status. """
         if self.__adv_available:
             return FegState(self._client.get("tem_adv.Source.State")).name
@@ -73,7 +73,7 @@ class Gun:
             raise NotImplementedError(self._err_msg_cfeg)
 
     @property
-    def ht_state(self):
+    def ht_state(self) -> str:
         """ High tension state: on, off or disabled.
         Disabling/enabling can only be done via the button on the
         system on/off-panel, not via script. When switching on
@@ -83,11 +83,11 @@ class Gun:
         return HighTensionState(self._client.get("tem.Gun.HTState")).name
 
     @ht_state.setter
-    def ht_state(self, value):
+    def ht_state(self, value: HighTensionState) -> None:
         self._client.set("tem.Gun.HTState", value)
 
     @property
-    def voltage(self):
+    def voltage(self) -> float:
         """ The value of the HT setting as displayed in the TEM user
         interface. Units: kVolts. (read/write)
         """
@@ -98,7 +98,7 @@ class Gun:
             return 0.0
 
     @voltage.setter
-    def voltage(self, value):
+    def voltage(self, value: float) -> None:
         voltage_max = self.voltage_max
         if not (0.0 <= value <= voltage_max):
             raise ValueError("%s is outside of range 0.0-%s" % (value, voltage_max))
@@ -111,7 +111,7 @@ class Gun:
                 time.sleep(10)
 
     @property
-    def voltage_max(self):
+    def voltage_max(self) -> float:
         """ The maximum possible value of the HT on this microscope. Units: kVolts. """
         return self._client.get("tem.Gun.HTMaxValue") * 1e-3
 
@@ -125,7 +125,7 @@ class Gun:
             raise NotImplementedError(self._err_msg_gun1)
 
     @property
-    def beam_current(self):
+    def beam_current(self) -> float:
         """ Returns the C-FEG beam current in Amperes. """
         if self.__adv_available:
             return self._client.get("tem_adv.Source.BeamCurrent")
@@ -133,7 +133,7 @@ class Gun:
             raise NotImplementedError(self._err_msg_cfeg)
 
     @property
-    def extractor_voltage(self):
+    def extractor_voltage(self) -> float:
         """ Returns the extractor voltage. """
         if self.__adv_available:
             return self._client.get("tem_adv.Source.ExtractorVoltage")
@@ -141,7 +141,7 @@ class Gun:
             raise NotImplementedError(self._err_msg_cfeg)
 
     @property
-    def focus_index(self):
+    def focus_index(self) -> tuple:
         """ Returns coarse and fine gun lens index. """
         if self.__adv_available:
             return (self._client.get("tem_adv.Source.FocusIndex.Coarse"),
@@ -149,7 +149,7 @@ class Gun:
         else:
             raise NotImplementedError(self._err_msg_cfeg)
 
-    def do_flashing(self, flash_type):
+    def do_flashing(self, flash_type: FegFlashingType) -> None:
         """ Perform cold FEG flashing.
 
         :param flash_type: FEG flashing type (FegFlashingType enum)

@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
-
 import argparse
+from typing import Optional
 from time import sleep
 from pytemscript.microscope import Microscope
 from pytemscript.utils.enums import *
 
 
-def test_projection(microscope, has_eftem=False):
+def test_projection(microscope, has_eftem: bool = False):
     print("\nTesting projection...")
     projection = microscope.optics.projection
     print("\tMode:", projection.mode)
@@ -88,7 +87,7 @@ def test_acquisition(microscope):
         stem.disable()
 
 
-def test_vacuum(microscope, buffer_cycle=False):
+def test_vacuum(microscope, buffer_cycle: bool = False):
     print("\nTesting vacuum...")
     vacuum = microscope.vacuum
     print("\tStatus:", vacuum.status)
@@ -105,7 +104,7 @@ def test_vacuum(microscope, buffer_cycle=False):
         vacuum.run_buffer_cycle()
 
 
-def test_temperature(microscope, force_refill=False):
+def test_temperature(microscope, force_refill: bool = False):
     temp = microscope.temperature
     if temp.is_available:
         print("\nTesting TemperatureControl...")
@@ -124,7 +123,7 @@ def test_temperature(microscope, force_refill=False):
                 print(str(e))
 
 
-def test_autoloader(microscope, check_loading=False, slot=1):
+def test_autoloader(microscope, check_loading: bool = False, slot: int = 1):
     al = microscope.autoloader
     if al.is_available:
         print("\nTesting Autoloader...")
@@ -143,7 +142,7 @@ def test_autoloader(microscope, check_loading=False, slot=1):
                 print(str(e))
 
 
-def test_stage(microscope, move_stage=False):
+def test_stage(microscope, move_stage: bool = False):
     stage = microscope.stage
     print("\nTesting stage...")
     pos = stage.position
@@ -247,7 +246,7 @@ def test_stem(microscope):
         stem.disable()
 
 
-def test_gun(microscope, has_gun1=False, has_feg=False):
+def test_gun(microscope, has_gun1: bool = False, has_feg: bool = False):
     print("\nTesting gun...")
     gun = microscope.gun
     print("\tHTValue:", gun.voltage)
@@ -268,7 +267,7 @@ def test_gun(microscope, has_gun1=False, has_feg=False):
         gun.do_flashing(FegFlashingType.LOW_T)
 
 
-def test_apertures(microscope, hasLicense=False):
+def test_apertures(microscope, hasLicense: bool = False):
     print("\nTesting apertures...")
     aps = microscope.apertures
 
@@ -303,7 +302,7 @@ def test_user_buttons(microscope):
     buttons.L1.Assignment = ""
 
 
-def test_general(microscope, check_door=False):
+def test_general(microscope, check_door: bool = False):
     print("\nTesting configuration...")
     print("\tConfiguration.ProductFamily:", microscope.family)
     print("\tBlankerShutter.ShutterOverrideOn:",
@@ -321,7 +320,7 @@ def test_general(microscope, check_door=False):
         microscope.user_door.close()
 
 
-def main(argv=None):
+def main(argv: Optional[list] = None):
     microscope = None
     parser = argparse.ArgumentParser(
         description="This test can use local or remote client. In the latter case "

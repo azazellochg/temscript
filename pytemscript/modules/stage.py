@@ -10,13 +10,16 @@ class Stage:
     def __init__(self, client):
         self._client = client
         self._err_msg = "Stage is not ready"
-        self._limits = {}
+        self._limits = dict()
 
     @property
-    def _beta_available(self):
+    def _beta_available(self) -> bool:
         return self.limits['b']['unit'] != MeasurementUnitType.UNKNOWN.name
 
-    def _change_position(self, direct=False, tries=5, **kwargs):
+    def _change_position(self,
+                         direct: bool = False,
+                         tries: int = 5,
+                         **kwargs) -> None:
         attempt = 0
         while attempt < tries:
             if self._client.get("tem.Stage.Status") != StageStatus.READY:
@@ -68,17 +71,17 @@ class Stage:
             raise RuntimeError(self._err_msg)
 
     @property
-    def status(self):
+    def status(self) -> str:
         """ The current state of the stage. """
         return StageStatus(self._client.get("tem.Stage.Status")).name
 
     @property
-    def holder(self):
+    def holder(self) -> str:
         """ The current specimen holder type. """
         return StageHolderType(self._client.get("tem.Stage.Holder")).name
 
     @property
-    def position(self):
+    def position(self) -> dict:
         """ The current position of the stage (x,y,z in um and a,b in degrees). """
         result = {key.lower(): self._client.call("tem.Stage.Position." + key) * 1e6 for key in 'XYZ'}
 
@@ -91,7 +94,7 @@ class Stage:
 
         return result
 
-    def go_to(self, **kwargs):
+    def go_to(self, **kwargs) -> None:
         """ Makes the holder directly go to the new position by moving all axes
         simultaneously. Keyword args can be x,y,z,a or b.
 
@@ -99,7 +102,7 @@ class Stage:
         """
         self._change_position(direct=True, **kwargs)
 
-    def move_to(self, **kwargs):
+    def move_to(self, **kwargs) -> None:
         """ Makes the holder safely move to the new position.
         Keyword args can be x,y,z,a or b.
         """
@@ -107,7 +110,7 @@ class Stage:
         self._change_position(**kwargs)
 
     @property
-    def limits(self):
+    def limits(self) -> dict:
         """ Returns a dict with stage move limits. """
         if not self._limits:
             for axis in 'xyzab':

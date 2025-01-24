@@ -6,13 +6,13 @@ class PiezoStage:
         self._err_msg = "PiezoStage interface is not available."
 
     @property
-    def __adv_available(self):
+    def __adv_available(self) -> bool:
         if self._has_pstage is None:
             self._has_pstage = self._client.has("tem_adv.PiezoStage.HighResolution")
         return self._has_pstage
 
     @property
-    def position(self):
+    def position(self) -> dict:
         """ The current position of the piezo stage (x,y,z in um). """
         if not self.__adv_available:
             raise NotImplementedError(self._err_msg)
@@ -27,7 +27,7 @@ class PiezoStage:
         return self._client.call("tem_adv.PiezoStage.GetPositionRange()")
 
     @property
-    def velocity(self):
+    def velocity(self) -> dict:
         """ Returns a dict with stage velocities. """
         if not self.__adv_available:
             raise NotImplementedError(self._err_msg)

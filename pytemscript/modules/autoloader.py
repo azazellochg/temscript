@@ -10,25 +10,25 @@ class Autoloader:
         self._err_msg_adv = "This function is not available in your advanced scripting interface."
 
     @property
-    def __adv_available(self):
+    def __adv_available(self) -> bool:
         if self._has_autoloader_adv is None:
             self._has_autoloader_adv = self._client.has("tem_adv.AutoLoader")
         return self._has_autoloader_adv
 
     @property
-    def is_available(self):
+    def is_available(self) -> bool:
         """ Status of the autoloader. Should be always False on Tecnai instruments. """
         return self._client.get("tem.AutoLoader.AutoLoaderAvailable")
 
     @property
-    def number_of_slots(self):
+    def number_of_slots(self) -> int:
         """ The number of slots in a cassette. """
         if self.is_available:
             return self._client.get("tem.AutoLoader.NumberOfCassetteSlots")
         else:
             raise RuntimeError(self._err_msg)
 
-    def load_cartridge(self, slot):
+    def load_cartridge(self, slot: int) -> None:
         """ Loads the cartridge in the given slot into the microscope.
 
         :param slot: Slot number
@@ -45,7 +45,7 @@ class Autoloader:
         else:
             raise RuntimeError(self._err_msg)
 
-    def unload_cartridge(self):
+    def unload_cartridge(self) -> None:
         """ Unloads the cartridge currently in the microscope and puts it back into its
         slot in the cassette.
         """
@@ -54,7 +54,7 @@ class Autoloader:
         else:
             raise RuntimeError(self._err_msg)
 
-    def run_inventory(self):
+    def run_inventory(self) -> None:
         """ Performs an inventory of the cassette.
         Note: This function takes considerable time to callute.
         """
@@ -64,7 +64,7 @@ class Autoloader:
         else:
             raise RuntimeError(self._err_msg)
 
-    def slot_status(self, slot):
+    def slot_status(self, slot: int) -> str:
         """ The status of the slot specified.
 
         :param slot: Slot number
@@ -79,7 +79,7 @@ class Autoloader:
         else:
             raise RuntimeError(self._err_msg)
 
-    def undock_cassette(self):
+    def undock_cassette(self) -> None:
         """ Moves the cassette from the docker to the capsule. """
         if self.__adv_available:
             if self.is_available:
@@ -89,7 +89,7 @@ class Autoloader:
         else:
             raise NotImplementedError(self._err_msg_adv)
 
-    def dock_cassette(self):
+    def dock_cassette(self) -> None:
         """ Moves the cassette from the capsule to the docker. """
         if self.__adv_available:
             if self.is_available:
@@ -99,7 +99,7 @@ class Autoloader:
         else:
             raise NotImplementedError(self._err_msg_adv)
 
-    def initialize(self):
+    def initialize(self) -> None:
         """ Initializes / Recovers the Autoloader for further use. """
         if self.__adv_available:
             if self.is_available:
@@ -109,7 +109,7 @@ class Autoloader:
         else:
             raise NotImplementedError(self._err_msg_adv)
 
-    def buffer_cycle(self):
+    def buffer_cycle(self) -> None:
         """ Synchronously runs the Autoloader buffer cycle. """
         if self.__adv_available:
             if self.is_available:

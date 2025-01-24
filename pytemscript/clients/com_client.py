@@ -1,3 +1,4 @@
+from typing import Dict, Any
 import logging
 import platform
 import sys
@@ -14,7 +15,7 @@ com_module = comtypes
 
 class COMBase:
     """ Base class that handles COM interface connections. """
-    def __init__(self, useLD=False, useTecnaiCCD=False):
+    def __init__(self, useLD: bool = False, useTecnaiCCD: bool = False):
         self.tem = None
         self.tem_adv = None
         self.tem_lowdose = None
@@ -28,7 +29,7 @@ class COMBase:
             raise NotImplementedError("Running locally is only supported for Windows platform")
 
     @staticmethod
-    def _createCOMObject(progId):
+    def _createCOMObject(progId: str):
         """ Connect to a COM interface. """
         try:
             obj = comtypes.client.CreateObject(progId)
@@ -38,7 +39,7 @@ class COMBase:
             logging.info("Could not connect to %s" % progId)
             return None
 
-    def _initialize(self, useLD, useTecnaiCCD):
+    def _initialize(self, useLD: bool, useTecnaiCCD: bool):
         """ Wrapper to create interfaces as requested. """
         try:
             com_module.CoInitializeEx(com_module.COINIT_MULTITHREADED)
@@ -85,7 +86,7 @@ class COMClient:
     :param debug: Print debug messages
     :type debug: bool
     """
-    def __init__(self, useLD=False, useTecnaiCCD=False, debug=False):
+    def __init__(self, useLD: bool = False, useTecnaiCCD: bool = False, debug: bool = False):
         logging.basicConfig(level=logging.DEBUG if debug else logging.INFO,
                             datefmt='%d/%b/%Y %H:%M:%S',
                             format='[%(asctime)s] %(message)s',
@@ -104,18 +105,18 @@ class COMClient:
                 from ..plugins.tecnai_ccd_plugin import TecnaiCCDPlugin
                 self._ccd_plugin = TecnaiCCDPlugin(self._scope.tecnai_ccd)
 
-        self.cache = {}
+        self.cache: Dict[str, Any] = dict()
 
     @property
-    def has_advanced_iface(self):
+    def has_advanced_iface(self) -> bool:
         return self._scope.tem_adv is not None
 
     @property
-    def has_lowdose_iface(self):
+    def has_lowdose_iface(self) -> bool:
         return self._scope.tem_lowdose is not None
 
     @property
-    def has_ccd_iface(self):
+    def has_ccd_iface(self) -> bool:
         return self._scope.tecnai_ccd is not None
 
     def get(self, attrname):

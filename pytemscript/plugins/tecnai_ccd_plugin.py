@@ -1,7 +1,8 @@
 import logging
 import os
 import time
-
+from pathlib import Path
+from typing import Optional
 from ..utils.enums import AcqImageSize, AcqMode, AcqSpeed, ImagePixelType
 from ..modules.utilities import BaseImage
 
@@ -12,15 +13,20 @@ class TecnaiCCDPlugin:
             self._plugin = com_iface
             self._img_params = dict()
 
-    def _find_camera(self, name):
+    def _find_camera(self, name: str):
         """Find camera index by name. """
         for i in range(self._plugin.NumberOfCameras):
             if self._plugin.CameraName == name:
                 return i
         raise KeyError("No camera with name %s" % name)
 
-    def acquire_image(self, cameraName, size=AcqImageSize.FULL, exp_time=1,
-                      binning=1, camerasize=1024, **kwargs):
+    def acquire_image(self,
+                      cameraName: str,
+                      size: AcqImageSize = AcqImageSize.FULL,
+                      exp_time: float = 1,
+                      binning: int = 1,
+                      camerasize: int = 1024,
+                      **kwargs):
         self._set_camera_param(cameraName, size, exp_time, binning, camerasize, **kwargs)
         if not self._plugin.IsAcquiring:
             #img = self._plugin.AcquireImageNotShown(id=1)
@@ -40,7 +46,13 @@ class TecnaiCCDPlugin:
         else:
             raise Exception("Camera is busy acquiring...")
 
-    def _set_camera_param(self, name, size, exp_time, binning, camerasize, **kwargs):
+    def _set_camera_param(self,
+                          name: str,
+                          size: AcqImageSize,
+                          exp_time: float,
+                          binning: int,
+                          camerasize: int,
+                          **kwargs):
         """ Find the TEM camera and set its params. """
         camera_index = self._find_camera(name)
         self._img_params['bit_depth'] = self._plugin.PixelDepth(camera_index)
@@ -85,7 +97,7 @@ class TecnaiCCDPlugin:
         self._img_params['width'] = self._plugin.CameraRight - self._plugin.CameraLeft
         self._img_params['height'] = self._plugin.CameraBottom - self._plugin.CameraTop
 
-    def _run_command(self, command, *args):
+    def _run_command(self, command: str, *args):
         #check = 'if(DoesFunctionExist("%s")) Exit(0) else Exit(1)'
         #exists = self._plugin.ExecuteScript(check % command)
         exists = self._plugin.ExecuteScript('DoesFunctionExist("%s")' % command)
@@ -99,26 +111,29 @@ class TecnaiCCDPlugin:
 
 class Image(BaseImage):
     """ Acquired image object. """
-    def __init__(self, obj, name=None, **kwargs):
+    def __init__(self,
+                 obj,
+                 name: Optional[str] = None,
+                 **kwargs):
         super().__init__(obj, name, isAdvanced=False, **kwargs)
 
     @property
-    def width(self):
+    def width(self) -> int:
         """ Image width in pixels. """
         return self._kwargs['width']
 
     @property
-    def height(self):
+    def height(self) -> int:
         """ Image height in pixels. """
         return self._kwargs['height']
 
     @property
-    def bit_depth(self):
+    def bit_depth(self) -> str:
         """ Bit depth. """
         return self._kwargs['bit_depth']
 
     @property
-    def pixel_type(self):
+    def pixel_type(self) -> str:
         """ Image pixels type: uint, int or float. """
         return ImagePixelType.SIGNED_INT.name
 
@@ -134,11 +149,13 @@ class Image(BaseImage):
 
         return data
 
-    def save(self, filename, **kwargs):
+    def save(self, filename: Path, normalize: bool = False) -> None:
         """ Save acquired image to a file.
 
         :param filename: File path
         :type filename: str
+        :param normalize: Normalize image, only for non-MRC format
+        :type normalize: bool
         """
         fmt = os.path.splitext(filename)[1].upper().lstrip(".")
         if fmt == "MRC":

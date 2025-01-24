@@ -6,7 +6,7 @@ class UserButtons:
         self._client = client
 
     @property
-    def list(self):
+    def list(self) -> dict:
         """ Returns a dict with assigned hand panels buttons. """
         buttons = self._client.get("tem.UserButtons")
         return {b.Name: b.Label for b in buttons}

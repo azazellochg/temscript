@@ -144,6 +144,16 @@ Take an image:
                                                      binning=2)
     image.save("img.mrc")
 
+Testing
+-------
+
+The package provides a few scripts to test the microscope interface connection and image acquisition:
+
+.. code-block:: python
+
+    python -m pytemscript.tests.test_microscope
+    python -m pytemscript.tests.test_acquisition
+
 Disclaimer
 ----------
 

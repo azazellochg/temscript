@@ -39,7 +39,7 @@ setup(name='pytemscript',
       keywords='TEM python',
       install_requires=[requirements],
       extras_require={
-          "extra": ["matplotlib"]
+          "extra": ["matplotlib", "mypy"]
       },
       #entry_points={'console_scripts': ['pytemscript-server = pytemscript.utils.http_server:main']},
       url="https://github.com/azazellochg/pytemscript",

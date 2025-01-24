@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import comtypes.client
+from pytemscript.utils.constants import SCRIPTING_STD, SCRIPTING_ADV
 
 EXCLUDED_METHODS = [
     "QueryInterface",
@@ -14,14 +15,8 @@ EXCLUDED_METHODS = [
     "Count"
 ]
 
-PROG_IDS = [
-    "TEMScripting.Instrument.1",
-    "TEMAdvancedScripting.AdvancedInstrument.1",
-    "TEMAdvancedScripting.AdvancedInstrument.2"
-]
 
-
-def list_typelib_details(prog_id):
+def list_typelib_details(prog_id: str):
     """ Parse COM interface methods and enumerations. """
     try:
         com_obj = comtypes.client.CreateObject(prog_id)
@@ -64,7 +59,7 @@ def list_typelib_details(prog_id):
 
 def create_output():
     """ Save output into txt. """
-    for prog_id in PROG_IDS:
+    for prog_id in [SCRIPTING_STD, SCRIPTING_ADV]:
         print(f"Querying {prog_id}...", end="")
         enums, interfaces, version = list_typelib_details(prog_id)
         if enums is not None:

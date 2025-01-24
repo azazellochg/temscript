@@ -6,7 +6,7 @@ class Microscope:
     """ Base client interface, exposing available methods
      and properties.
     """
-    def __init__(self, connection="direct", *args, **kwargs):
+    def __init__(self, connection: str = "direct", *args, **kwargs):
         self._communication_type = connection
         if connection == "direct":
             from .clients.com_client import COMClient
@@ -44,13 +44,13 @@ class Microscope:
             self.low_dose = LowDose(client)
 
     @property
-    def family(self):
+    def family(self) -> str:
         """ Returns the microscope product family / platform. """
         value = self.client.get_from_cache("tem.Configuration.ProductFamily")
         return ProductFamily(value).name
 
     @property
-    def condenser_system(self):
+    def condenser_system(self) -> str:
         """ Returns the type of condenser lens system: two or three lenses. """
         value = self.client.get_from_cache("tem.Configuration.CondenserLensSystem")
         return CondenserLensSystem(value).name

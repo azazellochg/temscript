@@ -22,13 +22,13 @@ class Detectors:
                 logging.info("Continuous acquisition not supported.")
 
     @property
-    def __has_film(self):
+    def __has_film(self) -> bool:
         if self._has_film is None:
             self._has_film = self._client.has("tem.Camera.Stock")
         return self._has_film
 
     @property
-    def cameras(self):
+    def cameras(self) -> dict:
         """ Returns a dict with parameters for all cameras. """
         tem_cameras = dict()
         cameras = self._client.get_from_cache("tem.Acquisition.Cameras")
@@ -78,7 +78,7 @@ class Detectors:
         return tem_cameras
 
     @property
-    def stem_detectors(self):
+    def stem_detectors(self) -> dict:
         """ Returns a dict with STEM detectors parameters. """
         stem_detectors = dict()
         detectors = self._client.get_from_cache("tem.Acquisition.Detectors")
@@ -92,16 +92,16 @@ class Detectors:
         return stem_detectors
 
     @property
-    def screen(self):
+    def screen(self) -> str:
         """ Fluorescent screen position. (read/write)"""
         return ScreenPosition(self._client.get("tem.Camera.MainScreen")).name
 
     @screen.setter
-    def screen(self, value):
+    def screen(self, value: ScreenPosition) -> None:
         self._client.set("tem.Camera.MainScreen", value)
 
     @property
-    def film_settings(self):
+    def film_settings(self) -> dict:
         """ Returns a dict with film settings.
         Note: The plate camera has become obsolete with Win7 so
         most of the existing functions are no longer supported.
@@ -118,3 +118,4 @@ class Detectors:
             }
         else:
             logging.error("No film/plate device detected.")
+            return {}

@@ -1,6 +1,7 @@
 import time
 import logging
 from datetime import datetime
+from typing import Union
 from ..utils.enums import AcqImageSize, AcqShutterMode, PlateLabelDateFormat, ScreenPosition
 from .utilities import Image
 
@@ -35,12 +36,12 @@ class Acquisition:
                 self._tem_cca = None
 
     @property
-    def __has_film(self):
+    def __has_film(self) -> bool:
         if self._has_film is None:
             self._has_film = self._client.has("tem.Camera.Stock")
         return self._has_film
 
-    def _find_camera(self, name, recording=False):
+    def _find_camera(self, name: str, recording: bool = False):
         """Find camera object by name. Check adv scripting first. """
         if self._client.has_advanced_iface:
             if recording:
@@ -58,14 +59,18 @@ class Acquisition:
         raise KeyError("No camera with name %s. If using standard scripting the "
                        "camera must be selected in the microscope user interface" % name)
 
-    def _find_stem_detector(self, name):
+    def _find_stem_detector(self, name: str):
         """Find STEM detector object by name"""
         for stem in self._detectors:
             if stem.Info.Name == name:
                 return stem
         raise KeyError("No STEM detector with name %s" % name)
 
-    def _check_binning(self, binning, camera, is_advanced=False, recording=False):
+    def _check_binning(self,
+                       binning: int,
+                       camera,
+                       is_advanced: bool = False,
+                       recording: bool = False):
         """ Check if input binning is in SupportedBinnings.
 
         :param binning: Input binning
@@ -91,7 +96,12 @@ class Acquisition:
 
         raise ValueError("Unsupported binning value: %d" % binning)
 
-    def _set_camera_param(self, name, size, exp_time, binning, **kwargs):
+    def _set_camera_param(self,
+                          name: str,
+                          size: AcqImageSize,
+                          exp_time: float,
+                          binning: int,
+                          **kwargs) -> None:
         """ Find the TEM camera and set its params. """
         camera = self._find_camera(name, kwargs.get("recording", False))
 
@@ -197,12 +207,14 @@ class Acquisition:
             # automatically when binning is set
             settings.ExposureTime = exp_time
 
-    def _set_film_param(self, film_text, exp_time):
+    def _set_film_param(self,
+                        film_text: str,
+                        exp_time: float) -> None:
         """ Set params for plate camera / film. """
         self._cameras.FilmText = film_text.strip()[:96]
         self._cameras.ManualExposureTime = exp_time
 
-    def _acquire(self, cameraName):
+    def _acquire(self, cameraName: str) -> Image:
         """ Perform actual acquisition.
 
         :returns: Image object
@@ -221,7 +233,7 @@ class Acquisition:
 
         return Image(img, name=cameraName)
 
-    def _check_prerequisites(self):
+    def _check_prerequisites(self) -> None:
         """ Check if buffer cycle or LN filling is
         running before acquisition call. """
         counter = 0
@@ -245,8 +257,12 @@ class Acquisition:
                     logging.info("Checking dewars levels...")
                     break
 
-    def _acquire_with_tecnaiccd(self, cameraName, size, exp_time,
-                                binning, **kwargs):
+    def _acquire_with_tecnaiccd(self,
+                                cameraName: str,
+                                size: AcqImageSize,
+                                exp_time: float,
+                                binning: int,
+                                **kwargs):
         if not self._client.has_ccd_iface:
             raise RuntimeError("Tecnai CCD plugin not found, did you "
                                "pass useTecnaiCCD=True to the Microscope() ?")
@@ -257,8 +273,12 @@ class Acquisition:
                 cameraName, size, exp_time, binning,
                 camerasize=camerasize, **kwargs)
 
-    def acquire_tem_image(self, cameraName, size=AcqImageSize.FULL,
-                          exp_time=1, binning=1, **kwargs):
+    def acquire_tem_image(self,
+                          cameraName: str,
+                          size: AcqImageSize = AcqImageSize.FULL,
+                          exp_time: float = 1,
+                          binning: int = 1,
+                          **kwargs) -> Union[Image, None]:
         """ Acquire a TEM image.
 
         :param cameraName: Camera name
@@ -309,8 +329,12 @@ class Acquisition:
         self._check_prerequisites()
         return self._acquire(cameraName)
 
-    def acquire_stem_image(self, cameraName, size, dwell_time=1E-5,
-                           binning=1, **kwargs):
+    def acquire_stem_image(self,
+                           cameraName: str,
+                           size: AcqImageSize,
+                           dwell_time: float = 1E-5,
+                           binning: int = 1,
+                           **kwargs) -> Image:
         """ Acquire a STEM image.
 
         :param cameraName: Camera name
@@ -349,7 +373,9 @@ class Acquisition:
         self._check_prerequisites()
         return self._acquire(cameraName)
 
-    def acquire_film(self, film_text, exp_time):
+    def acquire_film(self,
+                     film_text: str,
+                     exp_time: float) -> None:
         """ Expose a film.
 
         :param film_text: Film text, 96 symbols
