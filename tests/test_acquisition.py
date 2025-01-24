@@ -66,6 +66,8 @@ if __name__ == '__main__':
                        frame_ranges=[(1, 2), (2, 3)])
 
     if microscope.stem.is_available:
+        microscope.stem.enable()
         detectors = microscope.detectors.stem_detectors
         if "BF" in detectors:
             detector_acquire(microscope, "BF", dwell_time=1e-5, binning=2)
+        microscope.stem.disable()
