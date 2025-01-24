@@ -41,8 +41,6 @@ Requirements:
     * comtypes
     * mrcfile
     * numpy
-    * sphinx-rtd-theme (optional, only for building documentation)
-    * matplotlib (optional, only for running tests)
 
 Installation from PyPI on Windows
 #################################
@@ -92,7 +90,7 @@ Relative to TEM V1.9 standard scripting adapter:
     * Projection
     * Stage
     * TemperatureControl
-    * UserButton(s) (no events handling)
+    * UserButtons (no event handling)
     * Vacuum
 
 Relative to TEM V1.2 advanced scripting adapter:
