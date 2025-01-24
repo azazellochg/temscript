@@ -1,5 +1,6 @@
 import math
 from typing import Union
+
 from .utilities import Vector
 from ..utils.enums import CondenserLensSystem, CondenserMode, DarkFieldMode, IlluminationMode
 

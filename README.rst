@@ -29,8 +29,6 @@ Requirements:
     * comtypes
     * mrcfile
     * numpy
-    * sphinx-rtd-theme (optional, only for building documentation)
-    * matplotlib (optional, only for running tests)
 
 Installation from PyPI on Windows
 #################################

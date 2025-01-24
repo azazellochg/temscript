@@ -1,4 +1,5 @@
 import logging
+
 from ..utils.enums import ProjectionNormalization, IlluminationNormalization
 from .illumination import Illumination
 from .projection import Projection

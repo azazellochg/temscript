@@ -1,4 +1,3 @@
-
 class EnergyFilter:
     """ Energy filter controls. Requires advanced scripting. """
     def __init__(self, client):

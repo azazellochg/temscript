@@ -11,7 +11,7 @@ The interface is described in detail in the scripting manual of your microscope
 ``C:\Titan\Scripting\Advanced TEM Scripting User Guide.pdf``.
 
 The manual is your ultimate reference, this documentation will only describe the
-python wrapper to the COM interface.
+Python wrapper to the COM interface.
 
 Microscope class
 ----------------

@@ -1,4 +1,5 @@
 import logging
+
 from ..utils.enums import AcqShutterMode, ScreenPosition
 
 

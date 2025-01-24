@@ -1,6 +1,7 @@
 import argparse
 from typing import Optional
 from time import sleep
+
 from pytemscript.microscope import Microscope
 from pytemscript.utils.enums import *
 

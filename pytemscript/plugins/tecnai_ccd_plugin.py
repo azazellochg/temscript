@@ -3,6 +3,7 @@ import os
 import time
 from pathlib import Path
 from typing import Optional
+
 from ..utils.enums import AcqImageSize, AcqMode, AcqSpeed, ImagePixelType
 from ..modules.utilities import BaseImage
 

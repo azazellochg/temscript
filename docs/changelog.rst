@@ -5,9 +5,9 @@ Version 3.0
 ^^^^^^^^^^^
 
 * New changes are distributed under GPLv3+
-* Interface re-written using comtypes library
-* Standard scripting interfaces updated to v1.9
-* Added Advanced scripting interfaces v1.2
+* Complete re-write using comtypes library
+* Standard scripting interface updated to v1.9
+* Added Advanced scripting interface v1.2
 * Development and testing are performed on:
 
     - Tecnai Spirit (WinXP, Python 3.4)

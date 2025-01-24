@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import comtypes.client
+
 from pytemscript.utils.constants import FEG_REGISTERS
 
 

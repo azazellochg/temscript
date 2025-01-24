@@ -1,5 +1,6 @@
 import logging
 import time
+
 from ..utils.enums import FegState, HighTensionState, FegFlashingType
 from .utilities import Vector
 

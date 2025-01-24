@@ -2,6 +2,7 @@ import time
 import logging
 from datetime import datetime
 from typing import Union
+
 from ..utils.enums import AcqImageSize, AcqShutterMode, PlateLabelDateFormat, ScreenPosition
 from .utilities import Image
 
