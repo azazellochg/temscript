@@ -12,10 +12,13 @@ class Microscope:
             from .clients.com_client import COMClient
             self.client = COMClient(*args, **kwargs)
         elif connection == 'grpc':
+            from .clients.grpc_client import GRPCClient
             self.client = GRPCClient(*args, **kwargs)
         elif connection == 'zmq':
+            from .clients.zmq_client import ZMQClient
             self.client = ZMQClient(*args, **kwargs)
         elif connection == 'socket':
+            from .clients.socket_client import SocketClient
             self.client = SocketClient(*args, **kwargs)
         else:
             raise ValueError("Unsupported communication type")
