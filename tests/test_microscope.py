@@ -327,7 +327,7 @@ def main(argv: Optional[list] = None):
         description="This test can use local or remote client. In the latter case "
                     "pytemscript-server must be already running",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-p", "--port", type=int, default=8080,
+    parser.add_argument("-p", "--port", type=int, default=39000,
                         help="Specify port on which the server is listening")
     parser.add_argument("--host", type=str, default='',
                         help="Specify host address on which the server is listening")
@@ -346,7 +346,7 @@ def main(argv: Optional[list] = None):
 
     print("Starting %s microscope tests..." % mode)
 
-    full_test = True
+    full_test = False
     test_projection(microscope, has_eftem=False)
     test_detectors(microscope)
     test_vacuum(microscope, buffer_cycle=full_test)

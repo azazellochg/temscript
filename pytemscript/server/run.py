@@ -22,6 +22,9 @@ def main(argv=None):
                         default=False, action='store_true',
                         help="Connect to TecnaiCCD plugin on microscope PC that controls "
                              "Digital Micrograph (may be faster than via TIA / std scripting)")
+    parser.add_argument("-d", "--debug", dest="debug",
+                        default=False, action='store_true',
+                        help="Enable debug mode")
     args = parser.parse_args(argv)
 
     if platform.system() != "Windows":

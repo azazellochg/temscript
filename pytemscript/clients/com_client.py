@@ -88,17 +88,21 @@ class COMClient:
     :type useTecnaiCCD: bool
     :param debug: Print debug messages
     :type debug: bool
+    :param as_server: Use this client as a server process (only for remote clients)
+    :type as_server: bool
     """
     def __init__(self,
                  useLD: bool = False,
                  useTecnaiCCD: bool = False,
-                 debug: bool = False):
-        logging.basicConfig(level=logging.DEBUG if debug else logging.INFO,
-                            datefmt='%d/%b/%Y %H:%M:%S',
-                            format='[%(asctime)s] %(message)s',
-                            handlers=[
-                                logging.FileHandler("com_client.log", "w", "utf-8"),
-                                logging.StreamHandler()])
+                 debug: bool = False,
+                 as_server: bool = False):
+        if not as_server:
+            logging.basicConfig(level=logging.DEBUG if debug else logging.INFO,
+                                datefmt='%d/%b/%Y %H:%M:%S',
+                                format='[%(asctime)s] %(message)s',
+                                handlers=[
+                                    logging.FileHandler("com_client.log", "w", "utf-8"),
+                                    logging.StreamHandler()])
 
         # Create all COM interfaces
         self._scope = COMBase(useLD, useTecnaiCCD)
