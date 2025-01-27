@@ -40,17 +40,24 @@ class SocketServer:
                     client_socket, client_address = self.server_socket.accept()
                     logging.info("Connection received from: " + str(client_address))
                     with client_socket:
-                        data = client_socket.recv(4096)
+                        data_length = client_socket.recv(4)
+                        if not data_length:
+                            break
+                        data_length = int.from_bytes(data_length, byteorder="big")
+                        data = client_socket.recv(data_length)
                         message = pickle.loads(data)
                         method_name = message['method']
                         args = message['args']
                         kwargs = message['kwargs']
-                        # Call the appropriate method and send back the result
                         logging.debug("Received request: %s, args: %s, kwargs: %s" % (
                             method_name, args, kwargs))
+
+                        # Call the appropriate method and send back the result
                         result = self.handle_request(method_name, *args, **kwargs)
-                        logging.debug("Sending response: %s" % result)
-                        client_socket.send(pickle.dumps(result))
+                        response = pickle.dumps(result)
+
+                        logging.debug("Sending response: %s" % response)
+                        client_socket.sendall(len(response).to_bytes(4, byteorder="big") + response)
                 except socket.error as e:
                     logging.error(e)
 

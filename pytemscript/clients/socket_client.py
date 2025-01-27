@@ -47,8 +47,13 @@ class SocketClient:
         """ Send data to the remote server and return response. """
         try:
             with socket.create_connection((self.host, self.port)) as client_socket:
-                client_socket.sendall(pickle.dumps(payload))
-                response_data = client_socket.recv(4096)
+                serialized_data = pickle.dumps(payload)
+                client_socket.sendall(len(serialized_data).to_bytes(4, byteorder="big") + serialized_data)
+
+                response_length_bytes = client_socket.recv(4)
+                response_length = int.from_bytes(response_length_bytes, byteorder='big')
+
+                response_data = client_socket.recv(response_length)
                 if not response_data:
                     raise ConnectionError("No response received from server")
 
