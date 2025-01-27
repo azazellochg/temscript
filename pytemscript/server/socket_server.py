@@ -66,12 +66,10 @@ class SocketServer:
     def handle_request(self, method_name, *args, **kwargs):
         """ Process a socket message: pass method to the COM server
          and return result to the client. """
-        allowed_methods = ["get", "get_from_cache", "clear_cache", "has", "call", "set"]
-        if method_name in allowed_methods:
-            method = getattr(self.server_com, method_name, None)
-            if callable(method):
-                return method(*args, **kwargs)
-            else:  # for property decorators
-                return method
-        else:
+        method = getattr(self.server_com, method_name, None)
+        if method is None:
             raise ValueError("Unknown method: %s" % method_name)
+        elif callable(method):
+            return method(*args, **kwargs)
+        else:  # for property decorators
+            return method

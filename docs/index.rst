@@ -27,6 +27,7 @@ The documentation can be found at https://pytemscript.readthedocs.io
    self
    about
    microscope
+   remote
    enumerations
    changelog
 

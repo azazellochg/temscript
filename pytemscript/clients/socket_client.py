@@ -36,8 +36,7 @@ class SocketClient:
                 "args": args,
                 "kwargs": kwargs
             }
-            logging.debug("Sending request: %s, args: %s, kwargs: %s" % (
-                method_name, args, kwargs))
+            logging.debug("Sending request: %s" % payload)
             response = self.__send_request(payload)
             logging.debug("Received response: %s" % response)
             return response
