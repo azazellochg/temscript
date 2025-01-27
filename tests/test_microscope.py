@@ -322,6 +322,7 @@ def test_general(microscope, check_door: bool = False):
 
 
 def main(argv: Optional[list] = None):
+    """ Test all aspects of the microscope interface. """
     microscope = None
     parser = argparse.ArgumentParser(
         description="This test can use local or remote client. In the latter case "
@@ -333,7 +334,7 @@ def main(argv: Optional[list] = None):
                         help="Specify host address on which the server is listening")
     args = parser.parse_args(argv)
 
-    if args.host == '':
+    if args.host in ['', 'localhost']:
         mode = "local"
         microscope = Microscope(debug=True)
     else:

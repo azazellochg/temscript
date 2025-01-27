@@ -34,7 +34,7 @@ The pytemscript server is started on the microscope PC by the ``pytemscript-serv
     -h, --help                      show this help message and exit
     -t, --type {socket,zmq,grpc}    Server type to use: socket, zmq or grpc (default: socket)
     -p, --port PORT                 Specify port on which the server is listening (default: 39000)
-    --host HOST                     Specify host address on which the server is listening (default: )
+    --host HOST                     Specify host address on which the server is listening (default: 127.0.0.1)
     --useLD                         Connect to LowDose server on microscope PC (limited control only) (default: True)
     --useTecnaiCCD                  Connect to TecnaiCCD plugin on microscope PC that controls Digital Micrograph (may be faster than via TIA / std scripting) (default: False)
     -d, --debug                     Enable debug mode (default: False)
@@ -49,4 +49,4 @@ The interface is essentially the same as for the local client:
 .. code-block:: python
 
     from pytemscript.microscope import Microscope
-    microscope = Microscope(connection="socket", host="localhost", port=39000)
+    microscope = Microscope(connection="socket", host="127.0.0.1", port=39000)

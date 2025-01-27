@@ -1,23 +1,27 @@
 import threading
+import time
+from typing import List
 
 from pytemscript.microscope import Microscope
 from pytemscript.server.run import main as server_run
 
 
-def run_server(argv):
+def server_thread(argv: List[str]):
+    """ Start server process in a separate thread. """
     stop_event = threading.Event()
     thread = threading.Thread(target=server_run, args=(argv, stop_event))
     thread.start()
     return thread, stop_event
 
 def test_interface(microscope):
+    """ Test remote interface. """
     stage = microscope.stage
     print(stage.position)
     stage.go_to(x=1, y=-1)
 
-def test_connection(connection_type="socket"):
+def test_connection(connection_type: str = "socket"):
+    """ Create server and client, then test the connection. """
     print("Testing %s connection" % connection_type)
-    # Start server
     if connection_type == "socket":
         port = 39000
     elif connection_type == "grpc":
@@ -25,18 +29,20 @@ def test_connection(connection_type="socket"):
     elif connection_type == "zmq":
         port = 5555
     else:
-        raise Exception("Unknown connection type")
+        raise ValueError("Unknown connection type")
 
-    args = ["-t", connection_type, "-p", port, "--host", "", "-d"]
-    thread, stop_event = run_server(args)
+    # Start server
+    args = ["-t", connection_type, "-p", port, "--host", "127.0.0.1", "-d"]
+    thread, stop_event = server_thread(args)
+    time.sleep(1)
 
     # Start client
-    microscope = Microscope(connection=connection_type, host="",
-                            port=port, debug=True)
-    if microscope is None:
+    client = Microscope(connection=connection_type, host="",
+                        port=port, debug=True)
+    if client is None:
         raise RuntimeError("Could not create microscope client")
 
-    test_interface(microscope)
+    test_interface(client)
 
     # Stop server
     stop_event.set()

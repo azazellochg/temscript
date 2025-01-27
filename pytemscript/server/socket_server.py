@@ -10,7 +10,7 @@ class SocketServer:
         """ Initialize the basic variables and logging. """
         self.server_socket = None
         self.server_com = None
-        self.host = args.host or "localhost"
+        self.host = args.host or "127.0.0.1"
         self.port = args.port or 39000
         self.useLD = args.useLD
         self.useTecnaiCCD = args.useTecnaiCCD

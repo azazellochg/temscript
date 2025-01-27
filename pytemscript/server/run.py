@@ -13,7 +13,7 @@ def main(argv=None):
     parser.add_argument("-p", "--port", type=int,
                         default=39000,
                         help="Specify port on which the server is listening")
-    parser.add_argument("--host", type=str, default='',
+    parser.add_argument("--host", type=str, default='127.0.0.1',
                         help="Specify host address on which the server is listening")
     parser.add_argument("--useLD", dest="useLD",
                         default=True, action='store_true',
