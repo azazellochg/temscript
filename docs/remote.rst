@@ -12,6 +12,10 @@ The server supports different connection methods:
  * ZMQ (port 5555)
  * GRPC (port 50051)
 
+If you would like to use ZMQ server, you need to install ZMQ server on the microscope PC and ``pyzmq`` on the client PC (via pip: `py -m pip install pyzmq`).
+
+If you would like to use GRPC server, you need to install it via pip (`py -m pip install grpcio`) on both client and server PC.
+
 .. warning::
 
     The server provides no means of security or authorization control itself.

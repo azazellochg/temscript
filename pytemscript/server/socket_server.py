@@ -59,7 +59,7 @@ class SocketServer:
         finally:
             if self.server_socket:
                 self.server_socket.close()
-                # explicitly stop COM server
+                # explicitly stop the COM server
                 self.server_com._scope._close()
                 self.server_com = None
 

@@ -1,8 +1,11 @@
 from argparse import Namespace
 from concurrent import futures
-import grpc
-import my_grpc_pb2
-import my_grpc_pb2_grpc
+try:
+    import grpc
+    import my_grpc_pb2
+    import my_grpc_pb2_grpc
+except ImportError:
+    raise ImportError("Missing dependency 'grpcio', please install it via pip")
 
 
 class GRPCServer(my_grpc_pb2_grpc.MyServiceServicer):

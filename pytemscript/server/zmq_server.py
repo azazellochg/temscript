@@ -1,6 +1,9 @@
 from argparse import Namespace
-import zmq
 import pickle
+try:
+    import zmq
+except ImportError:
+    raise ImportError("Missing dependency 'pyzmq', please install it via pip")
 
 
 class ZMQServer:
