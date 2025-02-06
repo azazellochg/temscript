@@ -4,13 +4,15 @@ class Temperature:
         self._client = client
         self._has_tmpctrl = None
         self._has_tmpctrl_adv = None
+        self._shortcut = "tem.TemperatureControl"
+        self._shortcut2 = "tem_adv.TemperatureControl.AutoloaderCompartment"
         self._err_msg = "TemperatureControl is not available"
         self._err_msg_adv = "This function is not available in your advanced scripting interface."
     
     @property    
     def __std_available(self) -> bool:
         if self._has_tmpctrl is None:
-            self.hastmpctrl = self._client.has("tem.TemperatureControl")
+            self.hastmpctrl = self._client.has(self._shortcut)
         return self._has_tmpctrl
 
     @property
@@ -23,7 +25,7 @@ class Temperature:
     def is_available(self) -> bool:
         """ Status of the temperature control. Should be always False on Tecnai instruments. """
         if self.__std_available:
-            return self._client.has("tem.TemperatureControl.TemperatureControlAvailable")
+            return self._client.has(self._shortcut + ".TemperatureControlAvailable")
         else:
             return False
 
@@ -32,7 +34,7 @@ class Temperature:
         Note: this function takes considerable time to execute.
         """
         if self.__std_available:
-            self._client.call("tem.TemperatureControl.ForceRefill()")
+            self._client.call(self._shortcut + ".ForceRefill()")
         elif self.__adv_available:
             return self._client.call("tem_adv.TemperatureControl.RefillAllDewars()")
         else:
@@ -45,7 +47,7 @@ class Temperature:
         :type dewar: IntEnum
         """
         if self.__std_available:
-            return self._client.call("tem.TemperatureControl.RefrigerantLevel()", dewar)
+            return self._client.call(self._shortcut + ".RefrigerantLevel()", dewar)
         else:
             raise NotImplementedError(self._err_msg)
 
@@ -53,9 +55,9 @@ class Temperature:
     def is_dewar_filling(self) -> bool:
         """ Returns TRUE if any of the dewars is currently busy filling. """
         if self.__std_available:
-            return self._client.get("tem.TemperatureControl.DewarsAreBusyFilling")
+            return bool(self._client.get(self._shortcut + ".DewarsAreBusyFilling"))
         elif self.__adv_available:
-            return self._client.get("tem_adv.TemperatureControl.IsAnyDewarFilling")
+            return bool(self._client.get("tem_adv.TemperatureControl.IsAnyDewarFilling"))
         else:
             raise NotImplementedError(self._err_msg)
 
@@ -67,7 +69,7 @@ class Temperature:
         """
         # TODO: check if returns -60 at room temperature
         if self.__std_available:
-            return self._client.get("tem.TemperatureControl.DewarsRemainingTime")
+            return self._client.get(self._shortcut + ".DewarsRemainingTime")
         else:
             raise NotImplementedError(self._err_msg)
 
@@ -75,7 +77,7 @@ class Temperature:
     def temp_docker(self) -> float:
         """ Returns Docker temperature in Kelvins. """
         if self.__adv_available:
-            return self._client.get("tem_adv.TemperatureControl.AutoloaderCompartment.DockerTemperature")
+            return self._client.get(self._shortcut2 + ".DockerTemperature")
         else:
             raise NotImplementedError(self._err_msg_adv)
 
@@ -83,7 +85,7 @@ class Temperature:
     def temp_cassette(self) -> float:
         """ Returns Cassette gripper temperature in Kelvins. """
         if self.__adv_available:
-            return self._client.get("tem_adv.TemperatureControl.AutoloaderCompartment.CassetteTemperature")
+            return self._client.get(self._shortcut2 + ".CassetteTemperature")
         else:
             raise NotImplementedError(self._err_msg_adv)
 
@@ -91,7 +93,7 @@ class Temperature:
     def temp_cartridge(self) -> float:
         """ Returns Cartridge gripper temperature in Kelvins. """
         if self.__adv_available:
-            return self._client.get("tem_adv.TemperatureControl.AutoloaderCompartment.CartridgeTemperature")
+            return self._client.get(self._shortcut2 + ".CartridgeTemperature")
         else:
             raise NotImplementedError(self._err_msg_adv)
 
@@ -99,6 +101,6 @@ class Temperature:
     def temp_holder(self) -> float:
         """ Returns Holder temperature in Kelvins. """
         if self.__adv_available:
-            return self._client.get("tem_adv.TemperatureControl.ColumnCompartment.HolderTemperature")
+            return self._client.get(self._shortcut2 + ".HolderTemperature")
         else:
             raise NotImplementedError(self._err_msg_adv)

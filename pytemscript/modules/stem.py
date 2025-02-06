@@ -1,4 +1,4 @@
-from .utilities import Vector
+from .extras import Vector
 from ..utils.enums import InstrumentMode
 
 

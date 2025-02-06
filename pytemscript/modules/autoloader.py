@@ -18,13 +18,13 @@ class Autoloader:
     @property
     def is_available(self) -> bool:
         """ Status of the autoloader. Should be always False on Tecnai instruments. """
-        return self._client.get("tem.AutoLoader.AutoLoaderAvailable")
+        return bool(self._client.get("tem.AutoLoader.AutoLoaderAvailable"))
 
     @property
     def number_of_slots(self) -> int:
         """ The number of slots in a cassette. """
         if self.is_available:
-            return self._client.get("tem.AutoLoader.NumberOfCassetteSlots")
+            return int(self._client.get("tem.AutoLoader.NumberOfCassetteSlots"))
         else:
             raise RuntimeError(self._err_msg)
 

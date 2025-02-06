@@ -1,4 +1,6 @@
-from ..utils.enums import MechanismId, MechanismState
+from typing import Optional
+
+from .extras import Apertures as AperturesObj
 
 
 class Apertures:
@@ -6,23 +8,15 @@ class Apertures:
     def __init__(self, client):
         self._client = client
         self._has_apertures = None
+        self._shortcut = "tem.ApertureMechanismCollection"
         self._err_msg = "Apertures interface is not available. Requires a separate license"
         self._err_msg_vpp = "Either no VPP found or it's not enabled and inserted"
 
     @property
     def __std_available(self) -> bool:
         if self._has_apertures is None:
-            self._has_apertures = self._client.has("tem.ApertureMechanismCollection")
+            self._has_apertures = self._client.has(self._shortcut)
         return self._has_apertures
-
-    def _find_aperture(self, name: str):
-        """Find aperture object by name. """
-        if not self.__std_available:
-            raise NotImplementedError(self._err_msg)
-        for ap in self._client.get("tem.ApertureMechanismCollection"):
-            if MechanismId(ap.Id).name == name.upper():
-                return ap
-        raise KeyError("No aperture with name %s" % name)
 
     @property
     def vpp_position(self) -> int:
@@ -40,17 +34,25 @@ class Apertures:
             raise RuntimeError(self._err_msg_vpp)
 
     def enable(self, aperture) -> None:
-        ap = self._find_aperture(aperture)
-        ap.Enable()
+        if not self.__std_available:
+            raise NotImplementedError(self._err_msg)
+        else:
+            self._client.call(self._shortcut, obj=AperturesObj,
+                              func="enable", name=aperture)
 
     def disable(self, aperture) -> None:
-        ap = self._find_aperture(aperture)
-        ap.Disable()
+        if not self.__std_available:
+            raise NotImplementedError(self._err_msg)
+        else:
+            self._client.call(self._shortcut, obj=AperturesObj,
+                              func="disable", name=aperture)
 
     def retract(self, aperture) -> None:
-        ap = self._find_aperture(aperture)
-        if ap.IsRetractable:
-            ap.Retract()
+        if not self.__std_available:
+            raise NotImplementedError(self._err_msg)
+        else:
+            self._client.call(self._shortcut, obj=AperturesObj,
+                              func="retract", name=aperture)
 
     def select(self, aperture: str, size: int) -> None:
         """ Select a specific aperture.
@@ -60,26 +62,16 @@ class Apertures:
         :param size: Aperture size
         :type size: float
         """
-        ap = self._find_aperture(aperture)
-        if ap.State == MechanismState.DISABLED:
-            ap.Enable()
-        for a in ap.ApertureCollection:
-            if a.Diameter == size:
-                ap.SelectAperture(a)
-                if ap.SelectedAperture.Diameter == size:
-                    return
-                else:
-                    raise RuntimeError("Could not select aperture!")
+        if not self.__std_available:
+            raise NotImplementedError(self._err_msg)
+        else:
+            self._client.call(self._shortcut, obj=AperturesObj,
+                              func="select", name=aperture, size=size)
 
-    @property
-    def show_all(self) -> dict:
+    def show(self) -> Optional[dict]:
         """ Returns a dict with apertures information. """
         if not self.__std_available:
             raise NotImplementedError(self._err_msg)
-        result = {}
-        for ap in self._client.get("tem.ApertureMechanismCollection"):
-            result[MechanismId(ap.Id).name] = {"retractable": ap.IsRetractable,
-                                               "state": MechanismState(ap.State).name,
-                                               "sizes": [a.Diameter for a in ap.ApertureCollection]
-                                               }
-        return result
+        else:
+            self._client.call(self._shortcut, obj=AperturesObj,
+                              func="show")

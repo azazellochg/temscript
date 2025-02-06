@@ -6,7 +6,7 @@ import atexit
 import comtypes
 import comtypes.client
 
-from ..modules.utilities import Vector
+from ..modules.extras import Vector
 from ..utils.misc import rgetattr, rsetattr
 from ..utils.constants import *
 from ..utils.enums import TEMScriptingError
@@ -164,7 +164,12 @@ class COMClient:
 
     def call(self, attrname, *args, **kwargs):
         attrname = attrname.rstrip("()")
-        return rgetattr(self._scope, attrname, *args, **kwargs)
+        obj = kwargs.pop("obj")
+        if obj is not None:
+            attr = rgetattr(self._scope, attrname)
+            obj(attr, *args, **kwargs).execute()
+        else:
+            return rgetattr(self._scope, attrname, *args, **kwargs)
 
     def set(self, attrname, value):
         if isinstance(value, Vector):
