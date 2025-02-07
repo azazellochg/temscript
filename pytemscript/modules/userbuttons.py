@@ -1,4 +1,18 @@
-from .extras import Buttons
+from typing import Dict
+
+from .extras import SpecialObj
+
+
+class ButtonsObj(SpecialObj):
+    """ Wrapper around buttons COM object. """
+
+    def show(self) -> Dict:
+        """ Returns a dict with buttons assignment. """
+        buttons = {}
+        for b in self.com_object:
+            buttons[b.Name] = b.Label
+
+        return buttons
 
 
 class UserButtons:
@@ -9,8 +23,8 @@ class UserButtons:
         self._client = client
 
     @property
-    def show(self) -> Buttons:
+    def show(self) -> Dict:
         """ Returns a dict with assigned hand panels buttons. """
-        return self._client.call("tem.UserButtons", obj=Buttons, func="show")
+        return self._client.call("tem.UserButtons", obj=ButtonsObj, func="show")
 
     #TODO: add events - buttons assignment

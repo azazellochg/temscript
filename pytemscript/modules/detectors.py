@@ -1,8 +1,94 @@
 from typing import Dict
 import logging
 
-from .extras import Detectors as DetectorsObj
-from ..utils.enums import ScreenPosition
+from .extras import SpecialObj
+from ..utils.enums import ScreenPosition, AcqShutterMode
+
+
+class DetectorsObj(SpecialObj):
+    """ Wrapper around cameras COM object."""
+
+    def show_film_settings(self) -> Dict:
+        """ Returns a dict with film settings. """
+        film = self.com_object
+        return {
+            "stock": film.Stock,  # Int
+            "exposure_time": film.ManualExposureTime,
+            "film_text": film.FilmText,
+            "exposure_number": film.ExposureNumber,
+            "user_code": film.Usercode,  # 3 digits
+            "screen_current": film.ScreenCurrent * 1e9  # check if works without film
+        }
+
+    def show_stem_detectors(self) -> Dict:
+        """ Returns a dict with STEM detectors parameters. """
+        stem_detectors = dict()
+        for d in self.com_object:
+            info = d.Info
+            name = info.Name
+            stem_detectors[name] = {
+                "type": "STEM_DETECTOR",
+                "binnings": [int(b) for b in info.Binnings]
+            }
+        return stem_detectors
+
+    def show_cameras(self) -> Dict:
+        """ Returns a dict with parameters for all TEM cameras. """
+        tem_cameras = dict()
+
+        for cam in self.com_object:
+            info = cam.Info
+            param = cam.AcqParams
+            name = info.Name
+            tem_cameras[name] = {
+                "type": "CAMERA",
+                "height": info.Height,
+                "width": info.Width,
+                "pixel_size(um)": (info.PixelSize.X / 1e-6, info.PixelSize.Y / 1e-6),
+                "binnings": [int(b) for b in info.Binnings],
+                "shutter_modes": [AcqShutterMode(x).name for x in info.ShutterModes],
+                "pre_exposure_limits(s)": (param.MinPreExposureTime, param.MaxPreExposureTime),
+                "pre_exposure_pause_limits(s)": (param.MinPreExposurePauseTime,
+                                                 param.MaxPreExposurePauseTime)
+            }
+
+        return tem_cameras
+
+    def show_cameras_csa(self) -> Dict:
+        """ Returns a dict with parameters for all TEM cameras that support CSA. """
+        csa_cameras = dict()
+
+        for cam in self.com_object.SupportedCameras:
+            self.com_object.Camera = cam
+            param = self.com_object.CameraSettings.Capabilities
+            csa_cameras[cam.Name] = {
+                "type": "CAMERA_ADVANCED",
+                "height": cam.Height,
+                "width": cam.Width,
+                "pixel_size(um)": (cam.PixelSize.Width / 1e-6, cam.PixelSize.Height / 1e-6),
+                "binnings": [int(b.Width) for b in param.SupportedBinnings],
+                "exposure_time_range(s)": (param.ExposureTimeRange.Begin,
+                                           param.ExposureTimeRange.End),
+                "supports_dose_fractions": param.SupportsDoseFractions,
+                "max_number_of_fractions": param.MaximumNumberOfDoseFractions,
+                "supports_drift_correction": param.SupportsDriftCorrection,
+                "supports_electron_counting": param.SupportsElectronCounting,
+                "supports_eer": getattr(param, 'SupportsEER', False)
+            }
+
+        return csa_cameras
+
+    def show_cameras_cca(self, tem_cameras: Dict) -> Dict:
+        """ Update input dict with parameters for all TEM cameras that support CCA. """
+        for cam in self.com_object.SupportedCameras:
+            if cam.Name in tem_cameras:
+                self.com_object.Camera = cam
+                param = self.com_object.CameraSettings.Capabilities
+                tem_cameras[cam.Name].update({
+                    "supports_recording": getattr(param, 'SupportsRecording', False)
+                })
+
+        return tem_cameras
 
 
 class Detectors:
@@ -28,7 +114,8 @@ class Detectors:
     @property
     def cameras(self) -> Dict:
         """ Returns a dict with parameters for all TEM cameras. """
-        tem_cameras = self._client.call("tem.Acquisition.Cameras", obj=DetectorsObj,
+        tem_cameras = self._client.call("tem.Acquisition.Cameras", 
+                                        obj=DetectorsObj,
                                         method="show_cameras")
 
         if not self._client.has_advanced_iface:
@@ -50,7 +137,8 @@ class Detectors:
     @property
     def stem_detectors(self) -> Dict:
         """ Returns a dict with STEM detectors parameters. """
-        return self._client.call("tem.Acquisition.Detectors", obj=DetectorsObj,
+        return self._client.call("tem.Acquisition.Detectors",
+                                 obj=DetectorsObj,
                                  func="show_stem_detectors")
 
     @property

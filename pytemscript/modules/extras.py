@@ -5,8 +5,7 @@ import logging
 from pathlib import Path
 
 from ..utils.enums import (ImagePixelType, AcqImageFileFormat, StageAxes,
-                           GaugeStatus, GaugePressureLevel, AcqShutterMode,
-                           MechanismId, MechanismState, MeasurementUnitType)
+                           MeasurementUnitType)
 
 
 class Vector:
@@ -192,94 +191,8 @@ class SpecialObj:
                 self.func, SpecialObj.__name__))
 
 
-class Detectors(SpecialObj):
-    """ CCD/DDD, film/plate and STEM detectors."""
-
-    def show_film_settings(self) -> Dict:
-        """ Returns a dict with film settings. """
-        camera = self.com_object
-        return {
-            "stock": camera.Stock,  # Int
-            "exposure_time": camera.ManualExposureTime,
-            "film_text": camera.FilmText,
-            "exposure_number": camera.ExposureNumber,
-            "user_code": camera.Usercode,  # 3 digits
-            "screen_current": camera.ScreenCurrent * 1e9  # check if works without film
-        }
-
-    def show_stem_detectors(self) -> Dict:
-        """ Returns a dict with STEM detectors parameters. """
-        stem_detectors = dict()
-        for d in self.com_object:
-            info = d.Info
-            name = info.Name
-            stem_detectors[name] = {
-                "type": "STEM_DETECTOR",
-                "binnings": [int(b) for b in info.Binnings]
-            }
-        return stem_detectors
-
-    def show_cameras(self) -> Dict:
-        """ Returns a dict with parameters for all TEM cameras. """
-        tem_cameras = dict()
-
-        for cam in self.com_object:
-            info = cam.Info
-            param = cam.AcqParams
-            name = info.Name
-            tem_cameras[name] = {
-                "type": "CAMERA",
-                "height": info.Height,
-                "width": info.Width,
-                "pixel_size(um)": (info.PixelSize.X / 1e-6, info.PixelSize.Y / 1e-6),
-                "binnings": [int(b) for b in info.Binnings],
-                "shutter_modes": [AcqShutterMode(x).name for x in info.ShutterModes],
-                "pre_exposure_limits(s)": (param.MinPreExposureTime, param.MaxPreExposureTime),
-                "pre_exposure_pause_limits(s)": (param.MinPreExposurePauseTime,
-                                                 param.MaxPreExposurePauseTime)
-            }
-
-        return tem_cameras
-
-    def show_cameras_csa(self) -> Dict:
-        """ Returns a dict with parameters for all TEM cameras that support CSA. """
-        csa_cameras = dict()
-
-        for cam in self.com_object.SupportedCameras:
-            self.com_object.Camera = cam
-            param = self.com_object.CameraSettings.Capabilities
-            csa_cameras[cam.Name] = {
-                "type": "CAMERA_ADVANCED",
-                "height": cam.Height,
-                "width": cam.Width,
-                "pixel_size(um)": (cam.PixelSize.Width / 1e-6, cam.PixelSize.Height / 1e-6),
-                "binnings": [int(b.Width) for b in param.SupportedBinnings],
-                "exposure_time_range(s)": (param.ExposureTimeRange.Begin,
-                                           param.ExposureTimeRange.End),
-                "supports_dose_fractions": param.SupportsDoseFractions,
-                "max_number_of_fractions": param.MaximumNumberOfDoseFractions,
-                "supports_drift_correction": param.SupportsDriftCorrection,
-                "supports_electron_counting": param.SupportsElectronCounting,
-                "supports_eer": getattr(param, 'SupportsEER', False)
-            }
-
-        return csa_cameras
-
-    def show_cameras_cca(self, tem_cameras: Dict) -> Dict:
-        """ Update input dict with parameters for all TEM cameras that support CCA. """
-        for cam in self.com_object.SupportedCameras:
-            if cam.Name in tem_cameras:
-                self.com_object.Camera = cam
-                param = self.com_object.CameraSettings.Capabilities
-                tem_cameras[cam.Name].update({
-                    "supports_recording": getattr(param, 'SupportsRecording', False)
-                })
-
-        return tem_cameras
-
-
 class StagePosition(SpecialObj):
-    """ Stage functions. """
+    """ Wrapper around stage / piezo stage COM object. """
 
     def set(self,
             axes: int = 0,
@@ -300,7 +213,7 @@ class StagePosition(SpecialObj):
             getattr(self.com_object, method)(pos, axes)
 
     def get(self, a=False, b=False) -> Dict:
-        """ The current position or speed of the stage/piezostage (x,y,z in um).
+        """ The current position or speed of the stage/piezo stage (x,y,z in um).
         Set a and b to True if you want to retrieve them as well.
         """
         pos = {key: getattr(self.com_object, key) * 1e6 for key in 'XYZ'}
@@ -324,89 +237,3 @@ class StagePosition(SpecialObj):
             }
 
         return limits
-
-
-class Gauges(SpecialObj):
-    """ Vacuum gauges methods. """
-
-    def show(self) -> Dict:
-        """ Returns a dict with vacuum gauges information. """
-        gauges = {}
-        for g in self.com_object:
-            # g.Read()
-            if g.Status == GaugeStatus.UNDEFINED:
-                # set manually if undefined, otherwise fails
-                pressure_level = GaugePressureLevel.UNDEFINED.name
-            else:
-                pressure_level = GaugePressureLevel(g.PressureLevel).name
-
-            gauges[g.Name] = {
-                "status": GaugeStatus(g.Status).name,
-                "pressure": g.Pressure,
-                "trip_level": pressure_level
-            }
-
-        return gauges
-
-
-class Apertures(SpecialObj):
-    """ Apertures controls. """
-
-    def show(self) -> Dict:
-        """ Returns a dict with apertures information. """
-        apertures = {}
-        for ap in self.com_object:
-            apertures[MechanismId(ap.Id).name] = {
-                "retractable": ap.IsRetractable,
-                "state": MechanismState(ap.State).name,
-                "sizes": [a.Diameter for a in ap.ApertureCollection]
-            }
-
-        return apertures
-
-    def _find_aperture(self, name: str):
-        """ Helper method to find the aperture object by name. """
-        name = name.upper()
-        for ap in self.com_object:
-            if name == MechanismId(ap.Id).name:
-                return ap
-        raise KeyError("No aperture with name %s" % name)
-
-    def enable(self, name: str) -> None:
-        ap = self._find_aperture(name)
-        ap.Enable()
-
-    def disable(self, name: str) -> None:
-        ap = self._find_aperture(name)
-        ap.Disable()
-
-    def retract(self, name: str) -> None:
-        ap = self._find_aperture(name)
-        if ap.IsRetractable:
-            ap.Retract()
-        else:
-            raise NotImplementedError("Aperture %s is not retractable" % name)
-
-    def select(self, name: str, size: int) -> None:
-        ap = self._find_aperture(name)
-        if ap.State == MechanismState.DISABLED:
-            ap.Enable()
-        for a in ap.ApertureCollection:
-            if a.Diameter == size:
-                ap.SelectAperture(a)
-                if ap.SelectedAperture.Diameter == size:
-                    return
-                else:
-                    raise RuntimeError("Could not select aperture!")
-
-
-class Buttons(SpecialObj):
-    """ User buttons methods. """
-
-    def show(self) -> Dict:
-        """ Returns a dict with buttons assignment. """
-        buttons = {}
-        for b in self.com_object:
-            buttons[b.Name] = b.Label
-
-        return buttons

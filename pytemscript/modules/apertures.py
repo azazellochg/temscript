@@ -1,6 +1,58 @@
-from typing import Optional
+from typing import Optional, Dict
 
-from .extras import Apertures as AperturesObj
+from .extras import SpecialObj
+from ..utils.enums import MechanismId, MechanismState
+
+
+class AperturesObj(SpecialObj):
+    """ Wrapper around apertures COM object. """
+
+    def show(self) -> Dict:
+        """ Returns a dict with apertures information. """
+        apertures = {}
+        for ap in self.com_object:
+            apertures[MechanismId(ap.Id).name] = {
+                "retractable": ap.IsRetractable,
+                "state": MechanismState(ap.State).name,
+                "sizes": [a.Diameter for a in ap.ApertureCollection]
+            }
+
+        return apertures
+
+    def _find_aperture(self, name: str):
+        """ Helper method to find the aperture object by name. """
+        name = name.upper()
+        for ap in self.com_object:
+            if name == MechanismId(ap.Id).name:
+                return ap
+        raise KeyError("No aperture with name %s" % name)
+
+    def enable(self, name: str) -> None:
+        ap = self._find_aperture(name)
+        ap.Enable()
+
+    def disable(self, name: str) -> None:
+        ap = self._find_aperture(name)
+        ap.Disable()
+
+    def retract(self, name: str) -> None:
+        ap = self._find_aperture(name)
+        if ap.IsRetractable:
+            ap.Retract()
+        else:
+            raise NotImplementedError("Aperture %s is not retractable" % name)
+
+    def select(self, name: str, size: int) -> None:
+        ap = self._find_aperture(name)
+        if ap.State == MechanismState.DISABLED:
+            ap.Enable()
+        for a in ap.ApertureCollection:
+            if a.Diameter == size:
+                ap.SelectAperture(a)
+                if ap.SelectedAperture.Diameter == size:
+                    return
+                else:
+                    raise RuntimeError("Could not select aperture!")
 
 
 class Apertures:
