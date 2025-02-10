@@ -107,13 +107,8 @@ class COMClient:
         # Create all COM interfaces
         self._scope = COMBase(useLD, useTecnaiCCD)
 
-        if useTecnaiCCD:
-            if self._scope.tecnai_ccd is None:
-                raise RuntimeError("Could not use Tecnai CCD plugin, "
-                                   "please set useTecnaiCCD=False")
-            else:
-                from ..plugins.tecnai_ccd_plugin import TecnaiCCDPlugin
-                self._ccd_plugin = TecnaiCCDPlugin(self._scope.tecnai_ccd)
+        if useTecnaiCCD and self._scope.tecnai_ccd is None:
+            raise RuntimeError("Could not use Tecnai CCD plugin, please set useTecnaiCCD=False")
 
         self.cache: Dict[str, Any] = dict()
 

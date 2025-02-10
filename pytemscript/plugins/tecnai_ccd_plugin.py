@@ -8,6 +8,64 @@ from ..utils.enums import AcqImageSize, AcqMode, AcqSpeed, ImagePixelType
 from ..modules.extras import BaseImage
 
 
+class Image(BaseImage):
+    """ Acquired image object. """
+    def __init__(self,
+                 obj,
+                 name: Optional[str] = None,
+                 **kwargs):
+        super().__init__(obj, name, isAdvanced=False, **kwargs)
+
+    @property
+    def width(self) -> int:
+        """ Image width in pixels. """
+        return self._kwargs['width']
+
+    @property
+    def height(self) -> int:
+        """ Image height in pixels. """
+        return self._kwargs['height']
+
+    @property
+    def bit_depth(self) -> str:
+        """ Bit depth. """
+        return self._kwargs['bit_depth']
+
+    @property
+    def pixel_type(self) -> str:
+        """ Image pixels type: uint, int or float. """
+        return ImagePixelType.SIGNED_INT.name
+
+    @property
+    def data(self):
+        """ Returns actual image object as numpy uint16 array. """
+        #from comtypes.safearray import safearray_as_ndarray
+        #with safearray_as_ndarray:
+        #    data = self._img
+        #import numpy as np
+        data = self._img.astype("uint16")
+        data.shape = self.width, self.height
+
+        return data
+
+    def save(self, filename: Path, normalize: bool = False) -> None:
+        """ Save acquired image to a file.
+
+        :param filename: File path
+        :type filename: str
+        :param normalize: Normalize image, only for non-MRC format
+        :type normalize: bool
+        """
+        fmt = os.path.splitext(filename)[1].upper().lstrip(".")
+        if fmt == "MRC":
+            logging.info("Convert to int16 since MRC does not support int32")
+            import mrcfile
+            with mrcfile.new(filename) as mrc:
+                mrc.set_data(self.data.astype("int16"))
+        else:
+            raise NotImplementedError("Only mrc format is supported")
+
+
 class TecnaiCCDPlugin:
     """ Main class that uses FEI Tecnai CCD plugin on microscope PC. """
     def __init__(self, com_iface):
@@ -27,7 +85,7 @@ class TecnaiCCDPlugin:
                       exp_time: float = 1,
                       binning: int = 1,
                       camerasize: int = 1024,
-                      **kwargs):
+                      **kwargs) -> Image:
         self._set_camera_param(cameraName, size, exp_time, binning, camerasize, **kwargs)
         if not self._plugin.IsAcquiring:
             #img = self._plugin.AcquireImageNotShown(id=1)
@@ -108,61 +166,3 @@ class TecnaiCCDPlugin:
             ret = self._plugin.ExecuteScriptFile(cmd)
             if ret:
                 raise Exception("Command %s failed" % cmd)
-
-
-class Image(BaseImage):
-    """ Acquired image object. """
-    def __init__(self,
-                 obj,
-                 name: Optional[str] = None,
-                 **kwargs):
-        super().__init__(obj, name, isAdvanced=False, **kwargs)
-
-    @property
-    def width(self) -> int:
-        """ Image width in pixels. """
-        return self._kwargs['width']
-
-    @property
-    def height(self) -> int:
-        """ Image height in pixels. """
-        return self._kwargs['height']
-
-    @property
-    def bit_depth(self) -> str:
-        """ Bit depth. """
-        return self._kwargs['bit_depth']
-
-    @property
-    def pixel_type(self) -> str:
-        """ Image pixels type: uint, int or float. """
-        return ImagePixelType.SIGNED_INT.name
-
-    @property
-    def data(self):
-        """ Returns actual image object as numpy uint16 array. """
-        #from comtypes.safearray import safearray_as_ndarray
-        #with safearray_as_ndarray:
-        #    data = self._img
-        #import numpy as np
-        data = self._img.astype("uint16")
-        data.shape = self.width, self.height
-
-        return data
-
-    def save(self, filename: Path, normalize: bool = False) -> None:
-        """ Save acquired image to a file.
-
-        :param filename: File path
-        :type filename: str
-        :param normalize: Normalize image, only for non-MRC format
-        :type normalize: bool
-        """
-        fmt = os.path.splitext(filename)[1].upper().lstrip(".")
-        if fmt == "MRC":
-            logging.info("Convert to int16 since MRC does not support int32")
-            import mrcfile
-            with mrcfile.new(filename) as mrc:
-                mrc.set_data(self.data.astype("int16"))
-        else:
-            raise NotImplementedError("Only mrc format is supported")

@@ -3,8 +3,8 @@ import time
 import logging
 from datetime import datetime
 
-from ..utils.enums import (AcqImageSize, AcqShutterMode, PlateLabelDateFormat,
-                           ScreenPosition)
+from ..plugins.tecnai_ccd_plugin import TecnaiCCDPlugin
+from ..utils.enums import AcqImageSize, AcqShutterMode, PlateLabelDateFormat, ScreenPosition
 from .extras import Image, SpecialObj
 
 
@@ -13,7 +13,6 @@ class AcquisitionObj(SpecialObj):
     def __init__(self, com_object, func: str = None, **kwargs):
         super().__init__(com_object, func, **kwargs)
         self.current_camera = None
-        self.prev_shutter_mode = None
 
     def acquire_film(self,
                      film_text: str,
@@ -84,12 +83,6 @@ class AcquisitionObj(SpecialObj):
         imgs = acq.AcquireImages()
         img = imgs[0]
 
-        if self.prev_shutter_mode is not None:
-            # restore previous shutter mode
-            obj = self.prev_shutter_mode[0]
-            old_value = self.prev_shutter_mode[1]
-            obj.ShutterMode = old_value
-
         return Image(img, name=cameraName)
 
     def acquire_advanced(self,
@@ -104,12 +97,38 @@ class AcquisitionObj(SpecialObj):
             self.com_object.CameraSingleAcquisition.Wait()
             return Image(img, name=cameraName, isAdvanced=True)
 
+    def restore_shutter(self,
+                        cameraName: str,
+                        prev_shutter_mode: AcqShutterMode.value) -> None:
+        """ Restore global shutter mode after exposure. """
+        camera = None
+        for cam in self.com_object:
+            if cam.Info.Name == cameraName:
+                camera = cam
+        if camera is None:
+            raise KeyError("No camera with name %s. If using standard scripting the "
+                           "camera must be selected in the microscope user interface" % cameraName)
+
+        camera.Info.ShutterMode = prev_shutter_mode
+
+    def find_camera_size(self, cameraName: str) -> int:
+        """ Find camera size by name. Only used by Tecnai CCD plugin. """
+        camera = None
+        for cam in self.com_object:
+            if cam.Info.Name == cameraName:
+                camera = cam
+        if camera is None:
+            raise KeyError("No camera with name %s. If using standard scripting the "
+                           "camera must be selected in the microscope user interface" % cameraName)
+
+        return int(camera.Info.Width)
+
     def set_tem_presets(self,
                         cameraName: str,
                         size: AcqImageSize = AcqImageSize.FULL,
                         exp_time: float = 1,
                         binning: int = 1,
-                        **kwargs) -> None:
+                        **kwargs) -> AcqShutterMode:
 
         camera = None
         for cam in self.com_object:
@@ -125,6 +144,7 @@ class AcquisitionObj(SpecialObj):
 
         binning = self._check_binning(binning, camera)
         settings.Binning = binning
+        prev_shutter_mode = None
 
         if 'correction' in kwargs:
             settings.ImageCorrection = kwargs['correction']
@@ -132,7 +152,7 @@ class AcquisitionObj(SpecialObj):
             settings.ExposureMode = kwargs['exposure_mode']
         if 'shutter_mode' in kwargs:
             # Save previous global shutter mode
-            self.prev_shutter_mode = (info, info.ShutterMode)
+            prev_shutter_mode = info.ShutterMode
             info.ShutterMode = kwargs['shutter_mode']
         if 'pre_exp_time' in kwargs:
             if kwargs['shutter_mode'] != AcqShutterMode.BOTH:
@@ -149,6 +169,8 @@ class AcquisitionObj(SpecialObj):
         # automatically when binning is set
         settings.ExposureTime = exp_time
 
+        return prev_shutter_mode
+
     def set_tem_presets_advanced(self,
                                  cameraName: str,
                                  size: AcqImageSize = AcqImageSize.FULL,
@@ -156,7 +178,7 @@ class AcquisitionObj(SpecialObj):
                                  binning: int = 1,
                                  camera_type: str = "csa",
                                  **kwargs) -> None:
-        eer = False
+        eer = kwargs.get("eer")
         camera = None
         if camera_type == "cca":
             for cam in self.com_object.CameraContinuousAcquisition.SupportedCameras:
@@ -211,11 +233,9 @@ class AcquisitionObj(SpecialObj):
             else:
                 raise NotImplementedError("This camera does not support electron counting")
 
-        if 'eer' in kwargs and hasattr(capabilities, 'SupportsEER'):
+        if eer is not None and hasattr(capabilities, 'SupportsEER'):
             if capabilities.SupportsEER:
-                eer = kwargs['eer']
                 settings.EER = eer
-
                 if eer and not settings.ElectronCounting:
                     raise RuntimeError("Electron counting should be enabled when using EER")
                 if eer and 'frame_ranges' in kwargs:
@@ -235,7 +255,7 @@ class AcquisitionObj(SpecialObj):
 
             logging.info("Movie of %s frames will be saved to: %s.mrc" % (
                 settings.CalculateNumberOfFrames(), output))
-            if not eer:
+            if eer is False:
                 logging.info("MRC format can only contain images of up to "
                              "16-bits per pixel, to get true CameraCounts "
                              "multiply pixels by PixelToValueCameraCounts "
@@ -337,10 +357,19 @@ class Acquisition:
                                "pass useTecnaiCCD=True to the Microscope() ?")
         else:
             logging.info("Using TecnaiCCD plugin for Gatan camera")
-            camerasize = self._find_camera(cameraName).Info.Width  # Get camera size from std scripting
-            return self._client._ccd_plugin.acquire_image(
-                cameraName, size, exp_time, binning,
-                camerasize=camerasize, **kwargs)
+            # Get camera size from std scripting
+            camerasize = self._client.call("tem.Acquisition.Cameras", obj=AcquisitionObj,
+                                           func="find_camera_size", cameraName=cameraName)
+
+            image = self._client.call("tecnai_ccd", obj=TecnaiCCDPlugin,
+                                      func="acquire_image",
+                                      cameraName=cameraName,
+                                      size=size,
+                                      exp_time=exp_time,
+                                      binning=binning,
+                                      camerasize=camerasize,
+                                      **kwargs)
+            return image
 
     def acquire_tem_image(self,
                           cameraName: str,
@@ -376,7 +405,7 @@ class Acquisition:
             return self._acquire_with_tecnaiccd(cameraName, size, exp_time,
                                                 binning, **kwargs)
 
-        if kwargs.get("recording", False) and  not self._has_cca:
+        if kwargs.get("recording", False) and not self._has_cca:
             raise NotImplementedError("Recording / continuous acquisition is not available")
 
         if self._client.has_advanced_iface:
@@ -386,24 +415,28 @@ class Acquisition:
                                                   cameraName=cameraName,
                                                   has_cca=self._has_cca)
 
-        if self._camera_type == "std":
-            # Use standard scripting
-            self._client.call("tem.Acquisition.Cameras",
-                              obj=AcquisitionObj,
-                              func="set_tem_presets",
-                              cameraName=cameraName,
-                              size=size,
-                              exp_time=exp_time,
-                              binning=binning,
-                              **kwargs)
+        if self._camera_type == "std": # Use standard scripting
+            prev_shutter_mode = self._client.call("tem.Acquisition.Cameras",
+                                                  obj=AcquisitionObj,
+                                                  func="set_tem_presets",
+                                                  cameraName=cameraName,
+                                                  size=size,
+                                                  exp_time=exp_time,
+                                                  binning=binning,
+                                                  **kwargs)
 
             self._check_prerequisites()
             image = self._client.call("tem.Acquisition", obj=AcquisitionObj,
                                       func="acquire", cameraName=cameraName)
+
+            if prev_shutter_mode is not None:
+                self._client.call("tem.Acquisition.Cameras", obj=AcquisitionObj,
+                                  func="restore_shutter", cameraName=cameraName,
+                                  prev_shutter_mode=prev_shutter_mode)
+
             return image
 
-        else:
-            # Use advanced scripting
+        else: # cca os csa, use advanced scripting
             self._client.call("tem_adv.Acquisitions",
                               obj=AcquisitionObj,
                               func="set_tem_presets_advanced",
