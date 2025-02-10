@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Tuple
 
 from .extras import StagePosition
 
@@ -27,7 +27,7 @@ class PiezoStage:
                                      obj=StagePosition, func="get")
 
     @property
-    def position_range(self) -> tuple[float, float]:
+    def position_range(self) -> Tuple[float, float]:
         """ Return min and max positions. """
         if not self.__adv_available:
             raise NotImplementedError(self._err_msg)
