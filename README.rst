@@ -16,7 +16,7 @@ New changes and this whole product is distributed under either version 3 of the 
 Documentation
 -------------
 
-The documentation can be found at https://pytemscript.readthedocs.io
+The documentation can be found at https://pytemscript.readthedocs.io or locally in the docs/ direcory.
 
 Installation
 ------------
@@ -78,7 +78,7 @@ Relative to TEM V1.9 standard scripting adapter:
     * Projection
     * Stage
     * TemperatureControl
-    * UserButton(s) (no events handling)
+    * UserButtons (no events handling)
     * Vacuum
 
 Relative to TEM V1.2 advanced scripting adapter:
