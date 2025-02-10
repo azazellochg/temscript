@@ -1,5 +1,5 @@
 graft docs
-graft scripts
+graft tests
 include LICENSE_GPL
 include LICENSE_BSD
 include README.rst

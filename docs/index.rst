@@ -27,8 +27,8 @@ The documentation can be found at https://pytemscript.readthedocs.io
    self
    about
    microscope
+   remote
    enumerations
-   restrictions
    changelog
 
 Installation
@@ -42,8 +42,6 @@ Requirements:
     * comtypes
     * mrcfile
     * numpy
-    * sphinx-rtd-theme (optional, only for building documentation)
-    * matplotlib (optional, only for running tests)
 
 Installation from PyPI on Windows
 #################################
@@ -93,7 +91,7 @@ Relative to TEM V1.9 standard scripting adapter:
     * Projection
     * Stage
     * TemperatureControl
-    * UserButton(s) (no events handling)
+    * UserButtons (no event handling)
     * Vacuum
 
 Relative to TEM V1.2 advanced scripting adapter:
@@ -145,13 +143,23 @@ Take an image:
                                                      binning=2)
     image.save("img.mrc")
 
+Testing
+-------
+
+The package provides a few scripts to test the microscope interface connection and image acquisition:
+
+.. code-block:: python
+
+    python -m pytemscript.tests.test_microscope
+    python -m pytemscript.tests.test_acquisition
+
 Disclaimer
 ----------
 
 Copyright (c) 2012-2021 by Tore Niermann
 Contact: tore.niermann (at) tu-berlin.de
 
-Copyleft 2022-2023 by Grigory Sharov
+Copyright (c) 2022-2025 by Grigory Sharov
 Contact: gsharov (at) mrc-lmb.cam.ac.uk
 
 All product and company names are trademarks or registered trademarks
@@ -173,4 +181,3 @@ Indices and tables
 
 * :ref:`genindex`
 * :ref:`modindex`
-

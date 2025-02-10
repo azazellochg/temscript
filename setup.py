@@ -3,16 +3,16 @@ from setuptools import setup
 # To use a consistent encoding
 from codecs import open
 from os import path
+from pytemscript import __version__
 
 here = path.abspath(path.dirname(__file__))
-
 # Long description
 with open(path.join(here, "README.rst"), "r", encoding="utf-8") as fp:
     long_description = fp.read()
 
-# Read version
-with open("pytemscript/version.py") as fp:
-    exec(fp.read())
+# Load requirements.txt
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
 
 setup(name='pytemscript',
       version=__version__,
@@ -20,6 +20,7 @@ setup(name='pytemscript',
       author='Tore Niermann, Grigory Sharov',
       author_email='tore.niermann@tu-berlin.de, gsharov@mrc-lmb.cam.ac.uk',
       long_description=long_description,
+      long_description_content_type='text/x-rst',
       packages=['pytemscript'],
       platforms=['any'],
       license="GNU General Public License v3 (GPLv3)",
@@ -35,15 +36,17 @@ setup(name='pytemscript',
           'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
           'Operating System :: OS Independent'
       ],
-      install_requires=[
-          "comtypes;platform_system=='Windows'",
-          "mrcfile",
-          "numpy"
-      ],
-      entry_points={'console_scripts': ['pytemscript-server = pytemscript.utils.server:main']},
+      keywords='TEM python',
+      install_requires=[requirements],
+      extras_require={
+          "extra": ["matplotlib", "mypy"]
+      },
+      entry_points={'console_scripts': [
+          'pytemscript-server = pytemscript.server.run:main'
+      ]},
       url="https://github.com/azazellochg/pytemscript",
       project_urls={
           "Source": "https://github.com/azazellochg/pytemscript",
           "Documentation": "https://pytemscript.readthedocs.io/"
       }
-      )
+)

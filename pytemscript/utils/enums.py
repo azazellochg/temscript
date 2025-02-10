@@ -77,10 +77,10 @@ class StageAxes(IntEnum):
     NONE = 0
     X = 1
     Y = 2
+    XY = 3
     Z = 4
     A = 8
     B = 16
-    XY = 3
 
 
 class IlluminationNormalization(IntEnum):
@@ -150,7 +150,7 @@ class ProjectionDetectorShift(IntEnum):
 
 
 class ProjDetectorShiftMode(IntEnum):
-    """ This property determines, whether the chosen DetectorShift
+    """ This property determines whether the chosen DetectorShift
     is changed when the fluorescent screen is moved down. """
     AUTO_IGNORE = 1
     MANUAL = 2
@@ -310,8 +310,6 @@ class FegFlashingType(IntEnum):
     HIGH_T = 1
 
 # ---------------- Low Dose enums ---------------------------------------------
-
-
 class LDStatus(IntEnum):
     """ Low Dose status: on or off. """
     IS_OFF = 0
@@ -326,15 +324,15 @@ class LDState(IntEnum):
     EXPOSURE = 3
 
 # ---------------- FEI Tecnai CCD enums -----------------------------------
-
-
 class AcqSpeed(IntEnum):
+    """ CCD acquisition mode. """
     TURBO = 0
     CONTINUOUS = 1
     SINGLEFRAME = 2
 
 
 class AcqMode(IntEnum):
+    """ CCD acquisition preset."""
     SEARCH = 0
     FOCUS = 1
     RECORD = 2

@@ -1,12 +1,13 @@
-#!/usr/bin/env python3
-
+import argparse
+from typing import Optional
 from time import sleep
+
 from pytemscript.microscope import Microscope
 from pytemscript.utils.enums import *
 
 
-def test_projection(microscope, has_eftem=False):
-    print("Testing projection...")
+def test_projection(microscope, has_eftem: bool = False):
+    print("\nTesting projection...")
     projection = microscope.optics.projection
     print("\tMode:", projection.mode)
     print("\tFocus:", projection.focus)
@@ -18,16 +19,19 @@ def test_projection(microscope, has_eftem=False):
     projection.defocus = orig_def
 
     print("\tMagnification:", projection.magnification)
-    #print("\tMagnificationIndex:", projection.magnificationIndex)
+    #TODO: avoid LM, since there it has no diffraction stigmator available
+    print("\tMagnificationIndex:", projection.magnification_index)
 
     projection.mode = ProjectionMode.DIFFRACTION
     print("\tCameraLength:", projection.camera_length)
-    #print("\tCameraLengthIndex:", projection.camera_length_index)
+    print("\tCameraLengthIndex:", projection.camera_length_index)
     print("\tDiffractionShift:", projection.diffraction_shift)
     print("\tDiffractionStigmator:", projection.diffraction_stigmator)
     projection.mode = ProjectionMode.IMAGING
 
     print("\tImageShift:", projection.image_shift)
+    projection.image_shift = -0,0
+
     print("\tImageBeamShift:", projection.image_beam_shift)
     print("\tObjectiveStigmator:", projection.objective_stigmator)
     print("\tSubMode:", projection.magnification_range)
@@ -38,7 +42,7 @@ def test_projection(microscope, has_eftem=False):
     print("\tImageBeamTilt:", projection.image_beam_tilt)
     print("\tLensProgram:", projection.is_eftem_on)
 
-    projection.reset_defocus()
+    projection.reset_defocus()  # TODO: not working remotely? check exec!
 
     if has_eftem:
         print("\tToggling EFTEM mode...")
@@ -47,7 +51,7 @@ def test_projection(microscope, has_eftem=False):
 
 
 def test_acquisition(microscope):
-    print("Testing acquisition...")
+    print("\nTesting acquisition...")
     acquisition = microscope.acquisition
     cameras = microscope.detectors.cameras
     detectors = microscope.detectors.stem_detectors
@@ -84,8 +88,8 @@ def test_acquisition(microscope):
         stem.disable()
 
 
-def test_vacuum(microscope, buffer_cycle=False):
-    print("Testing vacuum...")
+def test_vacuum(microscope, buffer_cycle: bool = False):
+    print("\nTesting vacuum...")
     vacuum = microscope.vacuum
     print("\tStatus:", vacuum.status)
     print("\tPVPRunning:", vacuum.is_buffer_running)
@@ -101,10 +105,10 @@ def test_vacuum(microscope, buffer_cycle=False):
         vacuum.run_buffer_cycle()
 
 
-def test_temperature(microscope, force_refill=False):
+def test_temperature(microscope, force_refill: bool = False):
     temp = microscope.temperature
     if temp.is_available:
-        print("Testing TemperatureControl...")
+        print("\nTesting TemperatureControl...")
         print("\tRefrigerantLevel (autoloader):",
               temp.dewar_level(RefrigerantDewar.AUTOLOADER_DEWAR))
         print("\tRefrigerantLevel (column):",
@@ -120,12 +124,12 @@ def test_temperature(microscope, force_refill=False):
                 print(str(e))
 
 
-def test_autoloader(microscope, check_loading=False, slot=1):
+def test_autoloader(microscope, check_loading: bool = False, slot: int = 1):
     al = microscope.autoloader
     if al.is_available:
-        print("Testing Autoloader...")
+        print("\nTesting Autoloader...")
         print("\tNumberOfCassetteSlots", al.number_of_slots)
-        print("\tSlotStatus for #%d" % slot, al.slot_status(slot))
+        print("\tSlotStatus for #%d: %s" % (slot, al.slot_status(slot)))
 
         if check_loading:
             try:
@@ -139,9 +143,9 @@ def test_autoloader(microscope, check_loading=False, slot=1):
                 print(str(e))
 
 
-def test_stage(microscope, move_stage=False):
+def test_stage(microscope, move_stage: bool = False):
     stage = microscope.stage
-    print("Testing stage...")
+    print("\nTesting stage...")
     pos = stage.position
     print("\tStatus:", stage.status)
     print("\tPosition:", pos)
@@ -166,7 +170,7 @@ def test_stage(microscope, move_stage=False):
 
 
 def test_detectors(microscope):
-    print("Testing cameras...")
+    print("\nTesting cameras...")
     dets = microscope.detectors
     print("\tFilm settings:", dets.film_settings)
     print("\tCameras:", dets.cameras)
@@ -174,7 +178,7 @@ def test_detectors(microscope):
 
 
 def test_optics(microscope):
-    print("Testing optics...")
+    print("\nTesting optics...")
     opt = microscope.optics
     print("\tScreenCurrent:", opt.screen_current)
     print("\tBeamBlanked:", opt.is_beam_blanked)
@@ -187,14 +191,14 @@ def test_optics(microscope):
 
 
 def test_illumination(microscope):
-    print("Testing illumination...")
+    print("\nTesting illumination...")
     illum = microscope.optics.illumination
     print("\tMode:", illum.mode)
     print("\tSpotsizeIndex:", illum.spotsize)
 
     orig_spot = illum.spotsize
-    illum.spotsize = 4
-    assert illum.spotsize == 4
+    illum.spotsize = 5
+    assert illum.spotsize == 5
     illum.spotsize = orig_spot
 
     print("\tIntensity:", illum.intensity)
@@ -212,10 +216,10 @@ def test_illumination(microscope):
     assert illum.beam_shift == (0.5, 0.5)
     illum.beam_shift = 0, 0
 
-    print("\tTilt:", illum.beam_tilt)
+    #print("\tTilt:", illum.beam_tilt)
     print("\tRotationCenter:", illum.rotation_center)
     print("\tCondenserStigmator:", illum.condenser_stigmator)
-    print("\tDFMode:", illum.dark_field)
+    #print("\tDFMode:", illum.dark_field)
 
     if microscope.condenser_system == CondenserLensSystem.THREE_CONDENSER_LENSES:
         print("\tCondenserMode:", illum.condenser_mode)
@@ -231,7 +235,7 @@ def test_illumination(microscope):
 
 
 def test_stem(microscope):
-    print("Testing STEM...")
+    print("\nTesting STEM...")
     stem = microscope.stem
     print("\tStemAvailable:", stem.is_available)
 
@@ -243,8 +247,8 @@ def test_stem(microscope):
         stem.disable()
 
 
-def test_gun(microscope, has_gun1=False, has_feg=False):
-    print("Testing gun...")
+def test_gun(microscope, has_gun1: bool = False, has_feg: bool = False):
+    print("\nTesting gun...")
     gun = microscope.gun
     print("\tHTValue:", gun.voltage)
     print("\tHTMaxValue:", gun.voltage_max)
@@ -264,8 +268,8 @@ def test_gun(microscope, has_gun1=False, has_feg=False):
         gun.do_flashing(FegFlashingType.LOW_T)
 
 
-def test_apertures(microscope, hasLicense=False):
-    print("Testing apertures...")
+def test_apertures(microscope, hasLicense: bool = False):
+    print("\nTesting apertures...")
     aps = microscope.apertures
 
     try:
@@ -281,11 +285,27 @@ def test_apertures(microscope, hasLicense=False):
         aps.select("C2", 50)
 
 
-def test_general(microscope, check_door=False):
-    print("Testing configuration...")
+def test_user_buttons(microscope):
+    print("\nTesting user buttons...")
+    buttons = microscope.user_buttons
+    print("Buttons: %s" % buttons.list)
+    import comtypes.client
 
+    def eventHandler():
+        def Pressed():
+            print("L1 button was pressed!")
+
+    buttons.L1.Assignment = "My function"
+    comtypes.client.GetEvents(buttons.L1, eventHandler)
+    # Simulate L1 press
+    buttons.L1.Pressed()
+    # Clear the assignment
+    buttons.L1.Assignment = ""
+
+
+def test_general(microscope, check_door: bool = False):
+    print("\nTesting configuration...")
     print("\tConfiguration.ProductFamily:", microscope.family)
-    print("\tUserButtons:", microscope.user_buttons)
     print("\tBlankerShutter.ShutterOverrideOn:",
           microscope.optics.is_shutter_override_on)
     print("\tCondenser system:", microscope.condenser_system)
@@ -301,11 +321,33 @@ def test_general(microscope, check_door=False):
         microscope.user_door.close()
 
 
-if __name__ == '__main__':
-    print("Starting microscope tests...")
+def main(argv: Optional[list] = None):
+    """ Test all aspects of the microscope interface. """
+    microscope = None
+    parser = argparse.ArgumentParser(
+        description="This test can use local or remote client. In the latter case "
+                    "pytemscript-server must be already running",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-p", "--port", type=int, default=39000,
+                        help="Specify port on which the server is listening")
+    parser.add_argument("--host", type=str, default='',
+                        help="Specify host address on which the server is listening")
+    args = parser.parse_args(argv)
+
+    if args.host in ['', 'localhost']:
+        mode = "local"
+        microscope = Microscope(debug=True)
+    else:
+        mode = "remote"
+        microscope = Microscope(connection="socket", host=args.host,
+                                port=args.port, debug=True)
+
+    if microscope is None:
+        raise RuntimeError("Could not create microscope client")
+
+    print("Starting %s microscope tests..." % mode)
 
     full_test = False
-    microscope = Microscope()
     test_projection(microscope, has_eftem=False)
     test_detectors(microscope)
     test_vacuum(microscope, buffer_cycle=full_test)
@@ -315,6 +357,8 @@ if __name__ == '__main__':
     test_optics(microscope)
     test_illumination(microscope)
     test_gun(microscope, has_gun1=False, has_feg=False)
+    if microscope.family != ProductFamily.TECNAI.name:
+        test_user_buttons(microscope)
     test_general(microscope, check_door=False)
 
     if full_test:
@@ -323,9 +367,12 @@ if __name__ == '__main__':
         test_apertures(microscope, hasLicense=False)
 
 
+if __name__ == '__main__':
+    main()
+
+
 """
 Notes for Tecnai F20:
 - DF element not found -> no DF mode or beam tilt. Check if python is 32-bit?
 - Userbuttons not found
-
 """

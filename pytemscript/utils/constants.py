@@ -7,6 +7,7 @@ SCRIPTING_SEM_CCD = "SerialEMCCD.DMCamera"
 SCRIPTING_TECNAI_CCD = "TecnaiCCD.GatanCamera"
 SCRIPTING_TECNAI_CCD2 = "TecnaiCCDPlugin.GatanCamera"
 SCRIPTING_FEI_GATAN_REMOTING = "ThermoScientificTEMPlugin.Acquisition"
+FEG_REGISTERS = "FegRegisters.FegReg"
 
 LICENSE_ADV = "TEMAdvancedScripting.AdvancedInstrumentInternal"
 LICENSE_ADV_CAM = "TEMAdvancedScripting.CameraSettingsInternal"
