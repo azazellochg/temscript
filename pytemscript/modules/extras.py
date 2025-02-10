@@ -177,13 +177,13 @@ class Image(BaseImage):
 
 class SpecialObj:
     """ Wrapper class for complex methods to be executed on a COM object. """
-    def __init__(self, com_object, func: str = None, **kwargs):
+    def __init__(self, com_object, func: str, **kwargs):
         self.com_object = com_object
         self.func = func
         self.kwargs = kwargs
 
     def execute(self):
-        method = getattr(self, self.func, None)
+        method = getattr(self, self.func)
         if callable(method):
             return method(**self.kwargs)
         else:

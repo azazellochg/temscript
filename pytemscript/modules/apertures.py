@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Dict
 
 from .extras import SpecialObj
 from ..utils.enums import MechanismId, MechanismState
@@ -120,10 +120,10 @@ class Apertures:
             self._client.call(self._shortcut, obj=AperturesObj,
                               func="select", name=aperture, size=size)
 
-    def show(self) -> Optional[dict]:
+    def show(self) -> Dict:
         """ Returns a dict with apertures information. """
         if not self.__std_available:
             raise NotImplementedError(self._err_msg)
         else:
-            self._client.call(self._shortcut, obj=AperturesObj,
-                              func="show")
+            return self._client.call(self._shortcut, obj=AperturesObj,
+                                     func="show")

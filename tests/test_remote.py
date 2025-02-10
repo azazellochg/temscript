@@ -6,7 +6,7 @@ from pytemscript.microscope import Microscope
 from pytemscript.server.run import main as server_run
 
 
-def server_thread(argv: List[str]):
+def server_thread(argv: List):
     """ Start server process in a separate thread. """
     stop_event = threading.Event()
     thread = threading.Thread(target=server_run, args=(argv, stop_event))

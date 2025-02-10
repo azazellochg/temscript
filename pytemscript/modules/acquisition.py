@@ -10,7 +10,7 @@ from .extras import Image, SpecialObj
 
 class AcquisitionObj(SpecialObj):
     """ Wrapper around cameras COM object with specific acquisition methods. """
-    def __init__(self, com_object, func: str = None, **kwargs):
+    def __init__(self, com_object, func: str, **kwargs):
         super().__init__(com_object, func, **kwargs)
         self.current_camera = None
 
@@ -92,6 +92,7 @@ class AcquisitionObj(SpecialObj):
         if recording:
             self.com_object.CameraContinuousAcquisition.Start()
             self.com_object.CameraContinuousAcquisition.Wait()
+            return None
         else:
             img = self.com_object.CameraSingleAcquisition.Acquire()
             self.com_object.CameraSingleAcquisition.Wait()
@@ -99,7 +100,7 @@ class AcquisitionObj(SpecialObj):
 
     def restore_shutter(self,
                         cameraName: str,
-                        prev_shutter_mode: AcqShutterMode.value) -> None:
+                        prev_shutter_mode: int) -> None:
         """ Restore global shutter mode after exposure. """
         camera = None
         for cam in self.com_object:
@@ -128,21 +129,20 @@ class AcquisitionObj(SpecialObj):
                         size: AcqImageSize = AcqImageSize.FULL,
                         exp_time: float = 1,
                         binning: int = 1,
-                        **kwargs) -> AcqShutterMode:
+                        **kwargs) -> Optional[int]:
 
-        camera = None
         for cam in self.com_object:
             if cam.Info.Name == cameraName:
-                camera = cam
-        if camera is None:
+                self.current_camera = cam
+        if self.current_camera is None:
             raise KeyError("No camera with name %s. If using standard scripting the "
                            "camera must be selected in the microscope user interface" % cameraName)
 
-        info = camera.Info
-        settings = camera.AcqParams
+        info = self.current_camera.Info
+        settings = self.current_camera.AcqParams
         settings.ImageSize = size
 
-        binning = self._check_binning(binning, camera)
+        binning = self._check_binning(binning)
         settings.Binning = binning
         prev_shutter_mode = None
 
@@ -179,25 +179,24 @@ class AcquisitionObj(SpecialObj):
                                  camera_type: str = "csa",
                                  **kwargs) -> None:
         eer = kwargs.get("eer")
-        camera = None
         if camera_type == "cca":
             for cam in self.com_object.CameraContinuousAcquisition.SupportedCameras:
                 if cam.Name == cameraName:
-                    camera = cam
+                    self.current_camera = cam
         else:  # csa
             for cam in self.com_object.CameraSingleAcquisition.SupportedCameras:
                 if cam.Name == cameraName:
-                    camera = cam
+                    self.current_camera = cam
 
-        if camera is None:
+        if self.current_camera is None:
             raise KeyError("No camera with name %s. If using standard scripting the "
                            "camera must be selected in the microscope user interface" % cameraName)
 
-        if not camera.IsInserted:
-            camera.Insert()
+        if not self.current_camera.IsInserted:
+            self.current_camera.Insert()
 
         if 'recording' in kwargs:
-            self.com_object.CameraContinuousAcquisition.Camera = camera
+            self.com_object.CameraContinuousAcquisition.Camera = self.current_camera
             settings = self.com_object.CameraContinuousAcquisition.CameraSettings
             capabilities = settings.Capabilities
             binning = self._check_binning(binning, True, True)
@@ -207,7 +206,7 @@ class AcquisitionObj(SpecialObj):
                 raise NotImplementedError("This camera does not support continuous acquisition")
 
         else:
-            self.com_object.CameraSingleAcquisition.Camera = camera
+            self.com_object.CameraSingleAcquisition.Camera = self.current_camera
             settings = self.com_object.CameraSingleAcquisition.CameraSettings
             capabilities = settings.Capabilities
             binning = self._check_binning(binning, True)
